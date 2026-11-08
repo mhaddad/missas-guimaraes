@@ -172,4 +172,14 @@ locais:
     ]).map((p) => p.mensagem);
     expect(mensagens).toEqual(['integridade: o local "igreja-exemplo" pertence a "paroquia-exemplo"']);
   });
+
+  it("pode exigir o calendário", () => {
+    expect(validarDados(arquivos(), { exigirCalendario: true })).toEqual([
+      {
+        nivel: "erro",
+        caminho: "dados/calendario.yml",
+        mensagem: "calendário em falta ou inválido: os dias santos não podem ser verificados",
+      },
+    ]);
+  });
 });

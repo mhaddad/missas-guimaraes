@@ -29,7 +29,10 @@ const arquivos: ArquivoDados[] = [
   ...lerPasta("dados/entidades"),
   ...lerPasta("dados/locais"),
 ];
-const problemas = validarDados(arquivos, { hoje: momentoEmLisboa(new Date()).data });
+const problemas = validarDados(arquivos, {
+  hoje: momentoEmLisboa(new Date()).data,
+  exigirCalendario: true,
+});
 const erros = problemas.filter((p) => p.nivel === "erro");
 const avisos = problemas.filter((p) => p.nivel === "aviso");
 

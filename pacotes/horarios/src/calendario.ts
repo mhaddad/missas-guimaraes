@@ -7,6 +7,7 @@
  */
 import {
   diaDaSemana,
+  eDataValida,
   partesDaData,
   pascoa,
   somarDias,
@@ -41,12 +42,9 @@ export interface CalendarioMotor {
 const PADRAO_MOVEL = /^pascoa([+-]\d{1,3})$/;
 
 export function dataDaRegra(regra: RegraDiaSanto, ano: number): Data {
-  if (regra.data !== undefined && regra.data_movel !== undefined) {
-    throw new Error(`Dia santo ${regra.id}: use data ou data_movel, não os dois.`);
-  }
-  if (regra.data !== undefined) return `${String(ano).padStart(4, "0")}-${regra.data}`;
-  const m = PADRAO_MOVEL.exec(regra.data_movel ?? "");
-  if (!m) throw new Error(`Dia santo ${regra.id}: falta data ou data_movel válida.`);
+  if ("data" in regra) return `${String(ano).padStart(4, "0")}-${regra.data}`;
+  const m = PADRAO_MOVEL.exec(regra.data_movel);
+  if (!m) throw new Error(`Dia santo ${regra.id}: data_movel inválida (${regra.data_movel}).`);
   return somarDias(pascoa(ano), Number(m[1]));
 }
 
@@ -84,8 +82,12 @@ export function verificarCalendario(calendario: Calendario): string[] {
   const erros: string[] = [];
   const regras = calendario.dias_santos_de_preceito.regras;
   for (const regra of regras) {
-    if ((regra.data === undefined) === (regra.data_movel === undefined)) {
-      erros.push(`dias santos: ${regra.id} precisa de exatamente um de data ou data_movel`);
+    // 2000 é bissexto: aceita 02-29 e recusa 02-30, 04-31…
+    if ("data" in regra && !eDataValida(`2000-${regra.data}`)) {
+      erros.push(`dias santos: ${regra.id} tem uma data que não existe (${regra.data})`);
+    }
+    if ("data_movel" in regra && !PADRAO_MOVEL.test(regra.data_movel)) {
+      erros.push(`dias santos: ${regra.id} tem data_movel inválida (${regra.data_movel})`);
     }
   }
   for (const [anoTexto, ano] of Object.entries(calendario.anos)) {

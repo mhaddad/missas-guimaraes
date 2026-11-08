@@ -134,6 +134,22 @@ excecoes:
     expect(lerLocal(texto).horarios).toHaveLength(2);
   });
 
+  it("mantém os comentários das regras que não mudaram", () => {
+    const comComentarios = LOCAL.replace(
+      "horarios:\n- tipo: missa\n  dias: [dom]\n  hora: '11:00'",
+      "horarios:\n# Missa principal.\n- tipo: missa\n  dias: [dom]\n  hora: '11:00' # confirmar\n- tipo: missa\n  dias: [sab]\n  hora: '18:00'",
+    );
+    const local = lerLocal(comComentarios);
+    const depois = aplicarMudanca(local, {
+      acao: "apagar",
+      indice: 1,
+      natureza: { tipo: "habitual" },
+    });
+    const texto = serializar(depois, "local", comComentarios);
+    expect(texto).toContain("# Missa principal.\n- tipo: missa\n  dias: [dom]\n  hora: '11:00' # confirmar\nexcecoes:");
+    expect(texto).not.toContain("18:00");
+  });
+
   it("sem mudanças, devolve o original; sem original, cria do zero", () => {
     expect(serializar(lerLocal(LOCAL), "local", LOCAL)).toBe(LOCAL);
     const local: Local = lerLocal(LOCAL);

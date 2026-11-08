@@ -144,7 +144,9 @@ const schema31 = {
         acao: { enum: ["cancelar", "adicionar", "alterar"] },
         tipo: { $ref: "#/$defs/tipo_celebracao" },
         hora: { $ref: "#/$defs/hora" },
+        hora_fim: { $ref: "#/$defs/hora" },
         hora_original: { $ref: "#/$defs/hora" },
+        idioma: { type: "string", description: "Só em `adicionar`; pt por omissão" },
         nota: { type: "string" },
       },
     },
@@ -1050,7 +1052,9 @@ const schema42 = {
     acao: { enum: ["cancelar", "adicionar", "alterar"] },
     tipo: { $ref: "#/$defs/tipo_celebracao" },
     hora: { $ref: "#/$defs/hora" },
+    hora_fim: { $ref: "#/$defs/hora" },
     hora_original: { $ref: "#/$defs/hora" },
+    idioma: { type: "string", description: "Só em `adicionar`; pt por omissão" },
     nota: { type: "string" },
   },
 };
@@ -1105,7 +1109,9 @@ function validate23(
         key0 === "acao" ||
         key0 === "tipo" ||
         key0 === "hora" ||
+        key0 === "hora_fim" ||
         key0 === "hora_original" ||
+        key0 === "idioma" ||
         key0 === "nota"
       )) {
         const err2 = {
@@ -1233,12 +1239,12 @@ function validate23(
         errors++;
       }
     }
-    if (data.hora_original !== undefined) {
-      let data4 = data.hora_original;
+    if (data.hora_fim !== undefined) {
+      let data4 = data.hora_fim;
       if (typeof data4 === "string") {
         if (!pattern7.test(data4)) {
           const err9 = {
-            instancePath: instancePath + "/hora_original",
+            instancePath: instancePath + "/hora_fim",
             schemaPath: "#/$defs/hora/pattern",
             keyword: "pattern",
             params: { pattern: "^([01]\\d|2[0-3]):[0-5]\\d$" },
@@ -1253,7 +1259,7 @@ function validate23(
         }
       } else {
         const err10 = {
-          instancePath: instancePath + "/hora_original",
+          instancePath: instancePath + "/hora_fim",
           schemaPath: "#/$defs/hora/type",
           keyword: "type",
           params: { type: "string" },
@@ -1267,9 +1273,60 @@ function validate23(
         errors++;
       }
     }
+    if (data.hora_original !== undefined) {
+      let data5 = data.hora_original;
+      if (typeof data5 === "string") {
+        if (!pattern7.test(data5)) {
+          const err11 = {
+            instancePath: instancePath + "/hora_original",
+            schemaPath: "#/$defs/hora/pattern",
+            keyword: "pattern",
+            params: { pattern: "^([01]\\d|2[0-3]):[0-5]\\d$" },
+            message: 'must match pattern "' + "^([01]\\d|2[0-3]):[0-5]\\d$" + '"',
+          };
+          if (vErrors === null) {
+            vErrors = [err11];
+          } else {
+            vErrors.push(err11);
+          }
+          errors++;
+        }
+      } else {
+        const err12 = {
+          instancePath: instancePath + "/hora_original",
+          schemaPath: "#/$defs/hora/type",
+          keyword: "type",
+          params: { type: "string" },
+          message: "must be string",
+        };
+        if (vErrors === null) {
+          vErrors = [err12];
+        } else {
+          vErrors.push(err12);
+        }
+        errors++;
+      }
+    }
+    if (data.idioma !== undefined) {
+      if (typeof data.idioma !== "string") {
+        const err13 = {
+          instancePath: instancePath + "/idioma",
+          schemaPath: "#/properties/idioma/type",
+          keyword: "type",
+          params: { type: "string" },
+          message: "must be string",
+        };
+        if (vErrors === null) {
+          vErrors = [err13];
+        } else {
+          vErrors.push(err13);
+        }
+        errors++;
+      }
+    }
     if (data.nota !== undefined) {
       if (typeof data.nota !== "string") {
-        const err11 = {
+        const err14 = {
           instancePath: instancePath + "/nota",
           schemaPath: "#/properties/nota/type",
           keyword: "type",
@@ -1277,15 +1334,15 @@ function validate23(
           message: "must be string",
         };
         if (vErrors === null) {
-          vErrors = [err11];
+          vErrors = [err14];
         } else {
-          vErrors.push(err11);
+          vErrors.push(err14);
         }
         errors++;
       }
     }
   } else {
-    const err12 = {
+    const err15 = {
       instancePath,
       schemaPath: "#/type",
       keyword: "type",
@@ -1293,9 +1350,9 @@ function validate23(
       message: "must be object",
     };
     if (vErrors === null) {
-      vErrors = [err12];
+      vErrors = [err15];
     } else {
-      vErrors.push(err12);
+      vErrors.push(err15);
     }
     errors++;
   }
@@ -2516,7 +2573,7 @@ function validate20(
 validate20.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
 
 export const validarEntidade = validate25;
-const schema48 = {
+const schema49 = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
   $id: "https://missasemguimaraes.pt/schema/entidade.schema.json",
   title: "Entidade responsável por locais de culto",
@@ -2644,7 +2701,7 @@ function validate25(
       errors++;
     }
     for (const key0 in data) {
-      if (!func1.call(schema48.properties, key0)) {
+      if (!func1.call(schema49.properties, key0)) {
         const err5 = {
           instancePath,
           schemaPath: "#/additionalProperties",
@@ -2711,7 +2768,7 @@ function validate25(
           instancePath: instancePath + "/tipo",
           schemaPath: "#/properties/tipo/enum",
           keyword: "enum",
-          params: { allowedValues: schema48.properties.tipo.enum },
+          params: { allowedValues: schema49.properties.tipo.enum },
           message: "must be equal to one of the allowed values",
         };
         if (vErrors === null) {
@@ -2746,7 +2803,7 @@ function validate25(
           instancePath: instancePath + "/orago",
           schemaPath: "#/properties/orago/type",
           keyword: "type",
-          params: { type: schema48.properties.orago.type },
+          params: { type: schema49.properties.orago.type },
           message: "must be string,null",
         };
         if (vErrors === null) {
@@ -2764,7 +2821,7 @@ function validate25(
           instancePath: instancePath + "/arciprestado",
           schemaPath: "#/properties/arciprestado/type",
           keyword: "type",
-          params: { type: schema48.properties.arciprestado.type },
+          params: { type: schema49.properties.arciprestado.type },
           message: "must be string,null",
         };
         if (vErrors === null) {
@@ -2873,7 +2930,7 @@ function validate25(
           instancePath: instancePath + "/email",
           schemaPath: "#/properties/email/type",
           keyword: "type",
-          params: { type: schema48.properties.email.type },
+          params: { type: schema49.properties.email.type },
           message: "must be string,null",
         };
         if (vErrors === null) {
@@ -2891,7 +2948,7 @@ function validate25(
           instancePath: instancePath + "/site",
           schemaPath: "#/properties/site/type",
           keyword: "type",
-          params: { type: schema48.properties.site.type },
+          params: { type: schema49.properties.site.type },
           message: "must be string,null",
         };
         if (vErrors === null) {
@@ -2975,7 +3032,7 @@ function validate25(
 validate25.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
 
 export const validarCalendario = validate26;
-const schema49 = {
+const schema50 = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
   $id: "https://missasemguimaraes.pt/schema/calendario.schema.json",
   title: "Calendário litúrgico e civil (dados/calendario.yml)",
@@ -3003,24 +3060,7 @@ const schema49 = {
     id: { type: "string", pattern: "^[a-z0-9]+(-[a-z0-9]+)*$" },
     data: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
     regra_dia_santo: {
-      type: "object",
-      additionalProperties: false,
-      required: ["id", "nome"],
-      description: "Exatamente um de data ou data_movel (verificado pelo motor).",
-      properties: {
-        id: { $ref: "#/$defs/id" },
-        nome: { type: "string" },
-        data: {
-          type: "string",
-          pattern: "^(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$",
-          description: "Data fixa, MM-DD",
-        },
-        data_movel: {
-          type: "string",
-          pattern: "^pascoa[+-]\\d{1,3}$",
-          description: "Dias a partir da Páscoa, ex.: pascoa+60",
-        },
-      },
+      oneOf: [{ $ref: "#/$defs/regra_dia_santo_fixa" }, { $ref: "#/$defs/regra_dia_santo_movel" }],
     },
     ano: {
       type: "object",
@@ -3040,13 +3080,43 @@ const schema49 = {
         },
       },
     },
+    regra_dia_santo_fixa: {
+      type: "object",
+      additionalProperties: false,
+      required: ["id", "nome", "data"],
+      properties: {
+        id: { $ref: "#/$defs/id" },
+        nome: { type: "string" },
+        data: {
+          type: "string",
+          pattern: "^(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$",
+          description: "Data fixa, MM-DD",
+        },
+      },
+    },
+    regra_dia_santo_movel: {
+      type: "object",
+      additionalProperties: false,
+      required: ["id", "nome", "data_movel"],
+      properties: {
+        id: { $ref: "#/$defs/id" },
+        nome: { type: "string" },
+        data_movel: {
+          type: "string",
+          pattern: "^pascoa[+-]\\d{1,3}$",
+          description: "Dias a partir da Páscoa, ex.: pascoa+60",
+        },
+      },
+    },
   },
 };
-const schema50 = {
+const schema51 = {
+  oneOf: [{ $ref: "#/$defs/regra_dia_santo_fixa" }, { $ref: "#/$defs/regra_dia_santo_movel" }],
+};
+const schema52 = {
   type: "object",
   additionalProperties: false,
-  required: ["id", "nome"],
-  description: "Exatamente um de data ou data_movel (verificado pelo motor).",
+  required: ["id", "nome", "data"],
   properties: {
     id: { $ref: "#/$defs/id" },
     nome: { type: "string" },
@@ -3055,24 +3125,18 @@ const schema50 = {
       pattern: "^(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$",
       description: "Data fixa, MM-DD",
     },
-    data_movel: {
-      type: "string",
-      pattern: "^pascoa[+-]\\d{1,3}$",
-      description: "Dias a partir da Páscoa, ex.: pascoa+60",
-    },
   },
 };
-const schema51 = { type: "string", pattern: "^[a-z0-9]+(-[a-z0-9]+)*$" };
-const pattern18 = new RegExp("^(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$", "u");
-const pattern19 = new RegExp("^pascoa[+-]\\d{1,3}$", "u");
+const schema53 = { type: "string", pattern: "^[a-z0-9]+(-[a-z0-9]+)*$" };
+const pattern19 = new RegExp("^(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$", "u");
 
-function validate27(
+function validate28(
   data,
   { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {},
 ) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate27.evaluated;
+  const evaluated0 = validate28.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = undefined;
   }
@@ -3110,9 +3174,24 @@ function validate27(
       }
       errors++;
     }
+    if (data.data === undefined) {
+      const err2 = {
+        instancePath,
+        schemaPath: "#/required",
+        keyword: "required",
+        params: { missingProperty: "data" },
+        message: "must have required property '" + "data" + "'",
+      };
+      if (vErrors === null) {
+        vErrors = [err2];
+      } else {
+        vErrors.push(err2);
+      }
+      errors++;
+    }
     for (const key0 in data) {
-      if (!(key0 === "id" || key0 === "nome" || key0 === "data" || key0 === "data_movel")) {
-        const err2 = {
+      if (!(key0 === "id" || key0 === "nome" || key0 === "data")) {
+        const err3 = {
           instancePath,
           schemaPath: "#/additionalProperties",
           keyword: "additionalProperties",
@@ -3120,9 +3199,9 @@ function validate27(
           message: "must NOT have additional properties",
         };
         if (vErrors === null) {
-          vErrors = [err2];
+          vErrors = [err3];
         } else {
-          vErrors.push(err2);
+          vErrors.push(err3);
         }
         errors++;
       }
@@ -3131,7 +3210,7 @@ function validate27(
       let data0 = data.id;
       if (typeof data0 === "string") {
         if (!pattern4.test(data0)) {
-          const err3 = {
+          const err4 = {
             instancePath: instancePath + "/id",
             schemaPath: "#/$defs/id/pattern",
             keyword: "pattern",
@@ -3139,33 +3218,16 @@ function validate27(
             message: 'must match pattern "' + "^[a-z0-9]+(-[a-z0-9]+)*$" + '"',
           };
           if (vErrors === null) {
-            vErrors = [err3];
+            vErrors = [err4];
           } else {
-            vErrors.push(err3);
+            vErrors.push(err4);
           }
           errors++;
         }
       } else {
-        const err4 = {
+        const err5 = {
           instancePath: instancePath + "/id",
           schemaPath: "#/$defs/id/type",
-          keyword: "type",
-          params: { type: "string" },
-          message: "must be string",
-        };
-        if (vErrors === null) {
-          vErrors = [err4];
-        } else {
-          vErrors.push(err4);
-        }
-        errors++;
-      }
-    }
-    if (data.nome !== undefined) {
-      if (typeof data.nome !== "string") {
-        const err5 = {
-          instancePath: instancePath + "/nome",
-          schemaPath: "#/properties/nome/type",
           keyword: "type",
           params: { type: "string" },
           message: "must be string",
@@ -3178,11 +3240,28 @@ function validate27(
         errors++;
       }
     }
+    if (data.nome !== undefined) {
+      if (typeof data.nome !== "string") {
+        const err6 = {
+          instancePath: instancePath + "/nome",
+          schemaPath: "#/properties/nome/type",
+          keyword: "type",
+          params: { type: "string" },
+          message: "must be string",
+        };
+        if (vErrors === null) {
+          vErrors = [err6];
+        } else {
+          vErrors.push(err6);
+        }
+        errors++;
+      }
+    }
     if (data.data !== undefined) {
       let data2 = data.data;
       if (typeof data2 === "string") {
-        if (!pattern18.test(data2)) {
-          const err6 = {
+        if (!pattern19.test(data2)) {
+          const err7 = {
             instancePath: instancePath + "/data",
             schemaPath: "#/properties/data/pattern",
             keyword: "pattern",
@@ -3190,14 +3269,14 @@ function validate27(
             message: 'must match pattern "' + "^(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$" + '"',
           };
           if (vErrors === null) {
-            vErrors = [err6];
+            vErrors = [err7];
           } else {
-            vErrors.push(err6);
+            vErrors.push(err7);
           }
           errors++;
         }
       } else {
-        const err7 = {
+        const err8 = {
           instancePath: instancePath + "/data",
           schemaPath: "#/properties/data/type",
           keyword: "type",
@@ -3205,49 +3284,15 @@ function validate27(
           message: "must be string",
         };
         if (vErrors === null) {
-          vErrors = [err7];
+          vErrors = [err8];
         } else {
-          vErrors.push(err7);
-        }
-        errors++;
-      }
-    }
-    if (data.data_movel !== undefined) {
-      let data3 = data.data_movel;
-      if (typeof data3 === "string") {
-        if (!pattern19.test(data3)) {
-          const err8 = {
-            instancePath: instancePath + "/data_movel",
-            schemaPath: "#/properties/data_movel/pattern",
-            keyword: "pattern",
-            params: { pattern: "^pascoa[+-]\\d{1,3}$" },
-            message: 'must match pattern "' + "^pascoa[+-]\\d{1,3}$" + '"',
-          };
-          if (vErrors === null) {
-            vErrors = [err8];
-          } else {
-            vErrors.push(err8);
-          }
-          errors++;
-        }
-      } else {
-        const err9 = {
-          instancePath: instancePath + "/data_movel",
-          schemaPath: "#/properties/data_movel/type",
-          keyword: "type",
-          params: { type: "string" },
-          message: "must be string",
-        };
-        if (vErrors === null) {
-          vErrors = [err9];
-        } else {
-          vErrors.push(err9);
+          vErrors.push(err8);
         }
         errors++;
       }
     }
   } else {
-    const err10 = {
+    const err9 = {
       instancePath,
       schemaPath: "#/type",
       keyword: "type",
@@ -3255,18 +3300,294 @@ function validate27(
       message: "must be object",
     };
     if (vErrors === null) {
-      vErrors = [err10];
+      vErrors = [err9];
     } else {
-      vErrors.push(err10);
+      vErrors.push(err9);
     }
     errors++;
   }
-  validate27.errors = vErrors;
+  validate28.errors = vErrors;
   return errors === 0;
 }
-validate27.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
+validate28.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
 
-const schema52 = {
+const schema54 = {
+  type: "object",
+  additionalProperties: false,
+  required: ["id", "nome", "data_movel"],
+  properties: {
+    id: { $ref: "#/$defs/id" },
+    nome: { type: "string" },
+    data_movel: {
+      type: "string",
+      pattern: "^pascoa[+-]\\d{1,3}$",
+      description: "Dias a partir da Páscoa, ex.: pascoa+60",
+    },
+  },
+};
+const pattern21 = new RegExp("^pascoa[+-]\\d{1,3}$", "u");
+
+function validate30(
+  data,
+  { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {},
+) {
+  let vErrors = null;
+  let errors = 0;
+  const evaluated0 = validate30.evaluated;
+  if (evaluated0.dynamicProps) {
+    evaluated0.props = undefined;
+  }
+  if (evaluated0.dynamicItems) {
+    evaluated0.items = undefined;
+  }
+  if (data && typeof data == "object" && !Array.isArray(data)) {
+    if (data.id === undefined) {
+      const err0 = {
+        instancePath,
+        schemaPath: "#/required",
+        keyword: "required",
+        params: { missingProperty: "id" },
+        message: "must have required property '" + "id" + "'",
+      };
+      if (vErrors === null) {
+        vErrors = [err0];
+      } else {
+        vErrors.push(err0);
+      }
+      errors++;
+    }
+    if (data.nome === undefined) {
+      const err1 = {
+        instancePath,
+        schemaPath: "#/required",
+        keyword: "required",
+        params: { missingProperty: "nome" },
+        message: "must have required property '" + "nome" + "'",
+      };
+      if (vErrors === null) {
+        vErrors = [err1];
+      } else {
+        vErrors.push(err1);
+      }
+      errors++;
+    }
+    if (data.data_movel === undefined) {
+      const err2 = {
+        instancePath,
+        schemaPath: "#/required",
+        keyword: "required",
+        params: { missingProperty: "data_movel" },
+        message: "must have required property '" + "data_movel" + "'",
+      };
+      if (vErrors === null) {
+        vErrors = [err2];
+      } else {
+        vErrors.push(err2);
+      }
+      errors++;
+    }
+    for (const key0 in data) {
+      if (!(key0 === "id" || key0 === "nome" || key0 === "data_movel")) {
+        const err3 = {
+          instancePath,
+          schemaPath: "#/additionalProperties",
+          keyword: "additionalProperties",
+          params: { additionalProperty: key0 },
+          message: "must NOT have additional properties",
+        };
+        if (vErrors === null) {
+          vErrors = [err3];
+        } else {
+          vErrors.push(err3);
+        }
+        errors++;
+      }
+    }
+    if (data.id !== undefined) {
+      let data0 = data.id;
+      if (typeof data0 === "string") {
+        if (!pattern4.test(data0)) {
+          const err4 = {
+            instancePath: instancePath + "/id",
+            schemaPath: "#/$defs/id/pattern",
+            keyword: "pattern",
+            params: { pattern: "^[a-z0-9]+(-[a-z0-9]+)*$" },
+            message: 'must match pattern "' + "^[a-z0-9]+(-[a-z0-9]+)*$" + '"',
+          };
+          if (vErrors === null) {
+            vErrors = [err4];
+          } else {
+            vErrors.push(err4);
+          }
+          errors++;
+        }
+      } else {
+        const err5 = {
+          instancePath: instancePath + "/id",
+          schemaPath: "#/$defs/id/type",
+          keyword: "type",
+          params: { type: "string" },
+          message: "must be string",
+        };
+        if (vErrors === null) {
+          vErrors = [err5];
+        } else {
+          vErrors.push(err5);
+        }
+        errors++;
+      }
+    }
+    if (data.nome !== undefined) {
+      if (typeof data.nome !== "string") {
+        const err6 = {
+          instancePath: instancePath + "/nome",
+          schemaPath: "#/properties/nome/type",
+          keyword: "type",
+          params: { type: "string" },
+          message: "must be string",
+        };
+        if (vErrors === null) {
+          vErrors = [err6];
+        } else {
+          vErrors.push(err6);
+        }
+        errors++;
+      }
+    }
+    if (data.data_movel !== undefined) {
+      let data2 = data.data_movel;
+      if (typeof data2 === "string") {
+        if (!pattern21.test(data2)) {
+          const err7 = {
+            instancePath: instancePath + "/data_movel",
+            schemaPath: "#/properties/data_movel/pattern",
+            keyword: "pattern",
+            params: { pattern: "^pascoa[+-]\\d{1,3}$" },
+            message: 'must match pattern "' + "^pascoa[+-]\\d{1,3}$" + '"',
+          };
+          if (vErrors === null) {
+            vErrors = [err7];
+          } else {
+            vErrors.push(err7);
+          }
+          errors++;
+        }
+      } else {
+        const err8 = {
+          instancePath: instancePath + "/data_movel",
+          schemaPath: "#/properties/data_movel/type",
+          keyword: "type",
+          params: { type: "string" },
+          message: "must be string",
+        };
+        if (vErrors === null) {
+          vErrors = [err8];
+        } else {
+          vErrors.push(err8);
+        }
+        errors++;
+      }
+    }
+  } else {
+    const err9 = {
+      instancePath,
+      schemaPath: "#/type",
+      keyword: "type",
+      params: { type: "object" },
+      message: "must be object",
+    };
+    if (vErrors === null) {
+      vErrors = [err9];
+    } else {
+      vErrors.push(err9);
+    }
+    errors++;
+  }
+  validate30.errors = vErrors;
+  return errors === 0;
+}
+validate30.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
+
+function validate27(
+  data,
+  { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {},
+) {
+  let vErrors = null;
+  let errors = 0;
+  const evaluated0 = validate27.evaluated;
+  if (evaluated0.dynamicProps) {
+    evaluated0.props = undefined;
+  }
+  if (evaluated0.dynamicItems) {
+    evaluated0.items = undefined;
+  }
+  const _errs0 = errors;
+  let valid0 = false;
+  let passing0 = null;
+  const _errs1 = errors;
+  if (
+    !validate28(data, { instancePath, parentData, parentDataProperty, rootData, dynamicAnchors })
+  ) {
+    vErrors = vErrors === null ? validate28.errors : vErrors.concat(validate28.errors);
+    errors = vErrors.length;
+  }
+  var _valid0 = _errs1 === errors;
+  if (_valid0) {
+    valid0 = true;
+    passing0 = 0;
+    var props0 = true;
+  }
+  const _errs2 = errors;
+  if (
+    !validate30(data, { instancePath, parentData, parentDataProperty, rootData, dynamicAnchors })
+  ) {
+    vErrors = vErrors === null ? validate30.errors : vErrors.concat(validate30.errors);
+    errors = vErrors.length;
+  }
+  var _valid0 = _errs2 === errors;
+  if (_valid0 && valid0) {
+    valid0 = false;
+    passing0 = [passing0, 1];
+  } else {
+    if (_valid0) {
+      valid0 = true;
+      passing0 = 1;
+      if (props0 !== true) {
+        props0 = true;
+      }
+    }
+  }
+  if (!valid0) {
+    const err0 = {
+      instancePath,
+      schemaPath: "#/oneOf",
+      keyword: "oneOf",
+      params: { passingSchemas: passing0 },
+      message: "must match exactly one schema in oneOf",
+    };
+    if (vErrors === null) {
+      vErrors = [err0];
+    } else {
+      vErrors.push(err0);
+    }
+    errors++;
+  } else {
+    errors = _errs0;
+    if (vErrors !== null) {
+      if (_errs0) {
+        vErrors.length = _errs0;
+      } else {
+        vErrors = null;
+      }
+    }
+  }
+  validate27.errors = vErrors;
+  evaluated0.props = props0;
+  return errors === 0;
+}
+validate27.evaluated = { dynamicProps: true, dynamicItems: false };
+
+const schema56 = {
   type: "object",
   additionalProperties: false,
   required: ["dias_santos", "moveis", "hora_legal"],
@@ -3284,15 +3605,15 @@ const schema52 = {
     },
   },
 };
-const schema53 = { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" };
+const schema57 = { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" };
 
-function validate29(
+function validate33(
   data,
   { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {},
 ) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate29.evaluated;
+  const evaluated0 = validate33.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = undefined;
   }
@@ -3621,12 +3942,12 @@ function validate29(
     }
     errors++;
   }
-  validate29.errors = vErrors;
+  validate33.errors = vErrors;
   return errors === 0;
 }
-validate29.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
+validate33.evaluated = { props: true, dynamicProps: false, dynamicItems: false };
 
-const pattern20 = new RegExp("^\\d{4}$", "u");
+const pattern22 = new RegExp("^\\d{4}$", "u");
 
 function validate26(
   data,
@@ -3865,7 +4186,7 @@ function validate26(
         for (const key2 in data6) {
           const _errs16 = errors;
           if (typeof key2 === "string") {
-            if (!pattern20.test(key2)) {
+            if (!pattern22.test(key2)) {
               const err12 = {
                 instancePath: instancePath + "/anos",
                 schemaPath: "#/properties/anos/propertyNames/pattern",
@@ -3901,7 +4222,7 @@ function validate26(
         }
         for (const key3 in data6) {
           if (
-            !validate29(data6[key3], {
+            !validate33(data6[key3], {
               instancePath: instancePath + "/anos/" + key3.replace(/~/g, "~0").replace(/\//g, "~1"),
               parentData: data6,
               parentDataProperty: key3,
@@ -3909,7 +4230,7 @@ function validate26(
               dynamicAnchors,
             })
           ) {
-            vErrors = vErrors === null ? validate29.errors : vErrors.concat(validate29.errors);
+            vErrors = vErrors === null ? validate33.errors : vErrors.concat(validate33.errors);
             errors = vErrors.length;
           }
         }

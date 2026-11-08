@@ -2,7 +2,7 @@
  * Conversão das mudanças feitas no painel em regras e exceções (§7.4, P2, passo 3; C24–C26).
  * Corre no navegador (resumo antes de gravar) e de novo no GitHub Actions, com o mesmo código.
  */
-import { somarDias, type Data } from "./datas.ts";
+import { minutosDaHora, somarDias, type Data } from "./datas.ts";
 import type { Excecao, Local, Regra } from "./modelo.gerado.ts";
 import { iguais } from "./util.ts";
 
@@ -69,6 +69,8 @@ function excecaoAdicionar(regra: Regra, data: Data): Excecao {
     acao: "adicionar",
     tipo: regra.tipo,
     hora: regra.hora,
+    ...(regra.hora_fim !== undefined && { hora_fim: regra.hora_fim }),
+    ...(regra.idioma !== undefined && regra.idioma !== "pt" && { idioma: regra.idioma }),
     ...(regra.nota !== undefined && { nota: regra.nota }),
   };
 }
@@ -77,11 +79,24 @@ function excecaoCancelar(regra: Regra, data: Data): Excecao {
   return { data, acao: "cancelar", tipo: regra.tipo, hora: regra.hora };
 }
 
-/** Só a hora mudou? Então uma exceção `alterar` basta. */
+function duracao(regra: Regra): number | undefined {
+  return regra.hora_fim === undefined
+    ? undefined
+    : minutosDaHora(regra.hora_fim) - minutosDaHora(regra.hora);
+}
+
+/**
+ * Só a hora de início mudou (e a duração, se houver, é a mesma)? Então uma exceção `alterar`
+ * basta: o motor desloca a hora de fim com a de início.
+ */
 function soMudouAHora(antes: Regra, depois: Regra): boolean {
   const { hora: _a, hora_fim: _af, ...restoAntes } = antes;
   const { hora: _d, hora_fim: _df, ...restoDepois } = depois;
-  return iguais(restoAntes, restoDepois);
+  return (
+    antes.hora !== depois.hora &&
+    duracao(antes) === duracao(depois) &&
+    iguais(restoAntes, restoDepois)
+  );
 }
 
 /**

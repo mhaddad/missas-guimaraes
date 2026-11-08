@@ -6,6 +6,7 @@
 import type { Epoca } from "./calendario.ts";
 import { DIAS_DA_SEMANA, partesDaData, type Data } from "./datas.ts";
 import type { Dia, Local, Regra, TipoCelebracao } from "./modelo.gerado.ts";
+import { ORDEM_TIPOS } from "./util.ts";
 
 export type Idioma = "pt-PT" | "en" | "es";
 
@@ -531,14 +532,17 @@ export function etiquetas(regra: Regra, idioma: Idioma): string[] {
   else if (regra.semanas_do_mes?.length === 1) lista.push(t.mensal);
   else if (regra.semanas_do_mes) {
     const dias = ordenarDias(regra.dias);
-    const feminino = dias.length === 1 && t.feminino.has(dias[0] as Dia);
-    const ordinais = juntar(
-      ordenarSemanas(regra.semanas_do_mes).map((s) => t.ordinal(s, feminino)),
-      t.e,
-    );
-    lista.push(
-      maiuscula(dias.length === 1 ? `${ordinais} ${t.diaSingular[dias[0] as Dia]}` : ordinais),
-    );
+    if (dias.length === 1) {
+      const dia = dias[0] as Dia;
+      const ordinais = juntar(
+        ordenarSemanas(regra.semanas_do_mes).map((s) => t.ordinal(s, t.feminino.has(dia))),
+        t.e,
+      );
+      lista.push(maiuscula(`${ordinais} ${t.diaSingular[dia]}`));
+    } else {
+      // Igual à descrição: "1.ª e 3.ª semanas do mês".
+      lista.push(maiuscula(textoSemanas(regra, t) ?? ""));
+    }
   } else lista.push(t.semanal);
   if (
     regra.tipo === "missa" &&
@@ -556,14 +560,6 @@ export function etiquetas(regra: Regra, idioma: Idioma): string[] {
     lista.push(maiuscula(t.emIdioma(nomeDoIdioma(regra.idioma, idioma))));
   return lista;
 }
-
-const ORDEM_TIPOS: readonly TipoCelebracao[] = [
-  "missa",
-  "confissoes",
-  "adoracao",
-  "terco",
-  "outro",
-];
 
 /** Ordem de apresentação das regras: tipo, primeiro dia, hora. */
 export function compararRegras(a: Regra, b: Regra): number {

@@ -28,6 +28,8 @@ const NOMES_DEFS: Record<string, string> = {
   data: "DataISO",
   id: "Id",
   regra_dia_santo: "RegraDiaSanto",
+  regra_dia_santo_fixa: "RegraDiaSantoFixa",
+  regra_dia_santo_movel: "RegraDiaSantoMovel",
   ano: "AnoCalendario",
 };
 

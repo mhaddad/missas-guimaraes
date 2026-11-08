@@ -60,3 +60,4 @@ export {
 export { diff, descreverAlteracao, resumirAlteracoes, type Alteracao } from "./diff.ts";
 export { aplicarMudanca, MudancaInvalida, type Mudanca, type Natureza } from "./mudancas.ts";
 export { validar, type ContextoValidacao, type Problema } from "./validar.ts";
+export { chaveCanonica, iguais, ORDEM_TIPOS } from "./util.ts";

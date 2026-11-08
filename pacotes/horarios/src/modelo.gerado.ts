@@ -122,7 +122,12 @@ export interface Excecao {
   acao: "cancelar" | "adicionar" | "alterar";
   tipo?: TipoCelebracao;
   hora?: Hora;
+  hora_fim?: Hora;
   hora_original?: Hora;
+  /**
+   * Só em `adicionar`; pt por omissão
+   */
+  idioma?: string;
   nota?: string;
 }
 
@@ -157,6 +162,12 @@ export interface Entidade {
 
 /**
  * This interface was referenced by `Calendario`'s JSON-Schema
+ * via the `definition` "regra_dia_santo".
+ */
+
+export type RegraDiaSanto = RegraDiaSantoFixa | RegraDiaSantoMovel;
+/**
+ * This interface was referenced by `Calendario`'s JSON-Schema
  * via the `definition` "id".
  */
 
@@ -174,23 +185,30 @@ export interface Calendario {
   };
 }
 /**
- * Exatamente um de data ou data_movel (verificado pelo motor).
- *
  * This interface was referenced by `Calendario`'s JSON-Schema
- * via the `definition` "regra_dia_santo".
+ * via the `definition` "regra_dia_santo_fixa".
  */
 
-export interface RegraDiaSanto {
+export interface RegraDiaSantoFixa {
   id: Id;
   nome: string;
   /**
    * Data fixa, MM-DD
    */
-  data?: string;
+  data: string;
+}
+/**
+ * This interface was referenced by `Calendario`'s JSON-Schema
+ * via the `definition` "regra_dia_santo_movel".
+ */
+
+export interface RegraDiaSantoMovel {
+  id: Id;
+  nome: string;
   /**
    * Dias a partir da Páscoa, ex.: pascoa+60
    */
-  data_movel?: string;
+  data_movel: string;
 }
 /**
  * This interface was referenced by `Calendario`'s JSON-Schema

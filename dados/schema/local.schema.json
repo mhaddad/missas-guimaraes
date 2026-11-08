@@ -369,8 +369,15 @@
         "hora": {
           "$ref": "#/$defs/hora"
         },
+        "hora_fim": {
+          "$ref": "#/$defs/hora"
+        },
         "hora_original": {
           "$ref": "#/$defs/hora"
+        },
+        "idioma": {
+          "type": "string",
+          "description": "Só em `adicionar`; pt por omissão"
         },
         "nota": {
           "type": "string"

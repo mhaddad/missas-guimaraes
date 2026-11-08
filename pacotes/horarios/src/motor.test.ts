@@ -97,19 +97,23 @@ describe("calendário", () => {
     ]);
   });
 
-  it("regra de dia santo sem data ou com as duas", () => {
+  it("regra de dia santo com data inexistente ou data móvel inválida", () => {
     const mau: Calendario = {
       dias_santos_de_preceito: {
         estado: "x",
         regras: [
-          { id: "a", nome: "A" },
-          { id: "b", nome: "B", data: "01-01", data_movel: "pascoa+1" },
+          { id: "a", nome: "A", data: "02-30" },
+          { id: "b", nome: "B", data: "02-29" },
+          { id: "c", nome: "C", data_movel: "pentecostes+1" },
         ],
       },
       anos: {},
     };
-    expect(verificarCalendario(mau)).toHaveLength(2);
-    expect(() => prepararCalendario(mau).diaSanto("2026-01-01")).toThrow();
+    expect(verificarCalendario(mau)).toEqual([
+      "dias santos: a tem uma data que não existe (02-30)",
+      "dias santos: c tem data_movel inválida (pentecostes+1)",
+    ]);
+    expect(() => prepararCalendario(mau).diaSanto("2026-01-01")).toThrow("data_movel inválida");
   });
 });
 
@@ -384,7 +388,7 @@ describe("descrições", () => {
         { tipo: "missa", dias: ["ter", "qui"], hora: "10:00", semanas_do_mes: [1, 3] },
         "en",
       ),
-    ).toEqual(["1st and 3rd"]);
+    ).toEqual(["1st and 3rd weeks of the month"]);
     expect(
       etiquetas(
         {
@@ -488,6 +492,53 @@ describe("mudanças (P2)", () => {
     ).toEqual([
       { data: "2026-11-15", acao: "cancelar", tipo: "missa", hora: "11:00" },
       { data: "2026-11-15", acao: "adicionar", tipo: "adoracao", hora: "11:00" },
+    ]);
+  });
+
+  it("editar só num dia mantém idioma e hora de fim, e não usa `alterar` se a duração mudou", () => {
+    const inglesa: Regra = {
+      tipo: "missa",
+      dias: ["dom"],
+      hora: "11:00",
+      hora_fim: "12:00",
+      idioma: "en",
+    };
+    const comInglesa = criarLocal("t", [inglesa]);
+    const soDuracao = aplicarMudanca(comInglesa, {
+      acao: "editar",
+      indice: 0,
+      regra: { ...inglesa, hora_fim: "12:30" },
+      natureza: { tipo: "so_num_dia", data: "2026-11-15" },
+    });
+    expect(soDuracao.excecoes).toEqual([
+      { data: "2026-11-15", acao: "cancelar", tipo: "missa", hora: "11:00" },
+      {
+        data: "2026-11-15",
+        acao: "adicionar",
+        tipo: "missa",
+        hora: "11:00",
+        hora_fim: "12:30",
+        idioma: "en",
+      },
+    ]);
+    const [o] = ocorrencias(soDuracao, "2026-11-15", "2026-11-15");
+    expect(o).toMatchObject({ hora: "11:00", hora_fim: "12:30", idioma: "en", origem: "excecao" });
+    const mesmaDuracao = aplicarMudanca(comInglesa, {
+      acao: "editar",
+      indice: 0,
+      regra: { ...inglesa, hora: "10:00", hora_fim: "11:00" },
+      natureza: { tipo: "so_num_dia", data: "2026-11-15" },
+    });
+    expect(mesmaDuracao.excecoes).toEqual([
+      { data: "2026-11-15", acao: "alterar", tipo: "missa", hora_original: "11:00", hora: "10:00" },
+    ]);
+    expect(validar(mesmaDuracao).filter((p) => p.nivel === "erro")).toEqual([]);
+  });
+
+  it("avisa quando duas regras do mesmo tipo e hora partilham um dia", () => {
+    const local = criarLocal("t", [domingo11, { ...domingo11, idioma: "en" }]);
+    expect(validar(local).map((p) => p.mensagem)).toEqual([
+      "mesmo tipo e hora que horarios[0] num mesmo dia: as exceções não as distinguem",
     ]);
   });
 

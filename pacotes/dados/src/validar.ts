@@ -36,6 +36,11 @@ export interface ProblemaDados {
 export interface OpcoesValidacao {
   /** Hoje, em Lisboa (AAAA-MM-DD), para recusar confirmações no futuro. */
   hoje?: string;
+  /**
+   * Erro se `dados/calendario.yml` faltar ou for inválido. Sem calendário, as regras de negócio
+   * correm sem dias santos. A validação completa (`npm run validar`) exige-o.
+   */
+  exigirCalendario?: boolean;
   /** Verifica o formato canónico (C31). Por omissão, sim. */
   formatoCanonico?: boolean;
 }
@@ -67,7 +72,7 @@ function descreverErroEsquema(erro: ErrorObject): string {
 }
 
 export function validarDados(arquivos: ArquivoDados[], opcoes: OpcoesValidacao = {}): ProblemaDados[] {
-  const { hoje, formatoCanonico = true } = opcoes;
+  const { hoje, formatoCanonico = true, exigirCalendario = false } = opcoes;
   const problemas: ProblemaDados[] = [];
   const erro = (caminho: string, mensagem: string) => problemas.push({ nivel: "erro", caminho, mensagem });
   const locais = new Map<string, { caminho: string; dados: Registo }>();
@@ -151,6 +156,10 @@ export function validarDados(arquivos: ArquivoDados[], opcoes: OpcoesValidacao =
         erro(caminho, `integridade: o local "${localId}" pertence a "${String(local.dados.entidade)}"`);
       }
     }
+  }
+
+  if (exigirCalendario && !calendario) {
+    erro(CAMINHO_CALENDARIO, "calendário em falta ou inválido: os dias santos não podem ser verificados");
   }
 
   // Regras de negócio (§8.3, item 4), já com o calendário para os dias santos.

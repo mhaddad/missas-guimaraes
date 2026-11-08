@@ -1,3 +1,14 @@
+import type { TipoCelebracao } from "./modelo.gerado.ts";
+
+/** Ordem de apresentação dos tipos de celebração. */
+export const ORDEM_TIPOS: readonly TipoCelebracao[] = [
+  "missa",
+  "confissoes",
+  "adoracao",
+  "terco",
+  "outro",
+];
+
 /** JSON com as chaves ordenadas: igualdade estrutural que não depende da ordem das chaves. */
 export function chaveCanonica(valor: unknown): string {
   return JSON.stringify(valor, (_chave, v: unknown) => {

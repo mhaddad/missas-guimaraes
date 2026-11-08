@@ -8,7 +8,18 @@
  * - horas e datas sempre entre plicas (`'09:00'`, `'2026-11-08'`);
  * - comentários preservados.
  */
-import { isMap, isScalar, isSeq, parseDocument, Scalar, type Document, type Node, type YAMLMap } from "yaml";
+import {
+  isMap,
+  isNode,
+  isScalar,
+  isSeq,
+  parseDocument,
+  Scalar,
+  type Document,
+  type Node,
+  type YAMLMap,
+} from "yaml";
+import { chaveCanonica, iguais } from "@missas/horarios";
 
 export type TipoArquivo = "local" | "entidade" | "calendario";
 
@@ -51,7 +62,7 @@ export const ORDEM_REGRA = [
   "nota_i18n",
 ] as const;
 
-export const ORDEM_EXCECAO = ["data", "acao", "tipo", "hora_original", "hora", "nota"] as const;
+export const ORDEM_EXCECAO = ["data", "acao", "tipo", "hora_original", "hora", "hora_fim", "idioma", "nota"] as const;
 
 export const ORDEM_ENTIDADE = [
   "id",
@@ -195,21 +206,38 @@ export function formatar(conteudo: string, tipoOuCaminho: TipoArquivo | string):
   return texto(doc);
 }
 
-function estavel(valor: unknown): string {
-  return JSON.stringify(valor, (_k, v: unknown) =>
-    v && typeof v === "object" && !Array.isArray(v)
-      ? Object.fromEntries(Object.entries(v as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : 1)))
-      : v,
-  );
-}
-
-function iguaisJson(a: unknown, b: unknown): boolean {
-  return estavel(a) === estavel(b);
+/**
+ * Novo nó para `valor`. Numa lista, os itens que não mudaram reaproveitam o nó antigo, com os
+ * seus comentários; só os itens novos ou alterados são criados de novo.
+ */
+function noPara(doc: Document, valor: unknown, atual: Node | undefined): Node {
+  if (isSeq(atual) && Array.isArray(valor)) {
+    const antigos = atual.items.map((no) => ({
+      no,
+      chave: chaveCanonica(isNode(no) ? no.toJSON() : no),
+      usado: false,
+    }));
+    atual.items = valor.map((item: unknown) => {
+      const chave = chaveCanonica(item);
+      const par = antigos.find((a) => !a.usado && a.chave === chave);
+      if (par) {
+        par.usado = true;
+        return par.no;
+      }
+      return doc.createNode(item);
+    });
+    return atual;
+  }
+  const no = doc.createNode(valor) as Node;
+  if (atual?.commentBefore) no.commentBefore = atual.commentBefore;
+  if (atual?.comment) no.comment = atual.comment;
+  return no;
 }
 
 /**
  * Escreve um objeto (local ou entidade) no formato canónico. Com `original`, mantém os
- * comentários e os nós que não mudaram; só os valores alterados são reescritos.
+ * comentários e os nós que não mudaram (também regra a regra, nas listas); só os valores
+ * alterados são reescritos.
  */
 export function serializar(dados: object, tipo: Exclude<TipoArquivo, "calendario">, original?: string): string {
   const doc: Document = parseDocument(original ?? "{}");
@@ -226,10 +254,8 @@ export function serializar(dados: object, tipo: Exclude<TipoArquivo, "calendario
   for (const [chave, valor] of Object.entries(novos)) {
     if (valor === undefined) continue;
     const atual = mapa.get(chave, true) as Node | undefined;
-    if (atual !== undefined && iguaisJson(atual.toJSON(), valor)) continue;
-    const no = doc.createNode(valor) as Node;
-    if (atual?.commentBefore) no.commentBefore = atual.commentBefore;
-    mapa.set(chave, no);
+    if (atual !== undefined && iguais(atual.toJSON(), valor)) continue;
+    mapa.set(chave, noPara(doc, valor, atual));
   }
   canonizarDocumento(doc, tipo);
   return texto(doc);

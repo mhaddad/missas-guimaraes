@@ -5,7 +5,7 @@
 import type { CalendarioMotor } from "./calendario.ts";
 import { diaDaSemana, eDataValida, minutosDaHora, type Data } from "./datas.ts";
 import type { Local } from "./modelo.gerado.ts";
-import { ocorrencias } from "./ocorrencias.ts";
+import { ocorrencias, type Ocorrencia } from "./ocorrencias.ts";
 import { chaveCanonica } from "./util.ts";
 
 export interface Problema {
@@ -36,6 +36,20 @@ export function validar(local: Local, contexto: ContextoValidacao = {}): Problem
     problemas.push({ nivel: "erro", caminho, mensagem });
   const aviso = (caminho: string, mensagem: string) =>
     problemas.push({ nivel: "aviso", caminho, mensagem });
+
+  // Celebrações regulares (sem exceções) de cada data, calculadas uma vez por data.
+  const porData = new Map<Data, Ocorrencia[]>();
+  const semExcecoes: Local = { ...local, excecoes: [] };
+  const regularesDoDia = (data: Data): Ocorrencia[] => {
+    let lista = porData.get(data);
+    if (!lista) {
+      lista = ocorrencias(semExcecoes, data, data, {
+        ...(contexto.calendario && { calendario: contexto.calendario }),
+      });
+      porData.set(data, lista);
+    }
+    return lista;
+  };
 
   const vistas = new Map<string, number>();
   local.horarios.forEach((regra, i) => {
@@ -84,6 +98,19 @@ export function validar(local: Local, contexto: ContextoValidacao = {}): Problem
     }
   });
 
+  // As exceções identificam uma celebração pelo tipo e pela hora: duas regras do mesmo tipo à
+  // mesma hora num mesmo dia não se distinguem (cancelar uma cancela as duas).
+  local.horarios.forEach((a, i) => {
+    local.horarios.slice(0, i).forEach((b, j) => {
+      if (a.tipo !== b.tipo || a.hora !== b.hora || chaveCanonica(a) === chaveCanonica(b)) return;
+      if (!a.dias.some((d) => b.dias.includes(d))) return;
+      aviso(
+        `horarios[${i}]`,
+        `mesmo tipo e hora que horarios[${j}] num mesmo dia: as exceções não as distinguem`,
+      );
+    });
+  });
+
   if (
     local.dias_santos === "horario_proprio" &&
     !local.horarios.some((r) => r.dias.includes("santo"))
@@ -130,10 +157,7 @@ export function validar(local: Local, contexto: ContextoValidacao = {}): Problem
           ? excecao.hora
           : undefined;
     if (alvo !== undefined) {
-      const semExcecoes: Local = { ...local, excecoes: [] };
-      const doDia = ocorrencias(semExcecoes, excecao.data, excecao.data, {
-        ...(contexto.calendario && { calendario: contexto.calendario }),
-      });
+      const doDia = regularesDoDia(excecao.data);
       const existe = doDia.some(
         (o) => o.hora === alvo && (excecao.tipo === undefined || excecao.tipo === o.tipo),
       );

@@ -14,6 +14,7 @@ import {
 } from "./datas.ts";
 import type { Dia, Excecao, Local, TipoCelebracao } from "./modelo.gerado.ts";
 import { regraAplica } from "./regras.ts";
+import { ORDEM_TIPOS } from "./util.ts";
 
 export interface Ocorrencia {
   local: string;
@@ -48,14 +49,6 @@ export interface Expansao {
   ocorrencias: Ocorrencia[];
   avisos: Aviso[];
 }
-
-const ORDEM_TIPOS: readonly TipoCelebracao[] = [
-  "missa",
-  "confissoes",
-  "adoracao",
-  "terco",
-  "outro",
-];
 
 /** Ordenação estável: data, hora, local, tipo, regra (§5.2, determinismo). */
 export function compararOcorrencias(a: Ocorrencia, b: Ocorrencia): number {
@@ -138,8 +131,9 @@ function expandirDia(local: Local, data: Data, calendario: CalendarioMotor): Exp
       local: local.id,
       data,
       hora: e.hora,
+      ...(e.hora_fim !== undefined && { hora_fim: e.hora_fim }),
       tipo: e.tipo ?? "missa",
-      idioma: "pt",
+      idioma: e.idioma ?? "pt",
       ...(e.nota !== undefined && { nota: e.nota }),
       origem: "excecao",
       ...(diaSanto && { dia_santo: diaSanto }),
