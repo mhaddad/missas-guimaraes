@@ -1,0 +1,11 @@
+---
+interface Props {
+  nome: string;
+  class?: string;
+}
+const { nome, class: classe = "size-5" } = Astro.props;
+---
+
+<svg class={`shrink-0 fill-current ${classe}`} aria-hidden="true" focusable="false">
+  <use href={`#i-${nome}`} />
+</svg>

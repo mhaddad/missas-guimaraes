@@ -364,6 +364,18 @@ describe("descrições", () => {
     expect(descreverRegra(regra, "es")).toBe(es);
   });
 
+  it("várias horas numa só linha", () => {
+    expect(descreverRegra(domingo11, "pt-PT", { horas: ["19:00", "11:00", "08:00"] })).toBe(
+      "Domingos às 08:00, 11:00 e 19:00",
+    );
+    expect(descreverRegra(domingo11, "en", { horas: ["11:00", "19:00"] })).toBe(
+      "Sundays at 11:00 and 19:00",
+    );
+    expect(
+      descreverRegra({ ...domingo11, hora_fim: "12:00" }, "es", { horas: ["11:00", "19:00"] }),
+    ).toBe("Domingos de 11:00 a 12:00");
+  });
+
   it("idioma da celebração e tipo", () => {
     const regra: Regra = { tipo: "missa", dias: ["dom"], hora: "18:00", idioma: "la" };
     expect(descreverRegra(regra, "pt-PT", { comTipo: true })).toBe(

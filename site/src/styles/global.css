@@ -19,3 +19,51 @@
     outline-offset: 2px;
   }
 }
+
+@layer components {
+  .botao-secundario {
+    @apply inline-flex min-h-12 items-center gap-2 rounded-cartao border border-borda bg-cartao px-4 text-base font-semibold text-ardosia hover:bg-superficie;
+  }
+  .botao-claro {
+    @apply inline-flex min-h-12 items-center gap-2 rounded-cartao bg-cartao px-4 text-base font-semibold text-ardosia hover:bg-slate-100;
+  }
+  .botao-escuro {
+    @apply inline-flex min-h-12 items-center gap-2 rounded-cartao bg-white/10 px-4 text-base font-semibold text-white hover:bg-white/20;
+  }
+  .chip {
+    @apply inline-flex min-h-12 items-center rounded-cartao bg-slate-100 px-4 text-base font-semibold text-texto-secundario hover:bg-slate-200;
+  }
+  .chip[aria-pressed="true"] {
+    @apply bg-ardosia text-white;
+  }
+  .chip-dia[aria-pressed="true"] {
+    @apply bg-dourado-texto text-white;
+  }
+  .atalho {
+    @apply inline-flex min-h-12 items-center rounded-cartao px-3 text-base font-semibold text-texto-secundario hover:bg-superficie hover:text-ardosia;
+  }
+  .atalho[aria-current="true"] {
+    @apply text-ardosia underline decoration-dourado decoration-2 underline-offset-8;
+  }
+  .idioma {
+    @apply inline-flex min-h-12 min-w-10 items-center justify-center rounded px-1 text-texto-secundario hover:text-ardosia;
+  }
+  .idioma-atual {
+    @apply text-ardosia underline decoration-dourado decoration-2 underline-offset-4;
+  }
+  .ligacao {
+    @apply font-semibold text-azul-texto underline underline-offset-2;
+  }
+  .etiqueta {
+    @apply inline-flex items-center rounded px-2 py-0.5 text-sm font-semibold;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
