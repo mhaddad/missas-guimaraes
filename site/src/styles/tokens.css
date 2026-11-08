@@ -1,0 +1,33 @@
+/*
+ * Tokens do design system (PLANO §6.10). Definidos uma só vez e usados pelo Tailwind.
+ * Cores da marca a partir do manual de identidade da Arquidiocese de Braga:
+ *   dourado = PANTONE 872 C, celeste = PANTONE 284 C (valores de ecrã do próprio manual).
+ * Regras de contraste (WCAG 2.1 AA):
+ *   - `dourado` (2,98:1) e `celeste` (2,31:1) nunca são usados em texto nem como único
+ *     indicador de estado; texto e foco usam `dourado-texto` (6,45:1) e `azul-texto` (6,47:1).
+ */
+@theme {
+  --color-dourado: #b09247;
+  --color-dourado-texto: #735b28;
+  --color-celeste: #6eb1e4;
+  --color-azul-texto: #006493;
+  --color-ardosia: #0f172a;
+  --color-texto-secundario: #475569;
+  --color-superficie: #f8f9fa;
+  --color-cartao: #ffffff;
+  --color-borda: #e2e8f0;
+  --color-confirmado: #15803d;
+  --color-confirmado-fundo: #f0fdf4;
+  --color-erro: #ba1a1a;
+
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  /* Escala do DESIGN.md: texto corrido a 18 px (§6.9), horas a 26 px com algarismos tabulares. */
+  --text-body-lg: 1.125rem;
+  --text-body-lg--line-height: 1.6;
+  --text-timetable-time: 1.625rem;
+  --text-timetable-time--line-height: 1.2;
+
+  --radius-cartao: 0.5rem;
+  --container-pagina: 75rem;
+}

@@ -1,0 +1,30 @@
+id: cerzedelo
+tipo: igreja
+entidade: cerzedelo
+concelho: Guimarães
+nome: Igreja de Santa Cristina
+orago: Santa Cristina
+localidade: Cerzedelo
+freguesia: Serzedelo
+morada: EN 310, Crasto, Serzedelo, Guimarães, Braga, 4765-533, Portugal
+codigo_postal: 4765-533
+geo:
+  lat: 41.402472
+  lon: -8.368564
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [sab]
+  hora: '19:30'
+- tipo: missa
+  dias: [dom]
+  hora: '08:00'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: true
+  motivos:
+  - Nome provavelmente grafado "Serzedelo" (freguesia de Guimarães, orago Santa Cristina); confirmar. Sem data de atualização na fonte.

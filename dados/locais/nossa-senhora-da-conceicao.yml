@@ -1,0 +1,32 @@
+id: nossa-senhora-da-conceicao
+tipo: igreja
+entidade: nossa-senhora-da-conceicao
+concelho: Guimarães
+nome: Igreja de Nossa Senhora da Conceição
+orago: Nossa Senhora da Conceição
+localidade: Nossa Senhora da Conceição
+freguesia: Fermentões
+morada: Rua Nossa Senhora da Conceição, Fermentões, Guimarães, Braga, 4800-001, Portugal
+codigo_postal: 4800-001
+geo:
+  lat: 41.451448
+  lon: -8.306366
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [ter]
+  hora: '19:00'
+- tipo: missa
+  dias: [sab]
+  hora: '18:30'
+- tipo: missa
+  dias: [dom]
+  hora: '11:00'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

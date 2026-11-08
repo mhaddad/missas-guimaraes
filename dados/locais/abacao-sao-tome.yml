@@ -1,0 +1,26 @@
+id: abacao-sao-tome
+tipo: igreja
+entidade: abacao-sao-tome
+concelho: Guimarães
+nome: Igreja de São Tomé
+orago: São Tomé
+localidade: Abação
+freguesia: Abação e Gémeos
+morada: Rua de São Tomé, Abação e Gémeos, Guimarães, Braga, 4810-675, Portugal
+codigo_postal: 4810-675
+geo:
+  lat: 41.409782
+  lon: -8.272164
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [dom]
+  hora: '09:00'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

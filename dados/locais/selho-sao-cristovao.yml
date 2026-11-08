@@ -1,0 +1,42 @@
+id: selho-sao-cristovao
+tipo: igreja
+entidade: selho-sao-cristovao
+concelho: Guimarães
+nome: Igreja de São Cristóvão
+orago: São Cristóvão
+localidade: Selho
+freguesia: Selho (São Cristóvão)
+morada: Rua do Campinho, Selho (São Cristóvão), Guimarães, Braga, 4835-326, Portugal
+codigo_postal: 4835-326
+geo:
+  lat: 41.416805
+  lon: -8.34789
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [qui]
+  hora: '18:00'
+  epoca: inverno
+- tipo: missa
+  dias: [qui]
+  hora: '19:00'
+  epoca: verao
+- tipo: missa
+  dias: [sab]
+  hora: '18:00'
+  epoca: inverno
+- tipo: missa
+  dias: [sab]
+  hora: '19:30'
+  epoca: verao
+- tipo: missa
+  dias: [dom]
+  hora: '11:30'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

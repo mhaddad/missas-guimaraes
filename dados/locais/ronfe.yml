@@ -1,0 +1,40 @@
+id: ronfe
+tipo: igreja
+entidade: ronfe
+concelho: Guimarães
+nome: Igreja de São Tiago
+orago: São Tiago
+localidade: Ronfe
+freguesia: Ronfe
+morada: Avenida Monsenhor Horácio Araújo, Ronfe, Guimarães, Braga, 4805-359, Portugal
+codigo_postal: 4805-359
+geo:
+  lat: 41.438997
+  lon: -8.384891
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [seg, ter, qua, qui, sex]
+  hora: '19:00'
+- tipo: missa
+  dias: [seg, ter, qua, qui, sex]
+  hora: '21:00'
+  meses: [5]
+- tipo: missa
+  dias: [sab]
+  hora: '19:00'
+- tipo: missa
+  dias: [dom]
+  hora: '08:00'
+- tipo: missa
+  dias: [dom]
+  hora: '11:00'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: true
+  motivos:
+  - Missa semanal das 21:00 só em maio (convertido do aviso).

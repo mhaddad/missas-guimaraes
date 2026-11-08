@@ -1,0 +1,38 @@
+# Publicação na Cloudflare (PLANO §8.5). Na homologação, publica em *.workers.dev (§9.9).
+# Só corre depois de configurados a variável CLOUDFLARE_ACCOUNT_ID e o segredo
+# CLOUDFLARE_API_TOKEN no ambiente `gravacao` (restrito ao main).
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 3 * * *" # reconstrução diária: "hoje" e "próximas" certos no HTML estático
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+jobs:
+  publicar:
+    if: vars.CLOUDFLARE_ACCOUNT_ID != ''
+    runs-on: ubuntu-latest
+    environment: gravacao
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run verificar
+      - run: npm run build
+      - run: npx wrangler deploy
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}

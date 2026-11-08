@@ -1,0 +1,26 @@
+id: gominhaes
+tipo: igreja
+entidade: gominhaes
+concelho: Guimarães
+nome: Igreja de São Pedro
+orago: São Pedro
+localidade: Gominhães
+freguesia: Selho (São Lourenço) e Gominhães
+morada: Igreja Paroquial de Gominhães, EM 583-3, Louredo, Selho (São Lourenço) e Gominhães, Guimarães, Braga, 4800-214, Portugal
+codigo_postal: 4800-214
+geo:
+  lat: 41.479904
+  lon: -8.284172
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [dom]
+  hora: '09:00'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

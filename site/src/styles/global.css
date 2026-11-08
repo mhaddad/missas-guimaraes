@@ -1,0 +1,21 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+@import "@fontsource/plus-jakarta-sans/400.css";
+@import "@fontsource/plus-jakarta-sans/600.css";
+@import "@fontsource/plus-jakarta-sans/700.css";
+
+@layer base {
+  html {
+    @apply bg-superficie font-sans text-ardosia;
+  }
+
+  body {
+    @apply text-body-lg;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-dourado-texto);
+    outline-offset: 2px;
+  }
+}

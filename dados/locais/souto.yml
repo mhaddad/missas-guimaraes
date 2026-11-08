@@ -1,0 +1,29 @@
+id: souto
+tipo: igreja
+entidade: souto
+concelho: Guimarães
+nome: Igreja de Santa Maria
+orago: Santa Maria
+localidade: Souto
+freguesia: Souto (Santa Maria), Souto (São Salvador) e Gondomar
+morada: Rua Divino Salvador, Casinhas, Souto (Santa Maria), Souto (São Salvador) e Gondomar, Guimarães, Braga, 4800-675, Portugal
+codigo_postal: 4800-675
+geo:
+  lat: 41.509208
+  lon: -8.289148
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [qua]
+  hora: '19:00'
+- tipo: missa
+  dias: [dom]
+  hora: '09:30'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

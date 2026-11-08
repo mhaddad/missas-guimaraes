@@ -1,0 +1,31 @@
+id: polvoreira
+tipo: igreja
+entidade: polvoreira
+concelho: Guimarães
+nome: Igreja de São Pedro
+orago: São Pedro
+localidade: Polvoreira
+freguesia: Polvoreira
+morada: Carvalhos, Polvoreira, Guimarães, Braga, 4835-198, Portugal
+codigo_postal: 4835-198
+geo:
+  lat: 41.409644
+  lon: -8.307648
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [sab]
+  hora: '17:00'
+  semanas_do_mes: [1, 3]
+- tipo: missa
+  dias: [dom]
+  hora: '10:00'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: true
+  motivos:
+  - Sábado 17:00 só no 1.º e 3.º sábado (convertido do aviso); alterna com Nespereira.

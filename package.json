@@ -1,0 +1,39 @@
+{
+  "name": "missas-guimaraes",
+  "private": true,
+  "description": "Horários de Missas e Celebrações — Arciprestado de Guimarães e Vizela",
+  "type": "module",
+  "engines": {
+    "node": ">=26"
+  },
+  "workspaces": [
+    "pacotes/*",
+    "site",
+    "worker"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w site",
+    "build": "npm run build -w site",
+    "deploy": "npm run build && npm run deploy -w worker",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc -p tsconfig.json --noEmit && npm run typecheck -w site && npm run typecheck -w worker",
+    "validar": "tsx scripts/validar.ts",
+    "verificar": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run validar"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "26.6.6",
+    "eslint": "10.14.0",
+    "eslint-plugin-astro": "3.2.1",
+    "prettier": "3.9.10",
+    "prettier-plugin-astro": "1.1.2",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1",
+    "vitest": "5.1.0"
+  }
+}

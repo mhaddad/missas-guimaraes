@@ -1,0 +1,29 @@
+id: costa
+tipo: igreja
+entidade: costa
+concelho: Guimarães
+nome: Igreja de Santa Marinha
+orago: Santa Marinha
+localidade: Costa
+freguesia: Costa
+morada: Igreja de Santa Marinha, Rua das Tumbas, Costa, Guimarães, Braga, 4810-222, Portugal
+codigo_postal: 4810-222
+geo:
+  lat: 41.44359
+  lon: -8.276693
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [sab]
+  hora: '18:00'
+- tipo: missa
+  dias: [dom]
+  hora: '10:00'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

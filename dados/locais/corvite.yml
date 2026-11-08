@@ -1,0 +1,26 @@
+id: corvite
+tipo: igreja
+entidade: corvite
+concelho: Guimarães
+nome: Igreja de Santa Maria
+orago: Santa Maria
+localidade: Corvite
+freguesia: Corvite
+morada: Igreja de Corvite, Rua Nossa Senhora da Conceição, Corvite, Guimarães, Braga, 4800-611, Portugal
+codigo_postal: 4800-611
+geo:
+  lat: 41.474508
+  lon: -8.319468
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [sab]
+  hora: '17:30'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

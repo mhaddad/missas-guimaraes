@@ -1,0 +1,25 @@
+id: briteiros-santa-leocadia
+tipo: igreja
+entidade: briteiros-santa-leocadia
+concelho: Guimarães
+nome: Igreja de Santa Leocádia
+orago: Santa Leocádia
+localidade: Briteiros
+freguesia: Briteiros São Salvador e Briteiros Santa Leocádia
+morada: Rua Santa Leocádia, Carpintaria Cunha, Briteiros (Santa Leocádia), Briteiros São Salvador e Briteiros Santa Leocádia, Guimarães, Braga, 4805-454, Portugal
+codigo_postal: 4805-454
+geo:
+  lat: 41.527586
+  lon: -8.34094
+publicar: false
+dias_santos: null
+horarios: []
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: true
+  motivos:
+  - Sem nenhuma missa registada na fonte.
+  - 'Não publicar: Sem horários conhecidos.'

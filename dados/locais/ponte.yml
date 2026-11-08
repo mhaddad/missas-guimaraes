@@ -1,0 +1,32 @@
+id: ponte
+tipo: igreja
+entidade: ponte
+concelho: Guimarães
+nome: Igreja de São João Baptista
+orago: São João Baptista
+localidade: Ponte
+freguesia: Ponte
+morada: Igreja de São João de Ponte, Rua de São João Batista, Ponte, Guimarães, Braga, 4805-286, Portugal
+codigo_postal: 4805-286
+geo:
+  lat: 41.471446
+  lon: -8.338393
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [qua, sex]
+  hora: '19:00'
+- tipo: missa
+  dias: [sab]
+  hora: '19:00'
+- tipo: missa
+  dias: [dom]
+  hora: '11:15'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

@@ -1,0 +1,376 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missasemguimaraes.pt/schema/local.schema.json",
+  "title": "Local de culto (igreja, capela, santuário…)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "tipo",
+    "entidade",
+    "nome",
+    "geo",
+    "publicar",
+    "horarios",
+    "excecoes",
+    "confirmado_em",
+    "revisao",
+    "concelho"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "tipo": {
+      "enum": [
+        "igreja",
+        "capela",
+        "santuario",
+        "mosteiro",
+        "lar",
+        "hospital",
+        "outro"
+      ]
+    },
+    "entidade": {
+      "$ref": "#/$defs/id",
+      "description": "Entidade responsável (paróquia, irmandade, santuário…)"
+    },
+    "concelho": {
+      "enum": [
+        "Guimarães",
+        "Vizela"
+      ]
+    },
+    "nome": {
+      "type": "string",
+      "minLength": 3
+    },
+    "orago": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "localidade": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "freguesia": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "morada": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "codigo_postal": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^\\d{4}(-\\d{3})?$"
+    },
+    "geo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lat",
+        "lon"
+      ],
+      "properties": {
+        "lat": {
+          "type": "number",
+          "minimum": 41.3,
+          "maximum": 41.62
+        },
+        "lon": {
+          "type": "number",
+          "minimum": -8.5,
+          "maximum": -8.15
+        }
+      }
+    },
+    "publicar": {
+      "type": "boolean"
+    },
+    "dias_santos": {
+      "enum": [
+        "horario_domingo",
+        "horario_proprio",
+        "horario_habitual",
+        null
+      ],
+      "description": "Como o local celebra os dias santos de preceito (dados/calendario.yml). horario_domingo: aplicam-se as regras de domingo; horario_proprio: aplicam-se as regras com dias: [santo]; horario_habitual: mantém o horário do dia da semana; null: desconhecido."
+    },
+    "acessibilidade": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "horarios": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/regra"
+      }
+    },
+    "excecoes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/excecao"
+      }
+    },
+    "notas": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "notas_i18n": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "en": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "es": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "confirmado_em": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date"
+    },
+    "confirmado_por": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "canal": {
+          "enum": [
+            "painel",
+            "email",
+            "secretaria",
+            "moderacao"
+          ]
+        },
+        "ref": {
+          "type": "string"
+        }
+      }
+    },
+    "revisao": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pendente",
+        "motivos"
+      ],
+      "properties": {
+        "pendente": {
+          "type": "boolean"
+        },
+        "motivos": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "hora": {
+      "type": "string",
+      "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+    },
+    "data": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "dia": {
+      "enum": [
+        "seg",
+        "ter",
+        "qua",
+        "qui",
+        "sex",
+        "sab",
+        "dom",
+        "santo"
+      ]
+    },
+    "tipo_celebracao": {
+      "enum": [
+        "missa",
+        "confissoes",
+        "adoracao",
+        "terco",
+        "outro"
+      ]
+    },
+    "regra": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tipo",
+        "dias",
+        "hora"
+      ],
+      "properties": {
+        "tipo": {
+          "$ref": "#/$defs/tipo_celebracao"
+        },
+        "dias": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/dia"
+          }
+        },
+        "hora": {
+          "$ref": "#/$defs/hora"
+        },
+        "hora_fim": {
+          "$ref": "#/$defs/hora"
+        },
+        "epoca": {
+          "enum": [
+            "verao",
+            "inverno"
+          ]
+        },
+        "semanas_do_mes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              -1
+            ]
+          }
+        },
+        "meses": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          }
+        },
+        "quinzenal": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "referencia"
+          ],
+          "properties": {
+            "referencia": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/data"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "validade": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "de": {
+              "$ref": "#/$defs/data"
+            },
+            "ate": {
+              "$ref": "#/$defs/data"
+            }
+          }
+        },
+        "idioma": {
+          "type": "string",
+          "default": "pt"
+        },
+        "nota": {
+          "type": "string"
+        },
+        "nota_i18n": {
+          "type": "object",
+          "properties": {
+            "en": {
+              "type": "string"
+            },
+            "es": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "excecao": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data",
+        "acao"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/$defs/data"
+        },
+        "acao": {
+          "enum": [
+            "cancelar",
+            "adicionar",
+            "alterar"
+          ]
+        },
+        "tipo": {
+          "$ref": "#/$defs/tipo_celebracao"
+        },
+        "hora": {
+          "$ref": "#/$defs/hora"
+        },
+        "hora_original": {
+          "$ref": "#/$defs/hora"
+        },
+        "nota": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

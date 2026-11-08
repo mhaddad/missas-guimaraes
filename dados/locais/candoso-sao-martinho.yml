@@ -1,0 +1,42 @@
+id: candoso-sao-martinho
+tipo: igreja
+entidade: candoso-sao-martinho
+concelho: Guimarães
+nome: Igreja de São Martinho
+orago: São Martinho
+localidade: Candoso
+freguesia: Candoso (São Martinho)
+morada: Igreja de São Martinho de Candoso, Largo da Igreja, Candoso, Candoso (São Martinho), Guimarães, Braga, 4835-393, Portugal
+codigo_postal: 4835-393
+geo:
+  lat: 41.426211
+  lon: -8.335569
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [qua]
+  hora: '18:00'
+  epoca: inverno
+- tipo: missa
+  dias: [qua]
+  hora: '19:00'
+  epoca: verao
+- tipo: missa
+  dias: [sab]
+  hora: '17:00'
+  epoca: inverno
+- tipo: missa
+  dias: [sab]
+  hora: '18:00'
+  epoca: verao
+- tipo: missa
+  dias: [dom]
+  hora: '10:30'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

@@ -1,0 +1,42 @@
+id: briteiros-divino-salvador
+tipo: igreja
+entidade: briteiros-divino-salvador
+concelho: Guimarães
+nome: Igreja de Divino Salvador
+orago: Divino Salvador
+localidade: Briteiros
+freguesia: Briteiros São Salvador e Briteiros Santa Leocádia
+morada: Rua da Liberdade, Briteiros São Salvador e Briteiros Santa Leocádia, Guimarães, Braga, 4805-447, Portugal
+codigo_postal: 4805-447
+geo:
+  lat: 41.52146
+  lon: -8.323308
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [qua]
+  hora: '18:00'
+  epoca: inverno
+- tipo: missa
+  dias: [qua]
+  hora: '19:00'
+  epoca: verao
+- tipo: missa
+  dias: [sab]
+  hora: '18:00'
+  epoca: inverno
+- tipo: missa
+  dias: [sab]
+  hora: '19:00'
+  epoca: verao
+- tipo: missa
+  dias: [dom]
+  hora: '09:00'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

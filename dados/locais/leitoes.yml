@@ -1,0 +1,34 @@
+id: leitoes
+tipo: igreja
+entidade: leitoes
+concelho: Guimarães
+nome: Igreja de São Martinho
+orago: São Martinho
+localidade: Leitões
+freguesia: Leitões, Oleiros e Figueiredo
+morada: Travessa da Igreja, Leitões, Oleiros e Figueiredo, Guimarães, Braga, 4805-187, Portugal
+codigo_postal: 4805-187
+geo:
+  lat: 41.478336
+  lon: -8.395405
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [sab]
+  hora: '17:00'
+  epoca: inverno
+- tipo: missa
+  dias: [sab]
+  hora: '18:00'
+  epoca: verao
+- tipo: missa
+  dias: [dom]
+  hora: '09:00'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

@@ -1,0 +1,33 @@
+id: taboadelo
+tipo: igreja
+entidade: taboadelo
+concelho: Guimarães
+nome: Igreja de São Cipriano
+orago: São Cipriano
+localidade: Taboadelo
+freguesia: Tabuadelo
+morada: Rua de São José, Tabuadelo, Guimarães, Braga, 4835-463, Portugal
+codigo_postal: 4835-463
+geo:
+  lat: 41.400769
+  lon: -8.288191
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [qua]
+  hora: '19:00'
+- tipo: missa
+  dias: [sab]
+  hora: '18:30'
+- tipo: missa
+  dias: [dom]
+  hora: '08:45'
+  epoca: verao
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

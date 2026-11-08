@@ -1,0 +1,29 @@
+id: prazins-santo-tirso
+tipo: igreja
+entidade: prazins-santo-tirso
+concelho: Guimarães
+nome: Igreja de Santo Tirso
+orago: Santo Tirso
+localidade: Prazins
+freguesia: Prazins (Santo Tirso)
+morada: Prazins (Santo Tirso), Guimarães, Braga, 4800-703, Portugal
+codigo_postal: 4800-703
+geo:
+  lat: 41.488916
+  lon: -8.304547
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [sab]
+  hora: '17:00'
+- tipo: missa
+  dias: [dom]
+  hora: '10:30'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

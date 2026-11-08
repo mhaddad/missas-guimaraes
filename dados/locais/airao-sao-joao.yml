@@ -1,0 +1,29 @@
+id: airao-sao-joao
+tipo: igreja
+entidade: airao-sao-joao
+concelho: Guimarães
+nome: Igreja de São João
+orago: São João
+localidade: Airão
+freguesia: Airão Santa Maria, Airão São João e Vermil
+morada: Igreja de Airão São João Batista, Rua da Igreja, Airão Santa Maria, Airão São João e Vermil, Guimarães, Braga, 4805, Portugal
+codigo_postal: '4805'
+geo:
+  lat: 41.45569
+  lon: -8.41992
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [sab]
+  hora: '17:30'
+- tipo: missa
+  dias: [dom]
+  hora: '09:00'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

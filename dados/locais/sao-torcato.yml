@@ -1,0 +1,35 @@
+id: sao-torcato
+tipo: igreja
+entidade: sao-torcato
+concelho: Guimarães
+nome: Igreja de São Torcato
+orago: São Torcato
+localidade: São Torcato
+freguesia: São Torcato
+morada: Mostreiro de São Trocato, Rua Padre Arieira, Agras, Quinta do Ovelheiro, São Torcato, Guimarães, Braga, 4800-868, Portugal
+codigo_postal: 4800-868
+geo:
+  lat: 41.481846
+  lon: -8.258484
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [sex]
+  hora: '19:00'
+- tipo: missa
+  dias: [sab]
+  hora: '17:00'
+- tipo: missa
+  dias: [dom]
+  hora: '10:30'
+- tipo: missa
+  dias: [dom]
+  hora: '17:00'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

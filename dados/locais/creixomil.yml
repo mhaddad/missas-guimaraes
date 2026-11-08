@@ -1,0 +1,28 @@
+id: creixomil
+tipo: igreja
+entidade: creixomil
+concelho: Guimarães
+nome: Igreja de São Miguel
+orago: São Miguel
+localidade: Creixomil
+freguesia: Creixomil
+morada: Igreja de São Miguel, EN 206, Salgueiral, Creixomil, Guimarães, Braga, 4835-014, Portugal
+codigo_postal: 4835-014
+geo:
+  lat: 41.437959
+  lon: -8.309693
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [dom]
+  hora: '10:00'
+  nota: Depende da escala da paróquia.
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: true
+  motivos:
+  - A missa de domingo depende da escala da paróquia — confirmar a regra da escala.

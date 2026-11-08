@@ -1,0 +1,34 @@
+id: sande-sao-clemente
+tipo: igreja
+entidade: sande-sao-clemente
+concelho: Guimarães
+nome: Igreja de São Clemente
+orago: São Clemente
+localidade: Sande
+freguesia: Sande (São Clemente)
+morada: Rua da Sagrada Família, Cabreira, Sande (São Clemente), Guimarães, Braga, 4805-537, Portugal
+codigo_postal: 4805-537
+geo:
+  lat: 41.485595
+  lon: -8.368806
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [ter]
+  hora: '18:30'
+  epoca: inverno
+- tipo: missa
+  dias: [ter]
+  hora: '19:00'
+  epoca: verao
+- tipo: missa
+  dias: [dom]
+  hora: '09:30'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

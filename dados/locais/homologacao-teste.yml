@@ -1,0 +1,31 @@
+# Local FICTÍCIO para os testes de escrita dos administradores na homologação (PLANO §9.9).
+# Não corresponde a nenhuma igreja. É apagado na migração para produção (E8).
+id: homologacao-teste
+tipo: igreja
+entidade: homologacao-teste
+concelho: Guimarães
+nome: Igreja de Teste (homologação)
+orago: null
+localidade: null
+freguesia: null
+morada: null
+codigo_postal: null
+geo:
+  lat: 41.4425
+  lon: -8.2918
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [dom]
+  hora: '10:00'
+- tipo: missa
+  dias: [qua]
+  hora: '18:30'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

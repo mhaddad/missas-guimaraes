@@ -1,0 +1,42 @@
+id: airao-santa-maria
+tipo: igreja
+entidade: airao-santa-maria
+concelho: Guimarães
+nome: Igreja de Santa Maria
+orago: Santa Maria
+localidade: Airão
+freguesia: Airão Santa Maria, Airão São João e Vermil
+morada: Rua Senhora da Misericórdia, Airão Santa Maria, Airão São João e Vermil, Guimarães, Braga, 4805-479, Portugal
+codigo_postal: 4805-479
+geo:
+  lat: 41.45303
+  lon: -8.41505
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [qui]
+  hora: '18:00'
+  epoca: inverno
+- tipo: missa
+  dias: [qui]
+  hora: '19:00'
+  epoca: verao
+- tipo: missa
+  dias: [sab]
+  hora: '18:00'
+  epoca: inverno
+- tipo: missa
+  dias: [sab]
+  hora: '19:30'
+  epoca: verao
+- tipo: missa
+  dias: [dom]
+  hora: '11:00'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

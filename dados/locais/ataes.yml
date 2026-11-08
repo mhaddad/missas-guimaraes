@@ -1,0 +1,32 @@
+id: ataes
+tipo: igreja
+entidade: ataes
+concelho: Guimarães
+nome: Igreja de Santa Maria
+orago: Santa Maria
+localidade: Atães
+freguesia: Atães e Rendufe
+morada: São Cosme, Atães e Rendufe, Guimarães, Braga, 4800-245, Portugal
+codigo_postal: 4800-245
+geo:
+  lat: 41.45854
+  lon: -8.2513
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [ter, qui]
+  hora: '18:30'
+- tipo: missa
+  dias: [sab]
+  hora: '18:30'
+- tipo: missa
+  dias: [dom]
+  hora: '11:00'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

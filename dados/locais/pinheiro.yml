@@ -1,0 +1,26 @@
+id: pinheiro
+tipo: igreja
+entidade: pinheiro
+concelho: Guimarães
+nome: Igreja de Divino Salvador
+orago: Divino Salvador
+localidade: Pinheiro
+freguesia: Pinheiro
+morada: Rua Divino Salvador, Pinheiro, Guimarães, Braga, 4810-781, Portugal
+codigo_postal: 4810-781
+geo:
+  lat: 41.414326
+  lon: -8.282614
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [dom]
+  hora: '10:00'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

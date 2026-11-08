@@ -1,0 +1,32 @@
+id: sande-sao-lourenco
+tipo: igreja
+entidade: sande-sao-lourenco
+concelho: Guimarães
+nome: Igreja de São Lourenço
+orago: São Lourenço
+localidade: Sande
+freguesia: Sande (São Lourenço) e Balazar
+morada: Igreja de São Lourenço de Sande, Largo do Burgo, Sobreiro, Sande (São Lourenço) e Balazar, Guimarães, Braga, 4805-583, Portugal
+codigo_postal: 4805-583
+geo:
+  lat: 41.50622
+  lon: -8.360428
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [qui]
+  hora: '09:00'
+- tipo: missa
+  dias: [sab]
+  hora: '19:00'
+- tipo: missa
+  dias: [dom]
+  hora: '11:00'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

@@ -1,0 +1,20 @@
+// Configuração do Worker (PLANO §9.2). Um só Worker serve o site (static assets), a API e os crons.
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "missas-guimaraes",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "../site/dist",
+    "binding": "ASSETS",
+    // Na homologação, todos os pedidos passam pelo Worker para levarem o cabeçalho noindex (D26).
+    "run_worker_first": true,
+  },
+  "vars": {
+    // "homologacao" até ao E8 (§9.9); em produção passa a "producao".
+    "AMBIENTE": "homologacao",
+  },
+  // Sem URLs de pré-visualização por versão: ficariam fora da aplicação do Access (D26).
+  "preview_urls": false,
+  "observability": { "enabled": true },
+}

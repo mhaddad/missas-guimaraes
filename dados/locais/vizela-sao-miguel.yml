@@ -1,0 +1,32 @@
+id: vizela-sao-miguel
+tipo: igreja
+entidade: vizela-sao-miguel
+concelho: Vizela
+nome: Igreja de São Miguel
+orago: São Miguel
+localidade: Caldas de Vizela
+freguesia: Caldas de Vizela (São Miguel e São João)
+morada: Rua Joaquim da Costa Chicória, Caldas de Vizela (São Miguel e São João), 4815-513 Vizela
+codigo_postal: 4815-513
+geo:
+  lat: 41.37996
+  lon: -8.31078
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [sab]
+  hora: '18:00'
+- tipo: missa
+  dias: [dom]
+  hora: '08:00'
+- tipo: missa
+  dias: [dom]
+  hora: '10:30'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

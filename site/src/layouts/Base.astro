@@ -1,0 +1,30 @@
+---
+import "../styles/global.css";
+import Cabecalho from "../components/Cabecalho.astro";
+
+interface Props {
+  titulo: string;
+  descricao: string;
+}
+
+const { titulo, descricao } = Astro.props;
+---
+
+<!doctype html>
+<html lang="pt-PT">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={descricao} />
+    <title>{titulo}</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  </head>
+  <body>
+    <Cabecalho />
+    <main class="mx-auto max-w-pagina px-4 py-8">
+      <slot />
+    </main>
+  </body>
+</html>

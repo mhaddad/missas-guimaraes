@@ -1,0 +1,26 @@
+id: barco
+tipo: igreja
+entidade: barco
+concelho: Guimarães
+nome: Igreja de São Cláudio
+orago: São Cláudio
+localidade: Barco
+freguesia: Barco
+morada: Rua Senhora dos Remédios, Barco, Guimarães, Braga, 4805-015, Portugal
+codigo_postal: 4805-015
+geo:
+  lat: 41.497694
+  lon: -8.325346
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [dom]
+  hora: '10:30'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

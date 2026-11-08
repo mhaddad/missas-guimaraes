@@ -1,0 +1,51 @@
+id: selho-e-paraiso
+tipo: igreja
+entidade: selho-e-paraiso
+concelho: Guimarães
+nome: Igreja de São Jorge
+orago: São Jorge
+localidade: Selho e Paraíso
+freguesia: Selho (São Jorge)
+morada: Rua do Montenegro, Selho (São Jorge), Guimarães, Braga, 4835-302, Portugal
+codigo_postal: 4835-302
+geo:
+  lat: 41.427914
+  lon: -8.354377
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [ter, qua, qui]
+  hora: '18:30'
+  epoca: inverno
+- tipo: missa
+  dias: [ter, qua, qui]
+  hora: '19:00'
+  epoca: verao
+- tipo: missa
+  dias: [sex]
+  hora: '18:30'
+  epoca: inverno
+  semanas_do_mes: [1]
+- tipo: missa
+  dias: [sex]
+  hora: '19:00'
+  epoca: verao
+  semanas_do_mes: [1]
+- tipo: missa
+  dias: [sab]
+  hora: '16:00'
+- tipo: missa
+  dias: [dom]
+  hora: '09:00'
+- tipo: missa
+  dias: [dom]
+  hora: '11:00'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: true
+  motivos:
+  - Missa de 6.ª feira só na primeira 6.ª do mês (aviso cita 19h; no inverno a fonte indica 18:30 — confirmar hora).

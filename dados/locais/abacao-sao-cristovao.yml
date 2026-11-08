@@ -1,0 +1,42 @@
+id: abacao-sao-cristovao
+tipo: igreja
+entidade: abacao-sao-cristovao
+concelho: Guimarães
+nome: Igreja de São Cristóvão
+orago: São Cristóvão
+localidade: Abação
+freguesia: Abação e Gémeos
+morada: Igreja São Cristóvão Abação, R. Padre José Pereira, Abação e Gémeos, Guimarães, Braga, 4810-675, Portugal
+codigo_postal: 4810-675
+geo:
+  lat: 41.402109
+  lon: -8.268822
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [qui]
+  hora: '18:00'
+  epoca: inverno
+- tipo: missa
+  dias: [qui]
+  hora: '19:00'
+  epoca: verao
+- tipo: missa
+  dias: [sab]
+  hora: '19:00'
+  epoca: inverno
+- tipo: missa
+  dias: [sab]
+  hora: '20:00'
+  epoca: verao
+- tipo: missa
+  dias: [dom]
+  hora: '10:30'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

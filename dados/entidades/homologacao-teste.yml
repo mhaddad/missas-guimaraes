@@ -1,0 +1,14 @@
+# Entidade FICTÍCIA para os testes de escrita dos administradores na homologação (PLANO §9.9).
+# Não corresponde a nenhuma paróquia. É apagada na migração para produção (E8).
+id: homologacao-teste
+tipo: paroquia
+nome: Paróquia de Teste (homologação)
+orago: null
+arciprestado: Guimarães e Vizela
+diocese: Braga
+responsaveis: []
+telefones_publicos: []
+email: null
+site: null
+locais:
+- homologacao-teste

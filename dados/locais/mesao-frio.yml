@@ -1,0 +1,26 @@
+id: mesao-frio
+tipo: igreja
+entidade: mesao-frio
+concelho: Guimarães
+nome: Igreja de São Romão
+orago: São Romão
+localidade: Mesão-Frio
+freguesia: Mesão Frio
+morada: Jardim Infantil do Centro Paroquial de São Romão de Mesão Frio, EN 101, Mesão Frio, Guimarães, Braga, 4810-227, Portugal
+codigo_postal: 4810-227
+geo:
+  lat: 41.452704
+  lon: -8.264806
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [dom]
+  hora: '10:30'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

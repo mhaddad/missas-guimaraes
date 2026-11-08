@@ -1,0 +1,46 @@
+id: silvares
+tipo: igreja
+entidade: silvares
+concelho: Guimarães
+nome: Igreja de Santa Maria
+orago: Santa Maria
+localidade: Silvares
+freguesia: Silvares
+morada: ER 206, Silvares, Guimarães, Braga, 4835-434, Portugal
+codigo_postal: 4835-434
+geo:
+  lat: 41.444507
+  lon: -8.336119
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [sex]
+  hora: '18:30'
+  epoca: inverno
+- tipo: missa
+  dias: [sex]
+  hora: '19:00'
+  epoca: verao
+- tipo: missa
+  dias: [sab]
+  hora: '17:00'
+  epoca: inverno
+- tipo: missa
+  dias: [sab]
+  hora: '18:00'
+  epoca: verao
+- tipo: missa
+  dias: [dom]
+  hora: '09:00'
+- tipo: missa
+  dias: [dom]
+  hora: '11:30'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: true
+  motivos:
+  - Sem data de atualização na fonte.

@@ -1,0 +1,72 @@
+# Calendário litúrgico e civil usado pelo motor de horários.
+# Gerado em 2026-10-30. Dias santos de preceito em Portugal (Concordata de 2004); confirmação pela Arquidiocese de Braga pendente (P17).
+
+dias_santos_de_preceito:
+  estado: documentado  # lista coincide com os dias festivos católicos reconhecidos em Portugal; confirmação pela Arquidiocese de Braga recomendada (P17)
+  regras:
+    - {id: santa-maria-mae-de-deus, nome: 'Santa Maria, Mãe de Deus', data: '01-01'}
+    - {id: corpo-de-deus, nome: 'Corpo de Deus', data_movel: 'pascoa+60'}   # quinta-feira
+    - {id: assuncao, nome: 'Assunção de Nossa Senhora', data: '08-15'}
+    - {id: todos-os-santos, nome: 'Todos os Santos', data: '11-01'}
+    - {id: imaculada-conceicao, nome: 'Imaculada Conceição', data: '12-08'}
+    - {id: natal, nome: 'Natal do Senhor', data: '12-25'}
+  nao_incluidos: [Epifania, Ascensão, São José, São Pedro e São Paulo]  # não constam da lista portuguesa; Epifania e Ascensão celebram-se ao domingo
+
+anos:
+  2026:
+    dias_santos:
+      santa-maria-mae-de-deus: '2026-01-01'  # quinta
+      corpo-de-deus: '2026-06-04'  # quinta
+      assuncao: '2026-08-15'  # sábado
+      todos-os-santos: '2026-11-01'  # domingo
+      imaculada-conceicao: '2026-12-08'  # terça
+      natal: '2026-12-25'  # sexta
+    moveis:
+      cinzas: '2026-02-18'  # quarta
+      ramos: '2026-03-29'  # domingo
+      quinta_feira_santa: '2026-04-02'  # quinta
+      sexta_feira_santa: '2026-04-03'  # sexta
+      pascoa: '2026-04-05'  # domingo
+      pentecostes: '2026-05-24'  # domingo
+      advento_1_domingo: '2026-11-29'  # domingo
+    hora_legal:
+      inicio_verao: '2026-03-29'  # domingo
+      inicio_inverno: '2026-10-25'  # domingo
+  2027:
+    dias_santos:
+      santa-maria-mae-de-deus: '2027-01-01'  # sexta
+      corpo-de-deus: '2027-05-27'  # quinta
+      assuncao: '2027-08-15'  # domingo
+      todos-os-santos: '2027-11-01'  # segunda
+      imaculada-conceicao: '2027-12-08'  # quarta
+      natal: '2027-12-25'  # sábado
+    moveis:
+      cinzas: '2027-02-10'  # quarta
+      ramos: '2027-03-21'  # domingo
+      quinta_feira_santa: '2027-03-25'  # quinta
+      sexta_feira_santa: '2027-03-26'  # sexta
+      pascoa: '2027-03-28'  # domingo
+      pentecostes: '2027-05-16'  # domingo
+      advento_1_domingo: '2027-11-28'  # domingo
+    hora_legal:
+      inicio_verao: '2027-03-28'  # domingo
+      inicio_inverno: '2027-10-31'  # domingo
+  2028:
+    dias_santos:
+      santa-maria-mae-de-deus: '2028-01-01'  # sábado
+      corpo-de-deus: '2028-06-15'  # quinta
+      assuncao: '2028-08-15'  # terça
+      todos-os-santos: '2028-11-01'  # quarta
+      imaculada-conceicao: '2028-12-08'  # sexta
+      natal: '2028-12-25'  # segunda
+    moveis:
+      cinzas: '2028-03-01'  # quarta
+      ramos: '2028-04-09'  # domingo
+      quinta_feira_santa: '2028-04-13'  # quinta
+      sexta_feira_santa: '2028-04-14'  # sexta
+      pascoa: '2028-04-16'  # domingo
+      pentecostes: '2028-06-04'  # domingo
+      advento_1_domingo: '2028-12-03'  # domingo
+    hora_legal:
+      inicio_verao: '2028-03-26'  # domingo
+      inicio_inverno: '2028-10-29'  # domingo

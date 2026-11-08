@@ -1,0 +1,27 @@
+id: sao-jorge-de-selho
+tipo: igreja
+entidade: sao-jorge-de-selho
+concelho: Guimarães
+nome: Igreja de São Miguel do Paraíso
+orago: São Miguel do Paraíso
+localidade: São Jorge de Selho
+freguesia: Selho (São Jorge)
+morada: Igreja de São Miguel, Rua Igreja de São Miguel, Selho (São Jorge), Guimarães, Braga, 4835-612, Portugal
+codigo_postal: 4835-612
+geo:
+  lat: 41.43649
+  lon: -8.36745
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [sab]
+  hora: '17:30'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: true
+  motivos:
+  - 'Igreja de São Miguel do Paraíso sem pároco nem telefone: provável igreja secundária da paróquia Selho e Paraíso (`selho-e-paraiso`) — confirmar e agrupar.'

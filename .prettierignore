@@ -1,0 +1,7 @@
+dados/
+node_modules/
+dist/
+.astro/
+.wrangler/
+package-lock.json
+*.md

@@ -1,0 +1,28 @@
+id: moreira-de-conegos
+tipo: igreja
+entidade: moreira-de-conegos
+concelho: Guimarães
+nome: Igreja de São Paio
+orago: São Paio
+localidade: Moreira de Cónegos
+freguesia: Moreira de Cónegos
+morada: Ponte, Moreira de Cónegos, Guimarães, Braga, 4815-056, Portugal
+codigo_postal: 4815-056
+geo:
+  lat: 41.382152
+  lon: -8.335894
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [dom]
+  hora: '18:00'
+  epoca: inverno
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: true
+  motivos:
+  - 'Só tem missa de domingo no inverno — confirmar.'

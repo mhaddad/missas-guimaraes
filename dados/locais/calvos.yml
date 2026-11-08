@@ -1,0 +1,35 @@
+id: calvos
+tipo: igreja
+entidade: calvos
+concelho: Guimarães
+nome: Igreja de São Lourenço
+orago: São Lourenço
+localidade: Calvos
+freguesia: Calvos
+morada: Igreja de São Lourenço de Calvos, Rua da Igreja, Calvos, Guimarães, Braga, 4810-601, Portugal
+codigo_postal: 4810-601
+geo:
+  lat: 41.403861
+  lon: -8.244696
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [sab]
+  hora: '17:00'
+  epoca: inverno
+- tipo: missa
+  dias: [sab]
+  hora: '18:00'
+  epoca: verao
+- tipo: missa
+  dias: [dom]
+  hora: '11:00'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: true
+  motivos:
+  - 'O aviso de Serzedelo diz "alterna com Calvos": confirmar se se refere a esta Calvos (Guimarães) ou à de Póvoa de Lanhoso.'

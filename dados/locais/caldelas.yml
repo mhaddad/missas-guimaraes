@@ -1,0 +1,45 @@
+id: caldelas
+tipo: igreja
+entidade: caldelas
+concelho: Guimarães
+nome: Igreja de São Tomé
+orago: São Tomé
+localidade: Caldelas
+freguesia: Caldelas
+morada: Caldelas, Guimarães, Braga, 4805-133, Portugal
+codigo_postal: 4805-133
+geo:
+  lat: 41.48695
+  lon: -8.34369
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [seg]
+  hora: '09:00'
+- tipo: missa
+  dias: [qua]
+  hora: '09:00'
+- tipo: missa
+  dias: [qui]
+  hora: '20:00'
+- tipo: missa
+  dias: [sex]
+  hora: '09:00'
+- tipo: missa
+  dias: [sab]
+  hora: '18:00'
+- tipo: missa
+  dias: [dom]
+  hora: '09:00'
+- tipo: missa
+  dias: [dom]
+  hora: '11:30'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: true
+  motivos:
+  - Horários diferentes por dia da semana (convertido de porDia).

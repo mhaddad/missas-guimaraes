@@ -1,0 +1,29 @@
+id: arosa
+tipo: igreja
+entidade: arosa
+concelho: Guimarães
+nome: Igreja de Santa Marinha
+orago: Santa Marinha
+localidade: Arosa
+freguesia: Arosa e Castelões
+morada: Arosa e Castelões, Guimarães, Braga, Portugal
+codigo_postal: null
+geo:
+  lat: 41.550364
+  lon: -8.221307
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [sab]
+  hora: '18:00'
+- tipo: missa
+  dias: [dom]
+  hora: '09:00'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

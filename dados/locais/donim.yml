@@ -1,0 +1,26 @@
+id: donim
+tipo: igreja
+entidade: donim
+concelho: Guimarães
+nome: Igreja de Divino Salvador
+orago: Divino Salvador
+localidade: Donim
+freguesia: Briteiros (Santo Estêvão) e Donim
+morada: Rua de Santo Amaro, Briteiros (Santo Estêvão) e Donim, Guimarães, Braga, 4805-180, Portugal
+codigo_postal: 4805-180
+geo:
+  lat: 41.530831
+  lon: -8.302058
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [dom]
+  hora: '09:00'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

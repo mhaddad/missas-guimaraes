@@ -1,0 +1,32 @@
+id: vila-nova-de-sande
+tipo: igreja
+entidade: vila-nova-de-sande
+concelho: Guimarães
+nome: Igreja de Santa Maria
+orago: Santa Maria
+localidade: Vila Nova de Sande
+freguesia: Sande (Vila Nova)
+morada: Igreja de Vila Nova de Sande, Rua de São João Baptista, Além, Sande (Vila Nova), Guimarães, Braga, 4805-001, Portugal
+codigo_postal: 4805-001
+geo:
+  lat: 41.469599
+  lon: -8.353481
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [ter, sex]
+  hora: '18:00'
+- tipo: missa
+  dias: [sab]
+  hora: '17:30'
+- tipo: missa
+  dias: [dom]
+  hora: '10:00'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

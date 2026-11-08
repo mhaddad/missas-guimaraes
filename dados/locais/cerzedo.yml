@@ -1,0 +1,35 @@
+id: cerzedo
+tipo: igreja
+entidade: cerzedo
+concelho: Guimarães
+nome: Igreja de São Miguel
+orago: São Miguel
+localidade: Cerzedo
+freguesia: Serzedo
+morada: Serzedo, Guimarães, Braga, 4810-858, Portugal
+codigo_postal: 4810-858
+geo:
+  lat: 41.404365
+  lon: -8.233344
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [sab]
+  hora: '16:30'
+  epoca: inverno
+- tipo: missa
+  dias: [sab]
+  hora: '17:30'
+  epoca: verao
+- tipo: missa
+  dias: [dom]
+  hora: '10:15'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: true
+  motivos:
+  - Sem data de atualização na fonte.

@@ -1,0 +1,42 @@
+id: briteiros-santo-estevao
+tipo: igreja
+entidade: briteiros-santo-estevao
+concelho: Guimarães
+nome: Igreja de Santo Estevão
+orago: Santo Estevão
+localidade: Briteiros
+freguesia: Briteiros (Santo Estêvão) e Donim
+morada: Igreja Matriz de Briteiros (Santo Estêvão), Rua de Stº Estevão, Briteiros (Santo Estêvão) e Donim, Guimarães, Braga, 4805-603, Portugal
+codigo_postal: 4805-603
+geo:
+  lat: 41.513482
+  lon: -8.312448
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [qua, sex]
+  hora: '18:00'
+  epoca: inverno
+- tipo: missa
+  dias: [qua, sex]
+  hora: '19:00'
+  epoca: verao
+- tipo: missa
+  dias: [sab]
+  hora: '18:00'
+  epoca: inverno
+- tipo: missa
+  dias: [sab]
+  hora: '19:00'
+  epoca: verao
+- tipo: missa
+  dias: [dom]
+  hora: '10:30'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

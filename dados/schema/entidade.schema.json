@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missasemguimaraes.pt/schema/entidade.schema.json",
+  "title": "Entidade responsável por locais de culto",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "tipo",
+    "nome",
+    "diocese",
+    "locais"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "tipo": {
+      "enum": [
+        "paroquia",
+        "irmandade",
+        "confraria",
+        "ordem-terceira",
+        "misericordia",
+        "ordem-religiosa",
+        "santuario",
+        "instituicao",
+        "outro"
+      ]
+    },
+    "nome": {
+      "type": "string"
+    },
+    "orago": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "arciprestado": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "diocese": {
+      "type": "string"
+    },
+    "responsaveis": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Pároco, reitor, juiz/provedor… (nomes públicos)"
+    },
+    "telefones_publicos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "email": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "site": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "locais": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

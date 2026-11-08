@@ -1,0 +1,29 @@
+id: gonca
+tipo: igreja
+entidade: gonca
+concelho: Guimarães
+nome: Igreja de São Miguel
+orago: São Miguel
+localidade: Gonça
+freguesia: Gonça
+morada: Igreja de Gonça, Rua Padre João Ferreira Gomes, Gonça, Guimarães, Braga, 4800-192, Portugal
+codigo_postal: 4800-192
+geo:
+  lat: 41.508671
+  lon: -8.253174
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [sab]
+  hora: '18:30'
+- tipo: missa
+  dias: [dom]
+  hora: '09:30'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []
