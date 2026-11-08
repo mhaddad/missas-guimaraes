@@ -11,5 +11,12 @@ export default tseslint.config(
     languageOptions: {
       globals: { console: "readonly", process: "readonly", URL: "readonly" },
     },
+    rules: {
+      // Variáveis com "_" à frente são descartadas de propósito (ex.: tirar uma chave com `...resto`).
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", ignoreRestSiblings: true },
+      ],
+    },
   },
 );

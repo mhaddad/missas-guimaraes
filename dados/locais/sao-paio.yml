@@ -30,5 +30,4 @@ confirmado_por: null
 revisao:
   pendente: true
   motivos:
-  - 'LOCALIZAÇÃO ERRADA (provável): mesmo pároco de São Sebastião e Unidade Pastoral de São Sebastião e São Paio → é provavelmente a paróquia de São Paio na cidade de Guimarães; a fonte atribuiu-lhe morada
-    e coordenadas da Igreja Matriz de Moreira de Cónegos. Corrigir morada, geo e freguesia.'
+  - 'LOCALIZAÇÃO ERRADA (provável): mesmo pároco de São Sebastião e Unidade Pastoral de São Sebastião e São Paio → é provavelmente a paróquia de São Paio na cidade de Guimarães; a fonte atribuiu-lhe morada e coordenadas da Igreja Matriz de Moreira de Cónegos. Corrigir morada, geo e freguesia.'

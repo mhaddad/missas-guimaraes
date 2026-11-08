@@ -20,12 +20,15 @@
 | `npm test` | Testes (Vitest) |
 | `npm run validar` | Valida todos os YAML de `dados/` |
 | `npm run build` | Gera o site em `site/dist` |
+| `npm run formatar:dados` | Reescreve os YAML de `dados/` no formato canónico |
+| `npm run gerar:tipos` / `npm run gerar:validadores` | Depois de mudar `dados/schema/`: tipos TypeScript e validadores pré-compilados |
 
 ## Convenções
 
 - **Língua:** textos visíveis em **português europeu** (pt-PT: "ecrã", "telemóvel", "registadas"), com versões em inglês e espanhol no site. Termos do domínio em português também no código (`local`, `entidade`, `horarios`, `excecoes`, `confirmado_em`); vocabulário técnico genérico pode ficar em inglês.
 - **Hora:** sempre **Europe/Lisbon**. Nunca "GMT+0" fixo: no verão é GMT+1.
-- **Dados:** o nome do arquivo é o `id`; um local pertence a uma entidade e a entidade lista o local (nos dois sentidos). Os YAML seguem o formato canónico do projeto (a partir do E1, o serializador em `pacotes/dados`); não os reformatar com outras ferramentas.
+- **Dados:** o nome do arquivo é o `id`; um local pertence a uma entidade e a entidade lista o local (nos dois sentidos). Os YAML seguem o formato canónico do projeto (serializador em `pacotes/dados`, `npm run formatar:dados`); não os reformatar com outras ferramentas.
+- **Esquema:** `dados/schema/*.schema.json` é a única fonte de verdade; os arquivos `*.gerado.*` não se editam à mão (ADR-002).
 - **Testes primeiro** no motor e na gravação: os casos de referência são o contrato. Não se altera um teste existente para o fazer passar.
 - **Um PR por tarefa**, pequeno, com a CI verde.
 

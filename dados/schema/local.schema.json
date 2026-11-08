@@ -11,6 +11,7 @@
     "nome",
     "geo",
     "publicar",
+    "dias_santos",
     "horarios",
     "excecoes",
     "confirmado_em",
@@ -152,11 +153,15 @@
       }
     },
     "confirmado_em": {
-      "type": [
-        "string",
-        "null"
+      "oneOf": [
+        {
+          "$ref": "#/$defs/data"
+        },
+        {
+          "type": "null"
+        }
       ],
-      "format": "date"
+      "description": "Última confirmação pela entidade (AAAA-MM-DD); a validade da data é verificada pelo motor."
     },
     "confirmado_por": {
       "type": [
@@ -364,8 +369,15 @@
         "hora": {
           "$ref": "#/$defs/hora"
         },
+        "hora_fim": {
+          "$ref": "#/$defs/hora"
+        },
         "hora_original": {
           "$ref": "#/$defs/hora"
+        },
+        "idioma": {
+          "type": "string",
+          "description": "Só em `adicionar`; pt por omissão"
         },
         "nota": {
           "type": "string"

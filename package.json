@@ -22,13 +22,20 @@
     "format:check": "prettier --check .",
     "typecheck": "tsc -p tsconfig.json --noEmit && npm run typecheck -w site && npm run typecheck -w worker",
     "validar": "tsx scripts/validar.ts",
-    "verificar": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run validar"
+    "verificar": "npm run format:check && npm run lint && npm run typecheck && npm run gerados:verificar && npm run test:cobertura && npm run validar",
+    "gerar:tipos": "tsx scripts/gerar-tipos.ts",
+    "gerar:validadores": "tsx pacotes/dados/scripts/gerar-validadores.ts",
+    "formatar:dados": "tsx scripts/formatar-dados.ts",
+    "gerados:verificar": "tsx scripts/gerar-tipos.ts --verificar && tsx pacotes/dados/scripts/gerar-validadores.ts --verificar",
+    "test:cobertura": "vitest run --coverage"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@types/node": "26.6.6",
+    "@vitest/coverage-v8": "5.1.0",
     "eslint": "10.14.0",
     "eslint-plugin-astro": "3.2.1",
+    "json-schema-to-typescript": "16.0.0",
     "prettier": "3.9.10",
     "prettier-plugin-astro": "1.1.2",
     "tsx": "4.23.15",
