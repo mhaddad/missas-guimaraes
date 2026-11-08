@@ -1,0 +1,35 @@
+---
+/**
+ * Selo de confirmação (§6.6). O texto do build é recalculado no navegador (`data-selo`), para
+ * continuar certo mesmo sem novo build.
+ */
+import type { Idioma, TipoEntidade } from "../i18n/index.ts";
+import { selo } from "../lib/portal.ts";
+import { classeSelo, textoSelo } from "../lib/selo.ts";
+
+interface Props {
+  idioma: Idioma;
+  confirmadoEm: string | null;
+  tipoEntidade: TipoEntidade;
+  hoje: string;
+  forma: "curto" | "longo";
+}
+
+const { idioma, confirmadoEm, tipoEntidade, hoje, forma } = Astro.props;
+const { estado, dias } = selo(confirmadoEm, hoje);
+---
+
+<span
+  data-selo={forma}
+  data-confirmado-em={confirmadoEm ?? ""}
+  data-entidade-tipo={tipoEntidade}
+  class:list={[
+    forma === "curto"
+      ? "rounded px-2 py-0.5 text-xs font-bold tracking-wide uppercase"
+      : "rounded-cartao px-3 py-2 text-base",
+    "inline-block",
+    classeSelo(estado),
+  ]}
+>
+  {textoSelo(idioma, forma, estado, dias, confirmadoEm, tipoEntidade)}
+</span>

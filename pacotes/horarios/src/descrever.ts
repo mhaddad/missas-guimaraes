@@ -507,6 +507,11 @@ function descreverValidade(regra: Regra, idioma: Idioma): string | undefined {
 export interface OpcoesDescricao {
   /** Começa pelo tipo de celebração: "Missa: domingos às 11:00". */
   comTipo?: boolean;
+  /**
+   * Várias horas para regras iguais em tudo o resto: "Domingos às 12:00 e 19:00". Ignorado se a
+   * regra tiver `hora_fim`.
+   */
+  horas?: readonly string[];
 }
 
 /**
@@ -515,7 +520,13 @@ export interface OpcoesDescricao {
  */
 export function descreverRegra(regra: Regra, idioma: Idioma, opcoes: OpcoesDescricao = {}): string {
   const t = TEXTOS[idioma];
-  const hora = regra.hora_fim ? t.dasAs(regra.hora, regra.hora_fim) : t.as(regra.hora);
+  const horas =
+    opcoes.horas && opcoes.horas.length > 1 && !regra.hora_fim ? opcoes.horas : undefined;
+  const hora = horas
+    ? t.as(juntar([...horas].sort(), t.e))
+    : regra.hora_fim
+      ? t.dasAs(regra.hora, regra.hora_fim)
+      : t.as(regra.hora);
   const extra = qualificadores(regra, idioma);
   const corpo = `${descreverDias(regra, t)} ${hora}${extra.length ? ` (${extra.join(", ")})` : ""}`;
   return opcoes.comTipo ? `${t.tipos[regra.tipo]}: ${corpo}` : maiuscula(corpo);

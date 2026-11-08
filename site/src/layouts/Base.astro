@@ -1,30 +1,52 @@
 ---
 import "../styles/global.css";
 import Cabecalho from "../components/Cabecalho.astro";
+import { IDIOMAS, TEXTOS, type Idioma } from "../i18n/index.ts";
 
 interface Props {
   titulo: string;
   descricao: string;
+  idioma?: Idioma;
+  /** Site público: atalhos, idiomas e `hreflang`. */
+  publico?: boolean;
 }
 
-const { titulo, descricao } = Astro.props;
+const { titulo, descricao, idioma = "pt-PT", publico = false } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="pt-PT">
+<html lang={idioma}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={descricao} />
+    <meta name="theme-color" content="#0f172a" />
     <title>{titulo}</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    {publico &&
+      IDIOMAS.map((i) => (
+        <link rel="alternate" hreflang={TEXTOS[i].idioma} href={TEXTOS[i].caminho} />
+      ))}
+    {publico && <link rel="alternate" hreflang="x-default" href="/" />}
+    <slot name="head" />
   </head>
-  <body>
-    <Cabecalho />
-    <main class="mx-auto max-w-pagina px-4 py-8">
+  <body class="pb-20 md:pb-0">
+    <a
+      href="#conteudo"
+      class="sr-only focus:not-sr-only focus:absolute focus:m-2 focus:rounded focus:bg-cartao focus:p-3"
+    >
+      {idioma === "en"
+        ? "Skip to content"
+        : idioma === "es"
+          ? "Saltar al contenido"
+          : "Saltar para o conteúdo"}
+    </a>
+    <Cabecalho idioma={idioma} navegacao={publico} />
+    <main id="conteudo" class="mx-auto max-w-[56rem] px-4 py-6 md:py-8">
       <slot />
     </main>
+    <slot name="fim" />
   </body>
 </html>

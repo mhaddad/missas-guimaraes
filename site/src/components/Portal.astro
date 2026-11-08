@@ -1,0 +1,279 @@
+---
+/**
+ * Página pública (§6.2): aviso, controlos, "A seguir", vista por hora, vista por igreja,
+ * solenidades e rodapé. O HTML estático mostra todos os locais com o horário semanal; a ilha
+ * `scripts/portal.ts` acrescenta os atalhos de dia, a pesquisa e os filtros.
+ */
+import { momentoEmLisboa } from "@missas/horarios";
+import Base from "../layouts/Base.astro";
+import { formatar, TEXTOS, type Idioma } from "../i18n/index.ts";
+import { dadosPortal, locaisPublicados } from "../lib/dados-build.ts";
+import { formatarDataLonga, formatarDiaEMes } from "../lib/formatos.ts";
+import { proximasSolenidades } from "../lib/portal.ts";
+import CartaoIgreja from "./CartaoIgreja.astro";
+import Icone from "./Icone.astro";
+import Icones from "./Icones.astro";
+
+interface Props {
+  idioma: Idioma;
+}
+
+const { idioma } = Astro.props;
+const t = TEXTOS[idioma];
+const agora = new Date();
+const { data: hoje, hora } = momentoEmLisboa(agora);
+const locais = locaisPublicados();
+const dados = dadosPortal(agora, hoje);
+const solenidades = proximasSolenidades(dados.calendario, hoje);
+const nomeSolenidade = (s: (typeof solenidades)[number]) =>
+  s.preceito ? (s.nome ?? s.id) : ((t.moveis as Record<string, string>)[s.id] ?? s.id);
+---
+
+<Base titulo={t.titulo} descricao={t.descricao} idioma={idioma} publico>
+  <Icones />
+
+  <p id="faixa-idioma" class="mb-4 rounded-cartao bg-slate-100 px-4 py-3 text-base" hidden></p>
+
+  <p class="mb-6 flex gap-3 rounded-cartao border border-borda bg-cartao px-4 py-3 text-base text-texto-secundario">
+    <Icone nome="info" class="mt-0.5 size-5 text-azul-texto" />
+    <span>{t.aviso}</span>
+  </p>
+
+  <noscript>
+    <p class="mb-6 rounded-cartao bg-slate-100 px-4 py-3 text-base">{t.semJavaScript}</p>
+  </noscript>
+
+  <!-- Controlos: só com JavaScript -->
+  <section
+    id="controlos"
+    class="mb-8 rounded-cartao border border-borda bg-cartao p-4 md:p-5"
+    hidden
+  >
+    <div class="relative">
+      <label for="pesquisa" class="sr-only">
+        {t.pesquisaRotulo}
+      </label>
+      <Icone
+        nome="search"
+        class="pointer-events-none absolute top-1/2 left-3 size-6 -translate-y-1/2 text-texto-secundario"
+      />
+      <input
+        id="pesquisa"
+        type="search"
+        autocomplete="off"
+        placeholder={t.pesquisaExemplo}
+        class="min-h-14 w-full rounded-cartao border border-borda bg-superficie pr-12 pl-12 text-body-lg placeholder:text-texto-secundario"
+      />
+      <button
+        id="limpar-pesquisa"
+        type="button"
+        class="absolute top-1/2 right-1 inline-flex size-12 -translate-y-1/2 items-center justify-center rounded-cartao text-texto-secundario"
+        aria-label={t.limparPesquisa}
+        hidden
+      >
+        <Icone nome="close" class="size-6" />
+      </button>
+    </div>
+    <div class="mt-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+      <div role="group" aria-label={t.diaRotulo} class="flex flex-wrap gap-2">
+        <button type="button" class="chip chip-dia" data-dia="hoje" aria-pressed="true">
+          {t.hoje}
+        </button>
+        <button type="button" class="chip chip-dia" data-dia="amanha" aria-pressed="false">
+          {t.amanha}
+        </button>
+        <button type="button" class="chip chip-dia" data-dia="domingo" aria-pressed="false">
+          {t.proximoDomingo}
+        </button>
+      </div>
+      <div role="group" aria-labelledby="rotulo-concelho" class="flex flex-wrap items-center gap-2">
+        <span
+          id="rotulo-concelho"
+          class="text-sm font-bold tracking-wide text-texto-secundario uppercase"
+        >
+          {t.concelho}:
+        </span>
+        <button type="button" class="chip" data-concelho="todos" aria-pressed="true">
+          {formatar(t.todos, { n: "" })}
+        </button>
+        <button type="button" class="chip" data-concelho="guimaraes" aria-pressed="false">
+          Guimarães
+        </button>
+        <button type="button" class="chip" data-concelho="vizela" aria-pressed="false">
+          Vizela
+        </button>
+      </div>
+    </div>
+    <div class="mt-4 flex flex-wrap items-center gap-2 border-t border-borda pt-4">
+      <span class="text-sm font-bold tracking-wide text-texto-secundario uppercase">
+        {t.vista}:
+      </span>
+      <button type="button" class="chip" data-vista="hora" aria-pressed="true">
+        {t.porHora}
+      </button>
+      <button type="button" class="chip" data-vista="igreja" aria-pressed="false">
+        {t.porIgreja}
+      </button>
+      <button
+        type="button"
+        id="filtro-tipo"
+        class="etiqueta ml-auto min-h-12 gap-2 bg-azul-fundo text-azul-texto"
+        hidden
+      >
+        <span id="filtro-tipo-texto">{t.filtroConfissoes}</span>
+        <Icone nome="close" class="size-4" />
+        <span class="sr-only">{t.mostrarTudo}</span>
+      </button>
+    </div>
+  </section>
+
+  <p
+    id="faixa-dia-santo"
+    class="mb-6 flex items-center gap-3 rounded-cartao bg-aviso-fundo px-4 py-3 text-base font-semibold text-dourado-texto"
+    hidden
+  >
+    <Icone nome="event" class="size-6" />
+    <span></span>
+  </p>
+
+  <section id="a-seguir" class="mb-8" aria-live="polite" hidden></section>
+
+  <section id="por-hora" class="mb-10" hidden>
+    <div class="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+      <h2 class="text-xl font-semibold">
+        <span id="titulo-dia"></span>
+      </h2>
+      <p
+        id="ainda-hoje"
+        class="rounded-full bg-aviso-fundo px-3 py-1 text-sm font-semibold text-dourado-texto"
+        hidden
+      ></p>
+    </div>
+    <ol id="lista-hora" class="grid gap-3"></ol>
+    <p
+      id="vazio-hora"
+      class="rounded-cartao border border-dashed border-borda p-6 text-center text-texto-secundario"
+      hidden
+    ></p>
+    <details id="anteriores" class="mt-4 rounded-cartao border border-borda bg-cartao" hidden>
+      <summary class="flex min-h-12 cursor-pointer list-none items-center gap-3 px-4 text-base text-texto-secundario [&::-webkit-details-marker]:hidden">
+        <Icone nome="history" />
+        <span id="anteriores-texto"></span>
+        <Icone nome="keyboard_arrow_down" class="ml-auto size-6" />
+      </summary>
+      <ol id="lista-anteriores" class="grid gap-2 px-4 pb-4"></ol>
+    </details>
+    <section id="sem-informacao" class="mt-8" hidden>
+      <h3 class="text-lg font-semibold">{t.semInformacaoDiaSanto}</h3>
+      <p class="mt-1 text-base text-texto-secundario">{t.semInformacaoDiaSantoTexto}</p>
+      <ol id="lista-sem-informacao" class="mt-3 grid gap-3"></ol>
+    </section>
+  </section>
+
+  <section id="igrejas" class="mb-10 scroll-mt-4">
+    <div class="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+      <h2 class="text-xl font-semibold">{t.igrejasTitulo}</h2>
+      <p id="contagem-igrejas" class="text-base text-texto-secundario"></p>
+    </div>
+    <div id="lista-igrejas" class="grid gap-3">
+      {locais.map(({ local, entidade }) => (
+        <CartaoIgreja idioma={idioma} local={local} entidade={entidade} hoje={hoje} />
+      ))}
+    </div>
+    <p
+      id="vazio-igrejas"
+      class="rounded-cartao border border-dashed border-borda p-6 text-center text-texto-secundario"
+      hidden
+    >
+      {t.nenhumaIgreja}
+    </p>
+  </section>
+
+  <section
+    id="solenidades"
+    class="mb-10 scroll-mt-4 rounded-cartao border border-borda bg-cartao p-4 md:p-5"
+  >
+    <h2 class="text-xl font-semibold">{t.solenidadesTitulo}</h2>
+    <p class="mt-1 text-base text-texto-secundario">{t.solenidadesTexto}</p>
+    <ul class="mt-4 grid gap-2">
+      {solenidades.map((s) => (
+        <li class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-borda pt-2">
+          <span class="w-40 font-semibold">{formatarDiaEMes(s.data, idioma)}</span>
+          <span class="flex-1">
+            {nomeSolenidade(s)}
+            {s.preceito && (
+              <span class="etiqueta ml-2 bg-aviso-fundo text-dourado-texto">
+                {t.diaSantoDePreceito}
+              </span>
+            )}
+          </span>
+          <a
+            class="ligacao inline-flex min-h-12 items-center"
+            href={`?dia=${s.data}`}
+            data-ir-para-dia={s.data}
+          >
+            {t.verHorarios}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <footer class="flex flex-wrap items-center justify-between gap-3 border-t border-borda pt-6 text-sm text-texto-secundario">
+    <p>{formatar(t.atualizado, { data: formatarDataLonga(hoje, idioma), hora })}</p>
+    <p>{t.assinatura}</p>
+    <p class="w-full">{t.semCookies}</p>
+  </footer>
+
+  <nav
+    slot="fim"
+    id="barra-inferior"
+    aria-label={t.navegacao}
+    class="fixed inset-x-0 bottom-0 z-10 border-t border-borda bg-cartao md:hidden"
+    hidden
+  >
+    <ul class="grid grid-cols-3">
+      <li>
+        <button
+          type="button"
+          class="flex min-h-16 w-full flex-col items-center justify-center gap-0.5 text-sm font-semibold"
+          data-barra="hoje"
+        >
+          <Icone nome="schedule" class="size-6" />
+          {t.barraHoje}
+        </button>
+      </li>
+      <li>
+        <button
+          type="button"
+          class="flex min-h-16 w-full flex-col items-center justify-center gap-0.5 text-sm font-semibold"
+          data-barra="paroquias"
+        >
+          <Icone nome="church" class="size-6" />
+          {t.barraParoquias}
+        </button>
+      </li>
+      <li>
+        <button
+          type="button"
+          class="flex min-h-16 w-full flex-col items-center justify-center gap-0.5 text-sm font-semibold"
+          data-barra="procurar"
+        >
+          <Icone nome="search" class="size-6" />
+          {t.barraProcurar}
+        </button>
+      </li>
+    </ul>
+  </nav>
+
+  <script
+    type="application/json"
+    id="dados-portal"
+    set:html={JSON.stringify(dados).replace(/</g, "\\u003c")}
+  />
+  <script type="application/json" id="idioma-portal" set:html={JSON.stringify({ idioma })} />
+</Base>
+
+<script>
+  import "../scripts/portal.ts";
+</script>

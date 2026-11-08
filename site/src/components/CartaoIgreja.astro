@@ -1,0 +1,57 @@
+---
+/**
+ * Um local na lista estática (vista por igreja, §6.5). Sem JavaScript, todos ficam abertos com o
+ * horário semanal completo; com JavaScript, fecham-se e abrem ao tocar.
+ */
+import type { Entidade, Local } from "@missas/horarios";
+import type { Idioma } from "../i18n/index.ts";
+import DetalheLocal from "./DetalheLocal.astro";
+import Icone from "./Icone.astro";
+import Selo from "./Selo.astro";
+
+interface Props {
+  idioma: Idioma;
+  local: Local;
+  entidade: Entidade;
+  hoje: string;
+}
+
+const { idioma, local, entidade, hoje } = Astro.props;
+const lugar = [local.localidade, local.concelho].filter(Boolean).join(" · ");
+---
+
+<article
+  id={local.id}
+  class="igreja scroll-mt-4 rounded-cartao border border-borda bg-cartao"
+  data-local={local.id}
+  data-concelho={local.concelho === "Vizela" ? "vizela" : "guimaraes"}
+>
+  <details open class="group">
+    <summary class="flex min-h-12 cursor-pointer list-none items-start gap-3 p-4 md:p-5 [&::-webkit-details-marker]:hidden">
+      <div class="min-w-0 flex-1">
+        <h3 class="flex flex-wrap items-center gap-x-2 gap-y-1 text-lg font-semibold">
+          <span>{local.nome}</span>
+          <Selo
+            idioma={idioma}
+            confirmadoEm={local.confirmado_em}
+            tipoEntidade={entidade.tipo}
+            hoje={hoje}
+            forma="curto"
+          />
+        </h3>
+        <p class="flex items-center gap-1 text-base text-texto-secundario">
+          <Icone nome="location_on" class="size-4" />
+          {lugar}
+        </p>
+        <p class="horas-dia mt-2 flex flex-wrap gap-2 empty:hidden"></p>
+      </div>
+      <Icone
+        nome="keyboard_arrow_down"
+        class="mt-1 size-6 text-texto-secundario transition-transform group-open:rotate-180"
+      />
+    </summary>
+    <div class="border-t border-borda px-4 pb-5 md:px-5">
+      <DetalheLocal idioma={idioma} local={local} entidade={entidade} hoje={hoje} />
+    </div>
+  </details>
+</article>

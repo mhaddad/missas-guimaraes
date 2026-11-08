@@ -1,0 +1,40 @@
+---
+/**
+ * Sprite com os ícones usados no site (Material Symbols, Apache 2.0), embutido uma vez na página.
+ * Uso: <svg class="icone"><use href="#i-search" /></svg>. Só os desenhos listados vão para o HTML.
+ */
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+
+const ICONES = [
+  "search",
+  "close",
+  "schedule",
+  "navigation",
+  "share",
+  "history",
+  "keyboard_arrow_down",
+  "location_on",
+  "call",
+  "church",
+  "event",
+  "info",
+] as const;
+
+const require = createRequire(import.meta.url);
+const simbolos = ICONES.map((nome) => {
+  const svg = readFileSync(
+    require.resolve(`@material-symbols/svg-400/outlined/${nome}.svg`),
+    "utf8",
+  );
+  const interior = svg.replace(/^<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "");
+  return `<symbol id="i-${nome}" viewBox="0 -960 960 960">${interior}</symbol>`;
+}).join("");
+---
+
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  aria-hidden="true"
+  style="display:none"
+  set:html={simbolos}
+/>
