@@ -27,10 +27,15 @@
     "gerar:validadores": "tsx pacotes/dados/scripts/gerar-validadores.ts",
     "formatar:dados": "tsx scripts/formatar-dados.ts",
     "gerados:verificar": "tsx scripts/gerar-tipos.ts --verificar && tsx pacotes/dados/scripts/gerar-validadores.ts --verificar",
-    "test:cobertura": "vitest run --coverage"
+    "test:cobertura": "vitest run --coverage",
+    "e2e": "playwright test",
+    "lighthouse": "npm run build && npx -y @lhci/cli@0.16.0 autorun"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.65.0",
+    "@resvg/resvg-js": "2.6.2",
     "@types/node": "26.6.6",
     "@vitest/coverage-v8": "5.1.0",
     "eslint": "10.14.0",

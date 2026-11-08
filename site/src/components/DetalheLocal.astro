@@ -51,33 +51,35 @@ const caminho = `${t.caminho}#${local.id}`;
     </button>
   </div>
 
-  <dl class="grid content-start gap-3 text-base">
-    {local.morada && (
+  <div class="grid content-start gap-3 text-base">
+    <dl class="grid gap-3">
+      {local.morada && (
+        <div>
+          <dt class="font-semibold">{t.morada}</dt>
+          <dd class="text-texto-secundario">{local.morada}</dd>
+        </div>
+      )}
       <div>
-        <dt class="font-semibold">{t.morada}</dt>
-        <dd class="text-texto-secundario">{local.morada}</dd>
+        <dt class="font-semibold">{t.responsavel}</dt>
+        <dd class="text-texto-secundario">{entidade.nome}</dd>
       </div>
-    )}
-    <div>
-      <dt class="font-semibold">{t.responsavel}</dt>
-      <dd class="text-texto-secundario">{entidade.nome}</dd>
-    </div>
-    {telefones.length > 0 && (
-      <div>
-        <dt class="font-semibold">{t.telefone}</dt>
-        <dd>
-          {telefones.map((tel) => (
-            <a
-              class="ligacao mr-3 inline-flex min-h-12 items-center gap-1"
-              href={`tel:${tel.replace(/\s/g, "")}`}
-            >
-              <Icone nome="call" class="size-4" />
-              {tel}
-            </a>
-          ))}
-        </dd>
-      </div>
-    )}
+      {telefones.length > 0 && (
+        <div>
+          <dt class="font-semibold">{t.telefone}</dt>
+          <dd>
+            {telefones.map((tel) => (
+              <a
+                class="ligacao mr-3 inline-flex min-h-12 items-center gap-1"
+                href={`tel:${tel.replace(/\s/g, "")}`}
+              >
+                <Icone nome="call" class="size-4" />
+                {tel}
+              </a>
+            ))}
+          </dd>
+        </div>
+      )}
+    </dl>
     <div>
       <Selo
         idioma={idioma}
@@ -87,7 +89,7 @@ const caminho = `${t.caminho}#${local.id}`;
         forma="longo"
       />
     </div>
-  </dl>
+  </div>
 
   <div class="grid content-start gap-4 text-base">
     <section>

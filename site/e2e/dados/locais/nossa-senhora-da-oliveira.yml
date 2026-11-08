@@ -1,0 +1,32 @@
+id: nossa-senhora-da-oliveira
+tipo: igreja
+entidade: nossa-senhora-da-oliveira
+concelho: Guimarães
+nome: Igreja de Nossa Senhora da Oliveira
+orago: Nossa Senhora da Oliveira
+localidade: Nossa Senhora da Oliveira
+freguesia: Oliveira, São Paio e São Sebastião
+morada: Igreja de Nossa Senhora da Oliveira, Largo da Oliveira, Oliveira, São Paio e São Sebastião, Guimarães, Braga, 4800-443, Portugal
+codigo_postal: 4800-443
+geo:
+  lat: 41.442998
+  lon: -8.292359
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [seg, ter, qua, qui, sex]
+  hora: '19:00'
+- tipo: missa
+  dias: [dom]
+  hora: '12:00'
+- tipo: missa
+  dias: [dom]
+  hora: '19:00'
+excecoes: []
+notas: []
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: false
+  motivos: []

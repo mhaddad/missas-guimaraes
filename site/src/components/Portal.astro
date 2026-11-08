@@ -9,6 +9,7 @@ import Base from "../layouts/Base.astro";
 import { formatar, TEXTOS, type Idioma } from "../i18n/index.ts";
 import { dadosPortal, locaisPublicados } from "../lib/dados-build.ts";
 import { formatarDataLonga, formatarDiaEMes } from "../lib/formatos.ts";
+import { jsonLd } from "../lib/jsonld.ts";
 import { proximasSolenidades } from "../lib/portal.ts";
 import CartaoIgreja from "./CartaoIgreja.astro";
 import Icone from "./Icone.astro";
@@ -25,6 +26,11 @@ const { data: hoje, hora } = momentoEmLisboa(agora);
 const locais = locaisPublicados();
 const dados = dadosPortal(agora, hoje);
 const solenidades = proximasSolenidades(dados.calendario, hoje);
+const urlPagina = new URL(t.caminho, Astro.site).toString();
+const estruturados = JSON.stringify(jsonLd(locais, idioma, urlPagina, hoje)).replace(
+  /</g,
+  "\\u003c",
+);
 const nomeSolenidade = (s: (typeof solenidades)[number]) =>
   s.preceito ? (s.nome ?? s.id) : ((t.moveis as Record<string, string>)[s.id] ?? s.id);
 ---
@@ -271,6 +277,7 @@ const nomeSolenidade = (s: (typeof solenidades)[number]) =>
     id="dados-portal"
     set:html={JSON.stringify(dados).replace(/</g, "\\u003c")}
   />
+  <script type="application/ld+json" set:html={estruturados} />
   <script type="application/json" id="idioma-portal" set:html={JSON.stringify({ idioma })} />
 </Base>
 

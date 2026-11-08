@@ -8,8 +8,12 @@ import { lerCalendario, lerEntidade, lerLocal } from "@missas/dados";
 import type { Calendario, Entidade, Local } from "@missas/horarios";
 import { textoPesquisa, type DadosPortal, type LocalPortal } from "./portal.ts";
 
-/** Pasta `dados/` do repositório, procurada a partir da pasta atual. */
+/**
+ * Pasta `dados/` do repositório, procurada a partir da pasta atual. `MISSAS_DADOS` aponta
+ * para outra pasta (os testes de ponta a ponta usam dados fixos em `site/e2e/dados/`).
+ */
 function pastaDados(): string {
+  if (process.env.MISSAS_DADOS) return resolve(process.env.MISSAS_DADOS);
   let pasta = process.cwd();
   for (;;) {
     const candidata = join(pasta, "dados");
