@@ -1,11 +1,5 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { validarDados, type ArquivoDados } from "./validar.ts";
-
-const esquemas = {
-  local: JSON.parse(readFileSync("dados/schema/local.schema.json", "utf8")) as object,
-  entidade: JSON.parse(readFileSync("dados/schema/entidade.schema.json", "utf8")) as object,
-};
 
 const entidade = `id: paroquia-exemplo
 tipo: paroquia
@@ -24,6 +18,7 @@ geo:
   lat: 41.44
   lon: -8.29
 publicar: true
+dias_santos: null
 horarios:
 - tipo: missa
   dias: [dom]
@@ -44,17 +39,18 @@ function arquivos(sobre: Partial<Record<"entidade" | "local", string>> = {}): Ar
 
 describe("validarDados", () => {
   it("aceita uma entidade e um local coerentes", () => {
-    expect(validarDados(arquivos(), esquemas)).toEqual([]);
+    expect(validarDados(arquivos())).toEqual([]);
   });
 
   it("recusa YAML mal formado", () => {
-    const erros = validarDados(arquivos({ local: "id: [sem fecho" }), esquemas);
+    const erros = validarDados(arquivos({ local: "id: [sem fecho" }));
     expect(erros[0]?.mensagem).toMatch(/^YAML inválido/);
   });
 
   it("recusa campos fora do esquema, como a antiga proveniência", () => {
-    const erros = validarDados(arquivos({ local: `${local}origem:\n  fonte: x\n` }), esquemas);
+    const erros = validarDados(arquivos({ local: `${local}origem:\n  fonte: x\n` }));
     expect(erros).toContainEqual({
+      nivel: "erro",
       caminho: "dados/locais/igreja-exemplo.yml",
       mensagem: "esquema: (raiz) must NOT have additional properties (origem)",
     });
@@ -62,19 +58,19 @@ describe("validarDados", () => {
 
   it("recusa datas inválidas sem gerar erros de integridade em cascata", () => {
     const erros = validarDados(
-      arquivos({ local: local.replace("confirmado_em: null", "confirmado_em: 2026-13-45") }),
-      esquemas,
+      arquivos({ local: local.replace("confirmado_em: null", "confirmado_em: '2026-13-45'") })
     );
     expect(erros).toEqual([
       {
+        nivel: "erro",
         caminho: "dados/locais/igreja-exemplo.yml",
-        mensagem: 'esquema: /confirmado_em must match format "date"',
+        mensagem: "confirmado_em: data inválida (2026-13-45)",
       },
     ]);
   });
 
   it("recusa coordenadas fora de Guimarães e Vizela", () => {
-    const erros = validarDados(arquivos({ local: local.replace("41.44", "38.72") }), esquemas);
+    const erros = validarDados(arquivos({ local: local.replace("41.44", "38.72") }));
     expect(erros.map((e) => e.mensagem)).toContain("esquema: /geo/lat must be >= 41.3");
   });
 
@@ -83,8 +79,7 @@ describe("validarDados", () => {
       [
         { caminho: "dados/entidades/paroquia-exemplo.yml", conteudo: entidade },
         { caminho: "dados/locais/outro-nome.yml", conteudo: local },
-      ],
-      esquemas,
+      ]
     );
     expect(erros.map((e) => e.mensagem)).toContain(
       'integridade: o id "igreja-exemplo" não coincide com o nome do arquivo "outro-nome"',
@@ -93,12 +88,88 @@ describe("validarDados", () => {
 
   it("exige a ligação entre entidade e local nos dois sentidos", () => {
     const semLocal = entidade.replace("- igreja-exemplo", "- outra-igreja");
-    const mensagens = validarDados(arquivos({ entidade: semLocal }), esquemas).map(
+    const mensagens = validarDados(arquivos({ entidade: semLocal })).map(
       (e) => e.mensagem,
     );
     expect(mensagens).toContain(
       'integridade: a entidade "paroquia-exemplo" não lista este local em "locais"',
     );
     expect(mensagens).toContain('integridade: o local "outra-igreja" não existe');
+  });
+
+  it("verifica o calendário e usa-o nas regras de negócio", () => {
+    const calendario = `dias_santos_de_preceito:
+  estado: documentado
+  regras:
+  - {id: imaculada-conceicao, nome: Imaculada Conceição, data: '12-08'}
+anos:
+  2026:
+    dias_santos:
+      imaculada-conceicao: '2026-12-09'
+    moveis: {}
+    hora_legal:
+      inicio_verao: '2026-03-29'
+      inicio_inverno: '2026-10-25'
+`;
+    const comExcecao = local.replace(
+      "excecoes: []",
+      "excecoes:\n- {data: '2026-12-08', acao: cancelar, hora: '10:00'}",
+    );
+    const problemas = validarDados([
+      { caminho: "dados/calendario.yml", conteudo: calendario },
+      ...arquivos({ local: comExcecao }),
+    ]);
+    expect(problemas).toEqual([
+      {
+        nivel: "erro",
+        caminho: "dados/calendario.yml",
+        mensagem: "calendário: anos.2026.dias_santos.imaculada-conceicao: 2026-12-09 ≠ 2026-12-08",
+      },
+      {
+        nivel: "aviso",
+        caminho: "dados/locais/igreja-exemplo.yml",
+        mensagem: "excecoes[0]: não há nenhuma celebração às 10:00 nesse dia; a exceção não tem efeito",
+      },
+    ]);
+  });
+
+  it("recusa arquivos fora do formato canónico e extensões erradas", () => {
+    const problemas = validarDados([
+      { caminho: "dados/entidades/paroquia-exemplo.yml", conteudo: entidade.replace("tipo: paroquia\n", "") + "tipo: paroquia\n" },
+      { caminho: "dados/locais/igreja-exemplo.yaml", conteudo: local },
+      { caminho: "dados/outro.txt", conteudo: "" },
+    ]);
+    expect(problemas.map((p) => p.mensagem)).toEqual([
+      "formato: não está no formato canónico (corra `npm run formatar:dados`)",
+      "extensão: os arquivos de dados usam .yml",
+      'integridade: o local "igreja-exemplo" não existe',
+    ]);
+    expect(validarDados(arquivos({ entidade: entidade + "orago: null\n" }), { formatoCanonico: false })).toEqual([]);
+  });
+
+  it("recusa confirmações no futuro", () => {
+    const confirmado = local.replace("confirmado_em: null", "confirmado_em: '2026-11-09'");
+    expect(validarDados(arquivos({ local: confirmado }), { hoje: "2026-11-08" })).toEqual([
+      {
+        nivel: "erro",
+        caminho: "dados/locais/igreja-exemplo.yml",
+        mensagem: "confirmado_em: a data de confirmação está no futuro",
+      },
+    ]);
+  });
+
+  it("um local que aponta para outra entidade", () => {
+    const outra = `id: outra
+tipo: paroquia
+nome: Outra
+diocese: Braga
+locais:
+- igreja-exemplo
+`;
+    const mensagens = validarDados([
+      ...arquivos(),
+      { caminho: "dados/entidades/outra.yml", conteudo: outra },
+    ]).map((p) => p.mensagem);
+    expect(mensagens).toEqual(['integridade: o local "igreja-exemplo" pertence a "paroquia-exemplo"']);
   });
 });

@@ -1,12 +1,25 @@
 /**
- * Validações dos dados (§8.3). No E0: esquema JSON e integridade (nome do arquivo = id,
- * ligações entre entidades e locais nos dois sentidos). As regras de negócio do motor,
- * o formato canónico e a geografia por polígonos entram no E1.
+ * Validações dos dados (§8.3): esquema (validadores pré-compilados), integridade entre
+ * arquivos, regras de negócio do motor, calendário e formato canónico. É o mesmo código na
+ * CI, no Worker e no GitHub Actions. Erros impedem a gravação; avisos não.
  */
-import { Ajv2020 } from "ajv/dist/2020.js";
 import type { ErrorObject } from "ajv";
-import addFormats from "ajv-formats";
 import { parse } from "yaml";
+import {
+  prepararCalendario,
+  validar as validarRegrasDeNegocio,
+  verificarCalendario,
+  type Calendario,
+  type CalendarioMotor,
+  type Local,
+} from "@missas/horarios";
+import { formatar } from "./serializar.ts";
+import {
+  validarCalendario,
+  validarEntidade,
+  validarLocal,
+  type FuncaoValidacao,
+} from "./validadores.gerado.js";
 
 export interface ArquivoDados {
   /** Caminho relativo à raiz do repositório, ex.: `dados/locais/aldao.yml`. */
@@ -14,14 +27,17 @@ export interface ArquivoDados {
   conteudo: string;
 }
 
-export interface ErroValidacao {
+export interface ProblemaDados {
+  nivel: "erro" | "aviso";
   caminho: string;
   mensagem: string;
 }
 
-export interface Esquemas {
-  local: object;
-  entidade: object;
+export interface OpcoesValidacao {
+  /** Hoje, em Lisboa (AAAA-MM-DD), para recusar confirmações no futuro. */
+  hoje?: string;
+  /** Verifica o formato canónico (C31). Por omissão, sim. */
+  formatoCanonico?: boolean;
 }
 
 interface Registo {
@@ -32,6 +48,7 @@ interface Registo {
 
 const PASTA_LOCAIS = "dados/locais/";
 const PASTA_ENTIDADES = "dados/entidades/";
+const CAMINHO_CALENDARIO = "dados/calendario.yml";
 
 function idPeloCaminho(caminho: string): string {
   const nome = caminho.split("/").pop() ?? "";
@@ -49,24 +66,29 @@ function descreverErroEsquema(erro: ErrorObject): string {
   return `esquema: ${onde} ${erro.message ?? "inválido"}${extra}`;
 }
 
-export function validarDados(arquivos: ArquivoDados[], esquemas: Esquemas): ErroValidacao[] {
-  const ajv = new Ajv2020({ allErrors: true, strict: false });
-  addFormats.default(ajv);
-  const validarLocal = ajv.compile(esquemas.local);
-  const validarEntidade = ajv.compile(esquemas.entidade);
-
-  const erros: ErroValidacao[] = [];
+export function validarDados(arquivos: ArquivoDados[], opcoes: OpcoesValidacao = {}): ProblemaDados[] {
+  const { hoje, formatoCanonico = true } = opcoes;
+  const problemas: ProblemaDados[] = [];
+  const erro = (caminho: string, mensagem: string) => problemas.push({ nivel: "erro", caminho, mensagem });
   const locais = new Map<string, { caminho: string; dados: Registo }>();
   const entidades = new Map<string, { caminho: string; dados: Registo }>();
   // Arquivos que já falharam (YAML ou esquema): não geram erros de integridade em cascata.
   const comErro = new Set<string>();
+  let calendario: CalendarioMotor | undefined;
+
+  const lidos: { arquivo: ArquivoDados; tipo: "local" | "entidade" | "calendario"; dados: unknown }[] = [];
 
   for (const arquivo of arquivos) {
-    const eLocal = arquivo.caminho.startsWith(PASTA_LOCAIS);
-    const eEntidade = arquivo.caminho.startsWith(PASTA_ENTIDADES);
-    if (!eLocal && !eEntidade) continue;
+    const tipo = arquivo.caminho.startsWith(PASTA_LOCAIS)
+      ? "local"
+      : arquivo.caminho.startsWith(PASTA_ENTIDADES)
+        ? "entidade"
+        : arquivo.caminho === CAMINHO_CALENDARIO
+          ? "calendario"
+          : undefined;
+    if (!tipo) continue;
     if (!arquivo.caminho.endsWith(".yml")) {
-      erros.push({ caminho: arquivo.caminho, mensagem: "extensão: os arquivos de dados usam .yml" });
+      erro(arquivo.caminho, "extensão: os arquivos de dados usam .yml");
       continue;
     }
 
@@ -74,29 +96,38 @@ export function validarDados(arquivos: ArquivoDados[], esquemas: Esquemas): Erro
     try {
       dados = parse(arquivo.conteudo);
     } catch (e) {
-      erros.push({ caminho: arquivo.caminho, mensagem: `YAML inválido: ${(e as Error).message}` });
+      erro(arquivo.caminho, `YAML inválido: ${(e as Error).message}`);
       comErro.add(idPeloCaminho(arquivo.caminho));
       continue;
     }
 
-    const validar = eLocal ? validarLocal : validarEntidade;
-    if (!validar(dados)) {
-      for (const erro of validar.errors ?? []) {
-        erros.push({ caminho: arquivo.caminho, mensagem: descreverErroEsquema(erro) });
-      }
+    const validador: FuncaoValidacao =
+      tipo === "local" ? validarLocal : tipo === "entidade" ? validarEntidade : validarCalendario;
+    if (!validador(dados)) {
+      for (const e of validador.errors ?? []) erro(arquivo.caminho, descreverErroEsquema(e));
       comErro.add(idPeloCaminho(arquivo.caminho));
+      continue;
+    }
+
+    if (formatoCanonico && formatar(arquivo.conteudo, tipo) !== arquivo.conteudo) {
+      erro(arquivo.caminho, "formato: não está no formato canónico (corra `npm run formatar:dados`)");
+    }
+
+    if (tipo === "calendario") {
+      for (const mensagem of verificarCalendario(dados as Calendario)) {
+        erro(arquivo.caminho, `calendário: ${mensagem}`);
+      }
+      calendario = prepararCalendario(dados as Calendario);
       continue;
     }
 
     const registo = dados as Registo;
     const id = idPeloCaminho(arquivo.caminho);
     if (registo.id !== id) {
-      erros.push({
-        caminho: arquivo.caminho,
-        mensagem: `integridade: o id "${String(registo.id)}" não coincide com o nome do arquivo "${id}"`,
-      });
+      erro(arquivo.caminho, `integridade: o id "${String(registo.id)}" não coincide com o nome do arquivo "${id}"`);
     }
-    (eLocal ? locais : entidades).set(id, { caminho: arquivo.caminho, dados: registo });
+    (tipo === "local" ? locais : entidades).set(id, { caminho: arquivo.caminho, dados: registo });
+    lidos.push({ arquivo, tipo, dados });
   }
 
   for (const [id, { caminho, dados }] of locais) {
@@ -104,12 +135,9 @@ export function validarDados(arquivos: ArquivoDados[], esquemas: Esquemas): Erro
     const entidade = entidades.get(entidadeId);
     if (!entidade) {
       if (comErro.has(entidadeId)) continue;
-      erros.push({ caminho, mensagem: `integridade: a entidade "${entidadeId}" não existe` });
+      erro(caminho, `integridade: a entidade "${entidadeId}" não existe`);
     } else if (!(entidade.dados.locais as string[]).includes(id)) {
-      erros.push({
-        caminho,
-        mensagem: `integridade: a entidade "${entidadeId}" não lista este local em "locais"`,
-      });
+      erro(caminho, `integridade: a entidade "${entidadeId}" não lista este local em "locais"`);
     }
   }
 
@@ -118,15 +146,21 @@ export function validarDados(arquivos: ArquivoDados[], esquemas: Esquemas): Erro
       const local = locais.get(localId);
       if (!local) {
         if (comErro.has(localId)) continue;
-        erros.push({ caminho, mensagem: `integridade: o local "${localId}" não existe` });
+        erro(caminho, `integridade: o local "${localId}" não existe`);
       } else if (local.dados.entidade !== id) {
-        erros.push({
-          caminho,
-          mensagem: `integridade: o local "${localId}" pertence a "${String(local.dados.entidade)}"`,
-        });
+        erro(caminho, `integridade: o local "${localId}" pertence a "${String(local.dados.entidade)}"`);
       }
     }
   }
 
-  return erros;
+  // Regras de negócio (§8.3, item 4), já com o calendário para os dias santos.
+  for (const { arquivo, tipo, dados } of lidos) {
+    if (tipo !== "local") continue;
+    const contexto = { ...(hoje !== undefined && { hoje }), ...(calendario && { calendario }) };
+    for (const p of validarRegrasDeNegocio(dados as Local, contexto)) {
+      problemas.push({ nivel: p.nivel, caminho: arquivo.caminho, mensagem: `${p.caminho}: ${p.mensagem}` });
+    }
+  }
+
+  return problemas;
 }
