@@ -3,7 +3,19 @@ import tseslint from "typescript-eslint";
 import astro from "eslint-plugin-astro";
 
 export default tseslint.config(
-  { ignores: ["**/dist/", "**/.astro/", "**/.wrangler/", "**/node_modules/", "dados/"] },
+  {
+    ignores: [
+      "**/dist/",
+      "**/.astro/",
+      "**/.wrangler/",
+      "**/node_modules/",
+      "dados/",
+      "**/dist-e2e/",
+      "test-results/",
+      "playwright-report/",
+      ".lighthouseci/",
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.strict,
   ...astro.configs.recommended,

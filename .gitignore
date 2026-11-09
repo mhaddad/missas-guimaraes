@@ -18,3 +18,9 @@ coverage/
 
 # Sistema
 .DS_Store
+
+# Testes de ponta a ponta e Lighthouse
+dist-e2e/
+test-results/
+playwright-report/
+.lighthouseci/

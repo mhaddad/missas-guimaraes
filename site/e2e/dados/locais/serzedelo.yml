@@ -1,0 +1,35 @@
+id: serzedelo
+tipo: igreja
+entidade: serzedelo
+concelho: Guimarães
+nome: Igreja de São Pedro
+orago: São Pedro
+localidade: Serzedelo
+freguesia: Serzedelo
+morada: EN 310, Crasto, Serzedelo, Guimarães, Braga, 4765-533, Portugal
+codigo_postal: 4765-533
+geo:
+  lat: 41.402377
+  lon: -8.368497
+publicar: false
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [sab]
+  hora: '16:30'
+  quinzenal:
+    referencia: null
+- tipo: missa
+  dias: [dom]
+  hora: '08:00'
+excecoes: []
+notas:
+- Em semanas alternadas com Calvos.
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: true
+  motivos:
+  - 'POSSIVELMENTE FORA DO CONCELHO: arciprestado Póvoa de Lanhoso, mesma morada e coordenadas de Cerzedelo (Santa Cristina). Provável Serzedelo (Póvoa de Lanhoso) mal geocodificado.'
+  - Sábado quinzenal, alternando com Calvos — falta a data de referência.
+  - 'Não publicar: Confirmar se pertence ao concelho de Guimarães.'

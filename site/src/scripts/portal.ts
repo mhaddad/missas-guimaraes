@@ -398,9 +398,9 @@ function desenhar(): void {
   const momento = { data: hoje, hora };
 
   // Controlos
-  marcar("[data-dia]", "data-dia", estado.dia);
-  marcar("[data-concelho]", "data-concelho", estado.concelho);
-  marcar("[data-vista]", "data-vista", estado.vista);
+  marcar("button[data-dia]", "data-dia", estado.dia);
+  marcar("button[data-concelho]", "data-concelho", estado.concelho);
+  marcar("button[data-vista]", "data-vista", estado.vista);
   if (elPesquisa.value !== estado.q) elPesquisa.value = estado.q;
   elLimpar.hidden = estado.q === "";
   elFiltroTipo.hidden = estado.tipo === null;
@@ -410,13 +410,16 @@ function desenhar(): void {
 
   const filtrados = filtrarLocais(dados.locais, estado);
   const dia = celebracoesDoDia(filtrados, estado.dia, hoje, calendario, estado.tipo);
-  const todosDoDia = celebracoesDoDia(
-    filtrarLocais(dados.locais, { ...estado, concelho: "todos" }),
-    estado.dia,
-    hoje,
-    calendario,
-    estado.tipo,
-  );
+  const todosDoDia =
+    estado.concelho === "todos"
+      ? dia
+      : celebracoesDoDia(
+          filtrarLocais(dados.locais, { ...estado, concelho: "todos" }),
+          estado.dia,
+          hoje,
+          calendario,
+          estado.tipo,
+        );
 
   // Faixa de dia santo (§6.4)
   if (dia.diaSanto) {
@@ -431,7 +434,7 @@ function desenhar(): void {
     estado.vista === "hora"
       ? todosDoDia.celebracoes.length + todosDoDia.semInformacao.length
       : filtrarLocais(dados.locais, { ...estado, concelho: "todos" }).length;
-  const chipTodos = document.querySelector('[data-concelho="todos"]');
+  const chipTodos = document.querySelector('button[data-concelho="todos"]');
   if (chipTodos) chipTodos.textContent = formatar(t.todos, { n: totalTodos });
 
   if (estado.vista === "hora") {
@@ -452,7 +455,7 @@ function desenhar(): void {
     elAindaHoje.textContent = plural(idioma, t.aindaHoje, futuras.length);
 
     const proxima = futuras[0];
-    if (estado.dia === "hoje" && proxima && !estado.q && ehHoje) {
+    if (estado.dia === "hoje" && proxima && ehHoje) {
       elASeguir.hidden = false;
       elASeguir.replaceChildren(cartaoASeguir(proxima, minutosAte(momento, proxima), hoje));
       prepararAcoes(elASeguir);
@@ -611,19 +614,19 @@ function iniciar(): void {
 
   // Eventos
   document
-    .querySelectorAll<HTMLButtonElement>("[data-dia]")
+    .querySelectorAll<HTMLButtonElement>("button[data-dia]")
     .forEach((b) =>
       b.addEventListener("click", () => mudar({ dia: b.dataset.dia as Estado["dia"] })),
     );
   document
-    .querySelectorAll<HTMLButtonElement>("[data-concelho]")
+    .querySelectorAll<HTMLButtonElement>("button[data-concelho]")
     .forEach((b) =>
       b.addEventListener("click", () =>
         mudar({ concelho: b.dataset.concelho as Estado["concelho"] }),
       ),
     );
   document
-    .querySelectorAll<HTMLButtonElement>("[data-vista]")
+    .querySelectorAll<HTMLButtonElement>("button[data-vista]")
     .forEach((b) =>
       b.addEventListener("click", () => mudar({ vista: b.dataset.vista as Estado["vista"] })),
     );

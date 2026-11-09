@@ -3,5 +3,12 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "include": ["pacotes/*/src/**/*.ts", "scripts/**/*.ts", "vitest.config.ts", "eslint.config.js"]
+  "include": [
+    "pacotes/*/src/**/*.ts",
+    "scripts/**/*.ts",
+    "vitest.config.ts",
+    "eslint.config.js",
+    "site/e2e/**/*.ts",
+    "playwright.config.ts"
+  ]
 }

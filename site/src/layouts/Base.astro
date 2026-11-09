@@ -12,6 +12,8 @@ interface Props {
 }
 
 const { titulo, descricao, idioma = "pt-PT", publico = false } = Astro.props;
+const absoluto = (caminho: string) => new URL(caminho, Astro.site).toString();
+const LOCALES = { "pt-PT": "pt_PT", en: "en_GB", es: "es_ES" } as const;
 ---
 
 <!doctype html>
@@ -25,11 +27,26 @@ const { titulo, descricao, idioma = "pt-PT", publico = false } = Astro.props;
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    {publico &&
-      IDIOMAS.map((i) => (
-        <link rel="alternate" hreflang={TEXTOS[i].idioma} href={TEXTOS[i].caminho} />
-      ))}
-    {publico && <link rel="alternate" hreflang="x-default" href="/" />}
+    {publico && (
+      <>
+        <link rel="canonical" href={absoluto(TEXTOS[idioma].caminho)} />
+        {IDIOMAS.map((i) => (
+          <link rel="alternate" hreflang={TEXTOS[i].idioma} href={absoluto(TEXTOS[i].caminho)} />
+        ))}
+        <link rel="alternate" hreflang="x-default" href={absoluto("/")} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content={TEXTOS[idioma].arciprestado} />
+        <meta property="og:title" content={titulo} />
+        <meta property="og:description" content={descricao} />
+        <meta property="og:url" content={absoluto(TEXTOS[idioma].caminho)} />
+        <meta property="og:locale" content={LOCALES[idioma]} />
+        <meta property="og:image" content={absoluto("/partilha.png")} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content={TEXTOS[idioma].arciprestado} />
+        <meta name="twitter:card" content="summary_large_image" />
+      </>
+    )}
     <slot name="head" />
   </head>
   <body class="pb-20 md:pb-0">

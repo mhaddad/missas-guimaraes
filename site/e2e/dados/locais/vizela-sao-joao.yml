@@ -1,0 +1,42 @@
+id: vizela-sao-joao
+tipo: igreja
+entidade: vizela-sao-joao
+concelho: Vizela
+nome: Igreja de São João
+orago: São João
+localidade: Caldas de Vizela
+freguesia: Caldas de Vizela (São Miguel e São João)
+morada: null
+codigo_postal: null
+geo:
+  lat: 41.397279
+  lon: -8.314243
+publicar: true
+dias_santos: null
+horarios:
+- tipo: missa
+  dias: [seg, ter, qua, qui, sex]
+  hora: '18:00'
+  epoca: inverno
+- tipo: missa
+  dias: [seg, ter, qua, qui, sex]
+  hora: '19:00'
+  epoca: verao
+- tipo: missa
+  dias: [dom]
+  hora: '09:00'
+  epoca: verao
+- tipo: missa
+  dias: [dom]
+  hora: '11:30'
+  epoca: verao
+excecoes: []
+notas:
+- Horário de domingo de inverno por confirmar.
+confirmado_em: null
+confirmado_por: null
+revisao:
+  pendente: true
+  motivos:
+  - 'Fonte sem horário de domingo de inverno: só foram importadas as missas de domingo de verão (09:00, 11:30). Confirmar o horário de inverno — neste momento o site não mostra missa de domingo em São João.'
+  - Sem morada na fonte.
