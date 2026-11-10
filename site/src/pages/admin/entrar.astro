@@ -1,0 +1,34 @@
+---
+/** E-0 — Entrada (§7.2, passo 4), com os textos corrigidos de §6.10. */
+import Painel from "../../layouts/Painel.astro";
+---
+
+<Painel titulo="Entrar" ativo="nenhum" simples>
+  <section class="mx-auto mt-6 max-w-xl overflow-hidden rounded-xl border border-borda bg-cartao shadow-sm">
+    <div class="h-2 bg-dourado"></div>
+    <div class="grid gap-5 p-6 text-center md:p-10">
+      <img src="/marca/selo.svg" alt="" width="120" height="115" class="mx-auto h-28 w-auto" />
+      <div>
+        <h1 class="text-2xl font-bold">Painel dos horários</h1>
+        <p class="mt-1 text-lg font-semibold text-dourado-texto">
+          Arciprestado de Guimarães e Vizela
+        </p>
+      </div>
+      <p class="rounded-cartao bg-superficie p-4 text-base">
+        Para as paróquias e outras entidades atualizarem os horários das missas e celebrações. Entre
+        com a conta Google do e-mail que registou no Arciprestado.
+      </p>
+      <a
+        href="/admin/"
+        class="inline-flex min-h-14 items-center justify-center gap-3 rounded-cartao bg-ardosia px-6 text-lg font-semibold text-white"
+      >
+        Continuar com a conta Google
+      </a>
+      <p class="text-base text-texto-secundario">
+        Não tem uma conta Google? Pode criar uma com o e-mail que já usa, sem criar um Gmail: na
+        página de criação de conta da Google, escolha "Usar o meu endereço de e-mail atual".
+      </p>
+      <p class="text-sm text-texto-secundario">As alterações aparecem no site em poucos minutos.</p>
+    </div>
+  </section>
+</Painel>

@@ -13,6 +13,12 @@
   "vars": {
     // "homologacao" até ao E8 (§9.9); em produção passa a "producao".
     "AMBIENTE": "homologacao",
+    // Verificação do JWT do Access (§7.2, E3.2). Não são segredos: o domínio da equipa e o AUD
+    // aparecem no próprio redirecionamento para o login.
+    "ACCESS_TEAM_DOMAIN": "jolly-mouse-ff5d.cloudflareaccess.com",
+    "ACCESS_AUD": "53a552d99248a72f046b8d19a7d5ee501587c0c4c2fc5577c48c9081effc7cbe",
+    // Repositório lido pela GitHub App do painel (§9.5). A chave privada é um segredo do Worker.
+    "GITHUB_REPOSITORIO": "mhaddad/missas-guimaraes",
   },
   // Dados privados (§9.3): relatos do público (E2.9) e, a partir do E3, contactos e pedidos.
   // Namespace só da homologação; a produção terá outro (§9.9).

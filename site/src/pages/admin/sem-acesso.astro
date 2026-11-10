@@ -1,0 +1,23 @@
+---
+/** Página de "sem acesso" (§7.2, E3.6, E3.8). */
+import Painel from "../../layouts/Painel.astro";
+---
+
+<Painel titulo="Sem acesso" ativo="nenhum" simples>
+  <section class="mx-auto mt-6 grid max-w-xl gap-4 rounded-xl border border-borda bg-cartao p-6 md:p-8">
+    <h1 class="text-2xl font-bold">Este e-mail não tem acesso ao painel</h1>
+    <p class="text-base">
+      Só entram as pessoas registadas pelo Arciprestado, depois de assinarem o formulário de adesão.
+      Se é da paróquia ou entidade e precisa de atualizar os horários, fale com a secretaria do
+      Arciprestado.
+    </p>
+    <p class="text-base text-texto-secundario">
+      Se entrou com outra conta Google por engano, saia e entre com a conta certa.
+    </p>
+    <p>
+      <a class="ligacao inline-flex min-h-12 items-center" href="/cdn-cgi/access/logout">
+        Sair e entrar com outra conta
+      </a>
+    </p>
+  </section>
+</Painel>

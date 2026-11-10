@@ -1,0 +1,160 @@
+---
+/** E-9 — Acessos (P8, só administradores): contactos, perfis, entidades e consentimento. */
+import Painel from "../../layouts/Painel.astro";
+---
+
+<Painel titulo="Acessos" ativo="acessos">
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <h1 class="text-2xl font-bold">Acessos</h1>
+    <button
+      type="button"
+      id="novo-contacto"
+      class="inline-flex min-h-12 items-center rounded-cartao bg-ardosia px-5 text-base font-semibold text-white"
+      hidden
+    >
+      Novo contacto
+    </button>
+  </div>
+  <p class="mb-6 max-w-3xl text-base text-texto-secundario">
+    Quem pode entrar no painel e o que pode editar. Um contacto só é criado depois de a pessoa
+    assinar o formulário de adesão. Para tirar o acesso a alguém, mude o estado para{" "}
+    <em>suspenso</em>.
+  </p>
+  <div id="lista-contactos" aria-live="polite">
+    <p class="text-texto-secundario">A carregar…</p>
+  </div>
+
+  <dialog
+    id="dialogo-contacto"
+    aria-labelledby="titulo-contacto"
+    class="m-auto w-[min(40rem,calc(100%-2rem))] rounded-xl border border-borda bg-cartao p-0 text-ardosia shadow-xl backdrop:bg-ardosia/50"
+  >
+    <form id="form-contacto" class="grid gap-4 p-5 md:p-6" novalidate>
+      <h2 id="titulo-contacto" class="text-xl font-semibold">
+        Contacto
+      </h2>
+      <div class="grid gap-4 md:grid-cols-2">
+        <label class="grid gap-1 font-semibold">
+          Nome
+          <input
+            name="nome"
+            required
+            maxlength="100"
+            class="min-h-12 rounded-cartao border border-borda px-3 font-normal"
+          />
+        </label>
+        <label class="grid gap-1 font-semibold">
+          E-mail (conta Google)
+          <input
+            name="email"
+            type="email"
+            required
+            maxlength="200"
+            class="min-h-12 rounded-cartao border border-borda px-3 font-normal"
+          />
+        </label>
+        <label class="grid gap-1 font-semibold">
+          Função
+          <select
+            name="funcao"
+            class="min-h-12 rounded-cartao border border-borda px-3 font-normal"
+          >
+            <option value="paroco">Pároco</option>
+            <option value="secretaria">Secretaria</option>
+            <option value="colaborador">Colaborador</option>
+            <option value="equipa">Equipa do Arciprestado</option>
+          </select>
+        </label>
+        <label class="grid gap-1 font-semibold">
+          Estado
+          <select
+            name="estado"
+            class="min-h-12 rounded-cartao border border-borda px-3 font-normal"
+          >
+            <option value="ativo">Ativo</option>
+            <option value="sem_lembretes">Ativo, sem lembretes por e-mail</option>
+            <option value="suspenso">Suspenso (não entra)</option>
+            <option value="removido">Removido</option>
+          </select>
+        </label>
+      </div>
+      <fieldset class="grid gap-2">
+        <legend class="font-semibold">Perfil</legend>
+        <label class="flex min-h-12 items-center gap-2">
+          <input type="radio" name="perfil" value="entidade" checked /> Entidade: edita só as
+          entidades escolhidas
+        </label>
+        <label class="flex min-h-12 items-center gap-2">
+          <input type="radio" name="perfil" value="admin" /> Administrador: vê e edita todas, gere
+          acessos
+        </label>
+      </fieldset>
+      <fieldset class="grid gap-2">
+        <legend class="font-semibold">Entidades</legend>
+        <input
+          id="filtro-entidades"
+          type="search"
+          placeholder="Procurar paróquia"
+          aria-label="Procurar entidade"
+          class="min-h-12 rounded-cartao border border-borda px-3"
+        />
+        <div
+          id="lista-entidades"
+          class="grid max-h-56 gap-1 overflow-y-auto rounded-cartao border border-borda p-2"
+        ></div>
+      </fieldset>
+      <fieldset class="grid gap-4 md:grid-cols-3">
+        <legend class="font-semibold">Consentimento (formulário de adesão)</legend>
+        <label class="grid gap-1">
+          Assinado em
+          <input
+            name="consentimento_em"
+            type="date"
+            required
+            class="min-h-12 rounded-cartao border border-borda px-3"
+          />
+        </label>
+        <label class="grid gap-1">
+          Versão do formulário
+          <input
+            name="consentimento_versao"
+            required
+            maxlength="40"
+            value="v1"
+            class="min-h-12 rounded-cartao border border-borda px-3"
+          />
+        </label>
+        <label class="grid gap-1">
+          Meio
+          <select
+            name="consentimento_meio"
+            class="min-h-12 rounded-cartao border border-borda px-3"
+          >
+            <option value="papel">Papel</option>
+            <option value="proprio">O próprio (equipa)</option>
+          </select>
+        </label>
+      </fieldset>
+      <p
+        id="estado-contacto"
+        role="status"
+        class="text-base font-semibold text-erro empty:hidden"
+      ></p>
+      <div class="flex flex-wrap justify-end gap-3">
+        <button type="button" class="botao-secundario" data-fechar>
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          class="inline-flex min-h-12 items-center rounded-cartao bg-ardosia px-5 text-base font-semibold text-white"
+        >
+          Gravar
+        </button>
+      </div>
+    </form>
+  </dialog>
+</Painel>
+
+<script>
+  import "../../scripts/painel-acessos.ts";
+</script>
