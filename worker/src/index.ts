@@ -1,9 +1,10 @@
 /**
- * Worker do projeto (PLANO §9.2). No E0: serve o site e protege a homologação da indexação (D26).
- * A API, a identidade pelo Access e os crons entram a partir do E3.
+ * Worker do projeto (§9.2): serve o site, protege a homologação da indexação (D26) e recebe os
+ * relatos do público (E2.9). A identidade pelo Access, o resto da API e os crons entram no E3.
  */
+import { tratarRelato, type EnvRelato } from "./relato.ts";
 
-export interface Env {
+export interface Env extends EnvRelato {
   ASSETS: { fetch(pedido: Request): Promise<Response> };
   AMBIENTE: "homologacao" | "producao";
 }
@@ -25,6 +26,11 @@ export default {
 
     if (url.pathname === "/api/saude") {
       const resposta = Response.json({ ok: true, ambiente: env.AMBIENTE });
+      return homologacao ? semIndexacao(resposta) : resposta;
+    }
+
+    if (url.pathname === "/api/relato") {
+      const resposta = await tratarRelato(pedido, env);
       return homologacao ? semIndexacao(resposta) : resposta;
     }
 

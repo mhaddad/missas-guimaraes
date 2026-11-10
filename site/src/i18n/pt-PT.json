@@ -162,5 +162,21 @@
   "barraParoquias": "Paróquias",
   "barraProcurar": "Procurar",
   "disponivelEmOutroIdioma": "Este site também está disponível em português.",
-  "abrirVersao": "Abrir"
+  "abrirVersao": "Abrir",
+  "reportar": "Reportar erro",
+  "reportarGeral": "Reportar erro ou alteração",
+  "reportarTitulo": "Reportar um erro ou alteração",
+  "reportarIgreja": "Igreja",
+  "reportarSemIgreja": "Geral (nenhuma igreja em particular)",
+  "reportarMensagem": "O que está errado?",
+  "reportarAjuda": "Por exemplo: a missa de domingo passou para as 10:30. Não escreva o seu nome, e-mail nem telefone: não precisamos deles.",
+  "reportarEnviar": "Enviar",
+  "reportarCancelar": "Cancelar",
+  "reportarFechar": "Fechar",
+  "relatoEnviado": "Obrigado. A equipa do Arciprestado vai confirmar com a paróquia antes de mudar o horário.",
+  "relatoErro": "Não foi possível enviar. Tente novamente mais tarde.",
+  "relatoLimite": "Demasiados envios seguidos. Tente daqui a um minuto.",
+  "relatoVerificacao": "Aguarde a verificação anti-spam e tente outra vez.",
+  "relatoCurto": "Escreva pelo menos 10 caracteres.",
+  "relatoEnviando": "A enviar…"
 }

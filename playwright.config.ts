@@ -17,7 +17,7 @@ export default defineConfig({
   ],
   webServer: {
     command:
-      "MISSAS_DADOS=e2e/dados npm run build -w site -- --outDir dist-e2e && tsx scripts/servir-estatico.ts site/dist-e2e 4322",
+      "MISSAS_DADOS=e2e/dados PUBLIC_TURNSTILE_SITE_KEY=chave-de-teste npm run build -w site -- --outDir dist-e2e && tsx scripts/servir-estatico.ts site/dist-e2e 4322",
     url: "http://127.0.0.1:4322/",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

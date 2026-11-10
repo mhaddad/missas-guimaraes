@@ -162,5 +162,21 @@
   "barraParoquias": "Parishes",
   "barraProcurar": "Search",
   "disponivelEmOutroIdioma": "This site is also available in English.",
-  "abrirVersao": "Open"
+  "abrirVersao": "Open",
+  "reportar": "Report an error",
+  "reportarGeral": "Report an error or change",
+  "reportarTitulo": "Report an error or change",
+  "reportarIgreja": "Church",
+  "reportarSemIgreja": "General (no particular church)",
+  "reportarMensagem": "What is wrong?",
+  "reportarAjuda": "For example: the Sunday Mass is now at 10:30. Please do not write your name, email or phone number: we do not need them.",
+  "reportarEnviar": "Send",
+  "reportarCancelar": "Cancel",
+  "reportarFechar": "Close",
+  "relatoEnviado": "Thank you. The Archpriestship team will check with the parish before changing the times.",
+  "relatoErro": "It could not be sent. Please try again later.",
+  "relatoLimite": "Too many reports in a row. Please try again in a minute.",
+  "relatoVerificacao": "Please wait for the anti-spam check and try again.",
+  "relatoCurto": "Please write at least 10 characters.",
+  "relatoEnviando": "Sending…"
 }

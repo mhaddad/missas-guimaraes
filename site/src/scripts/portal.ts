@@ -26,6 +26,7 @@ import {
   type LocalPortal,
 } from "../lib/portal.ts";
 import { classeSelo, textoSelo } from "../lib/selo.ts";
+import { iniciarRelatos } from "./relato.ts";
 
 // --- Dados e estado ---------------------------------------------------------------------------
 
@@ -121,6 +122,9 @@ function prepararAcoes(raiz: ParentNode): void {
     });
   }
   raiz.querySelectorAll<HTMLButtonElement>("[data-partilhar]").forEach((b) => (b.hidden = false));
+  if (document.getElementById("relato")) {
+    raiz.querySelectorAll<HTMLButtonElement>("[data-relatar]").forEach((b) => (b.hidden = false));
+  }
 }
 
 // --- Etiquetas de uma celebração (§6.5) --------------------------------------------------------
@@ -675,6 +679,7 @@ function iniciar(): void {
   });
   addEventListener("hashchange", abrirLocalDoEndereco);
 
+  iniciarRelatos(idioma);
   desenhar();
   abrirLocalDoEndereco();
 
