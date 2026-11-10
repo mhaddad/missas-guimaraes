@@ -61,6 +61,19 @@ test("a partir do detalhe de uma igreja", async ({ page }) => {
   await expect(dialogo).toBeHidden();
 });
 
+test("um erro do servidor mostra o código", async ({ page }) => {
+  await preparar(page, 503);
+  await page.goto("/#nespereira");
+  await page.locator("#nespereira").getByRole("button", { name: "Reportar erro" }).click();
+  const dialogo = page.getByRole("dialog");
+  await expect(dialogo).toContainText("verificação simulada");
+  await dialogo.getByLabel("O que está errado?").fill("Tem um horário errado.");
+  await dialogo.getByRole("button", { name: "Enviar" }).click();
+  await expect(dialogo.getByRole("status")).toHaveText(
+    "Não foi possível enviar. Tente novamente mais tarde. (503)",
+  );
+});
+
 test("pelo rodapé, sem igreja, em inglês, e com o limite atingido", async ({ page }) => {
   const { corpos } = await preparar(page, 429);
   await page.goto("/en/");

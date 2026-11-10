@@ -102,7 +102,11 @@ export function iniciarRelatos(idioma: Idioma): void {
         mensagem.value = "";
         mostrar(t.relatoEnviado);
       } else {
-        mostrar(resposta.status === 429 ? t.relatoLimite : t.relatoErro, true);
+        // O código ajuda a diagnosticar (ex.: 503 = Worker sem TURNSTILE_SECRET ou KV).
+        mostrar(
+          resposta.status === 429 ? t.relatoLimite : `${t.relatoErro} (${resposta.status})`,
+          true,
+        );
       }
     } catch {
       mostrar(t.relatoErro, true);
