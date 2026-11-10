@@ -163,7 +163,8 @@ export async function tratarApiPainel(
   // GET /api/entidades/:id
   const mEntidade = /^\/api\/entidades\/([^/]+)$/.exec(caminho);
   if (mEntidade && metodo === "GET") {
-    const id = decodeURIComponent(mEntidade[1] ?? "");
+    // Os ids válidos não precisam de descodificação: qualquer "%" é recusado pelo padrão.
+    const id = mEntidade[1] ?? "";
     if (!PADRAO_ID.test(id)) return erro(400, "id");
     if (!podeVer(eu, id)) return erro(403, "ambito");
     try {

@@ -201,6 +201,7 @@ describe("âmbito por perfil (D25)", () => {
 
   it("id inválido: 400; entidade inexistente: 404", async () => {
     expect((await pedir("/api/entidades/..%2Fsegredo")).estado).toBe(400);
+    expect((await pedir("/api/entidades/%E0%A4%A")).estado).toBe(400);
     expect((await pedir("/api/entidades/nao-existe")).estado).toBe(404);
   });
 });
