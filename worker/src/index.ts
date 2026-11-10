@@ -1,10 +1,11 @@
 /**
- * Worker do projeto (§9.2): serve o site, protege a homologação da indexação (D26) e recebe os
- * relatos do público (E2.9). A identidade pelo Access, o resto da API e os crons entram no E3.
+ * Worker do projeto (§9.2): serve o site e o painel, protege a homologação da indexação (D26),
+ * recebe os relatos do público (E2.9) e responde à API do painel (E3). Os crons entram no E6.
  */
+import { tratarApiPainel, type EnvPainel } from "./api/painel.ts";
 import { tratarRelato, type EnvRelato } from "./relato.ts";
 
-export interface Env extends EnvRelato {
+export interface Env extends EnvRelato, EnvPainel {
   ASSETS: { fetch(pedido: Request): Promise<Response> };
   AMBIENTE: "homologacao" | "producao";
 }
@@ -31,6 +32,11 @@ export default {
 
     if (url.pathname === "/api/relato") {
       const resposta = await tratarRelato(pedido, env);
+      return homologacao ? semIndexacao(resposta) : resposta;
+    }
+
+    if (url.pathname.startsWith("/api/")) {
+      const resposta = await tratarApiPainel(pedido, env);
       return homologacao ? semIndexacao(resposta) : resposta;
     }
 

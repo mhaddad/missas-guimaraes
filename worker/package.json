@@ -13,5 +13,8 @@
     "@cloudflare/workers-types": "5.20261108.1",
     "typescript": "6.0.3",
     "wrangler": "4.158.0"
+  },
+  "dependencies": {
+    "@missas/dados": "0.0.0"
   }
 }

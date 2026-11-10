@@ -1,0 +1,78 @@
+---
+/**
+ * Layout do painel (§7.3), só em pt-PT. Cabeçalho com o selo, separadores, seletor de entidade,
+ * nome da pessoa e *Sair*. O conteúdo é preenchido pelos scripts depois de `/api/eu`.
+ */
+import "../styles/global.css";
+import Icones from "../components/Icones.astro";
+
+interface Props {
+  titulo: string;
+  ativo: "horarios" | "acessos" | "nenhum";
+  /** Páginas sem sessão (entrar, sem acesso): sem separadores nem conta. */
+  simples?: boolean;
+}
+
+const { titulo, ativo, simples = false } = Astro.props;
+---
+
+<!doctype html>
+<html lang="pt-PT">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#0f172a" />
+    <title>{titulo} — Painel dos horários</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body class="min-h-screen bg-superficie text-ardosia">
+    <Icones />
+    <header class="border-b border-borda bg-cartao">
+      <div class="mx-auto flex max-w-pagina flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
+        <a href="/admin/" class="flex min-h-12 items-center gap-3">
+          <img src="/marca/selo-compacto.svg" alt="" width="44" height="42" class="h-11 w-auto" />
+          <span>
+            <span class="block text-base leading-tight font-bold">
+              Arciprestado de Guimarães e Vizela
+            </span>
+            <span class="block text-sm leading-tight font-semibold text-dourado-texto">
+              Painel dos horários
+            </span>
+          </span>
+        </a>
+        {!simples && (
+          <>
+            <nav aria-label="Secções do painel" class="flex gap-1">
+              <a
+                class="atalho"
+                href="/admin/"
+                aria-current={ativo === "horarios" ? "true" : undefined}
+              >
+                Horários
+              </a>
+              <a
+                class="atalho"
+                href="/admin/acessos/"
+                data-so-admin
+                hidden
+                aria-current={ativo === "acessos" ? "true" : undefined}
+              >
+                Acessos
+              </a>
+            </nav>
+            <div class="ml-auto flex items-center gap-3 text-base">
+              <span id="nome-pessoa" class="font-semibold" />
+              <a class="ligacao inline-flex min-h-12 items-center" href="/cdn-cgi/access/logout">
+                Sair
+              </a>
+            </div>
+          </>
+        )}
+      </div>
+    </header>
+    <main id="conteudo" class="mx-auto max-w-pagina px-4 py-6 md:py-8">
+      <slot />
+    </main>
+  </body>
+</html>
