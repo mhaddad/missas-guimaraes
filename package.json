@@ -29,11 +29,12 @@
     "gerados:verificar": "tsx scripts/gerar-tipos.ts --verificar && tsx pacotes/dados/scripts/gerar-validadores.ts --verificar",
     "test:cobertura": "vitest run --coverage",
     "e2e": "playwright test",
-    "lighthouse": "npm run build && npx -y @lhci/cli@0.16.0 autorun"
+    "lighthouse": "npm run build && lhci autorun"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
     "@eslint/js": "10.0.1",
+    "@lhci/cli": "0.16.0",
     "@playwright/test": "1.65.0",
     "@resvg/resvg-js": "2.6.2",
     "@types/node": "26.6.6",
@@ -47,5 +48,8 @@
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.1",
     "vitest": "5.1.0"
+  },
+  "overrides": {
+    "@puppeteer/browsers": "3.2.6"
   }
 }
