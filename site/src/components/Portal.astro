@@ -20,6 +20,8 @@ interface Props {
 }
 
 const { idioma } = Astro.props;
+/** Chave pública do Turnstile; sem ela, o "Reportar erro" não aparece (E2.9). */
+const siteKey: string | undefined = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || undefined;
 const t = TEXTOS[idioma];
 const agora = new Date();
 const { data: hoje, hora } = momentoEmLisboa(agora);
@@ -228,8 +230,83 @@ const nomeSolenidade = (s: (typeof solenidades)[number]) =>
   <footer class="flex flex-wrap items-center justify-between gap-3 border-t border-borda pt-6 text-sm text-texto-secundario">
     <p>{formatar(t.atualizado, { data: formatarDataLonga(hoje, idioma), hora })}</p>
     <p>{t.assinatura}</p>
+    {siteKey && (
+      <button
+        type="button"
+        class="ligacao inline-flex min-h-12 items-center gap-1"
+        data-relatar=""
+        hidden
+      >
+        <Icone nome="flag" class="size-4" />
+        {t.reportarGeral}
+      </button>
+    )}
     <p class="w-full">{t.semCookies}</p>
   </footer>
+
+  {siteKey && (
+    <dialog
+      id="relato"
+      data-site-key={siteKey}
+      aria-labelledby="relato-titulo"
+      class="m-auto w-[min(36rem,calc(100%-2rem))] rounded-xl border border-borda bg-cartao p-0 text-ardosia shadow-xl backdrop:bg-ardosia/50"
+    >
+      <form id="form-relato" class="grid gap-4 p-5 md:p-6" novalidate>
+        <h2 id="relato-titulo" class="text-xl font-semibold">
+          {t.reportarTitulo}
+        </h2>
+        <div class="grid gap-1">
+          <label for="relato-local" class="font-semibold">
+            {t.reportarIgreja}
+          </label>
+          <select
+            id="relato-local"
+            name="local"
+            class="min-h-12 rounded-cartao border border-borda bg-cartao px-3 text-base"
+          >
+            <option value="">{t.reportarSemIgreja}</option>
+            {locais.map(({ local }) => (
+              <option value={local.id}>
+                {[local.nome, local.localidade].filter(Boolean).join(" · ")}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div class="grid gap-1">
+          <label for="relato-mensagem" class="font-semibold">
+            {t.reportarMensagem}
+          </label>
+          <textarea
+            id="relato-mensagem"
+            name="mensagem"
+            rows="5"
+            minlength="10"
+            maxlength="1000"
+            required
+            aria-describedby="relato-ajuda"
+            class="rounded-cartao border border-borda bg-cartao p-3 text-base"
+          />
+          <p id="relato-ajuda" class="text-base text-texto-secundario">
+            {t.reportarAjuda}
+          </p>
+        </div>
+        <div id="relato-turnstile" class="min-h-16" />
+        <p id="relato-estado" role="status" class="text-base font-semibold empty:hidden" />
+        <div class="flex flex-wrap justify-end gap-3">
+          <button type="button" class="botao-secundario" data-fechar-relato>
+            {t.reportarCancelar}
+          </button>
+          <button
+            type="submit"
+            id="relato-enviar"
+            class="inline-flex min-h-12 items-center gap-2 rounded-cartao bg-ardosia px-5 text-base font-semibold text-white"
+          >
+            {t.reportarEnviar}
+          </button>
+        </div>
+      </form>
+    </dialog>
+  )}
 
   <nav
     slot="fim"

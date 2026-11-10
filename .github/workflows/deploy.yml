@@ -31,6 +31,9 @@ jobs:
       - run: npm ci
       - run: npm run verificar
       - run: npm run build
+        env:
+          # Chave pública do Turnstile (E2.9); sem ela o "Reportar erro" não aparece.
+          PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.TURNSTILE_SITE_KEY }}
       - run: npx wrangler deploy
         working-directory: worker
         env:

@@ -49,6 +49,10 @@ const caminho = `${t.caminho}#${local.id}`;
       <Icone nome="share" />
       {t.partilhar}
     </button>
+    <button type="button" class="botao-secundario" data-relatar={local.id} hidden>
+      <Icone nome="flag" />
+      {t.reportar}
+    </button>
   </div>
 
   <div class="grid content-start gap-3 text-base">
