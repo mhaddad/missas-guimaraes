@@ -1,5 +1,5 @@
 ---
-/** E-1 — Horários (§7.3), só de leitura no E3. As ações de gravação entram no E4 e no E5. */
+/** E-1 — Horários (§7.3): consulta, *Está tudo certo* (P1) e histórico com restauro (E-6). */
 import Painel from "../../layouts/Painel.astro";
 ---
 
@@ -32,6 +32,26 @@ import Painel from "../../layouts/Painel.astro";
   <div id="conteudo-entidade" aria-live="polite">
     <p class="text-texto-secundario">A carregar…</p>
   </div>
+  <dialog
+    id="dialogo-pedido"
+    aria-labelledby="titulo-pedido"
+    class="m-auto w-[min(40rem,calc(100%-2rem))] rounded-xl border border-borda bg-cartao p-0 text-ardosia shadow-xl backdrop:bg-ardosia/50"
+  >
+    <form method="dialog" class="grid gap-4 p-5 md:p-6">
+      <h2 id="titulo-pedido" class="text-xl font-semibold"></h2>
+      <div id="corpo-pedido" class="grid max-h-[60vh] gap-3 overflow-y-auto text-base"></div>
+      <div class="flex flex-wrap justify-end gap-3">
+        <button value="cancelar" class="botao-secundario">
+          Cancelar
+        </button>
+        <button
+          value="confirmar"
+          id="confirmar-pedido"
+          class="inline-flex min-h-12 items-center rounded-cartao bg-ardosia px-5 text-base font-semibold text-white"
+        ></button>
+      </div>
+    </form>
+  </dialog>
 </Painel>
 
 <script>

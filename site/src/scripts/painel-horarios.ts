@@ -1,11 +1,15 @@
 /**
- * E-1 — Horários (§7.3), só de leitura (E3.7): seletor de entidade, cartão da entidade, resumo,
- * horários habituais, exceções próximas e regime dos dias santos de cada local.
+ * E-1 — Horários (§7.3): seletor de entidade, cartão da entidade com *Está tudo certo* (P1),
+ * resumo, horários habituais, exceções próximas, regime dos dias santos de cada local e
+ * histórico (E-6) com *Restaurar esta versão* para administradores (§8.8).
  */
+import { alertasDeAnomalia, resumirPedido, type ParLocal } from "@missas/dados/resumo";
 import {
   compararRegras,
+  descreverHorarios,
   descreverRegra,
   etiquetas,
+  iguais,
   momentoEmLisboa,
   type Entidade,
   type Local,
@@ -16,6 +20,7 @@ import { descreverExcecao } from "../lib/detalhe.ts";
 import { selo } from "../lib/portal.ts";
 import { classeSelo, textoSelo } from "../lib/selo.ts";
 import { api, carregarEu, ErroApi, h, icone, mostrarErro, type Eu } from "./painel-comum.ts";
+import { acompanhar, enviarPedido, notificar, textoDoErro } from "./painel-pedidos.ts";
 
 interface EntidadeLista {
   id: string;
@@ -26,7 +31,7 @@ interface EntidadeLista {
 
 interface EstadoEntidade {
   origem: "main" | "site";
-  entidade: Pick<Entidade, "id" | "nome" | "tipo">;
+  entidade: Entidade;
   sha: string | null;
   locais: { local: Local; sha: string | null }[];
 }
@@ -37,6 +42,248 @@ const escolha = document.getElementById("escolha-entidade") as HTMLElement;
 const seletor = document.getElementById("entidade") as HTMLSelectElement;
 const filtro = document.getElementById("filtro-entidade") as HTMLInputElement;
 const caixaFiltro = document.getElementById("caixa-filtro") as HTMLElement;
+const dialogo = document.getElementById("dialogo-pedido") as HTMLDialogElement;
+let eu: Eu;
+
+const caminhoLocal = (id: string) => `dados/locais/${id}.yml`;
+const caminhoEntidade = (id: string) => `dados/entidades/${id}.yml`;
+
+/** Pergunta de confirmação num diálogo; `true` se a pessoa confirmar. */
+function perguntar(titulo: string, conteudo: Node[], textoConfirmar: string): Promise<boolean> {
+  (dialogo.querySelector("#titulo-pedido") as HTMLElement).textContent = titulo;
+  (dialogo.querySelector("#corpo-pedido") as HTMLElement).replaceChildren(...conteudo);
+  (dialogo.querySelector("#confirmar-pedido") as HTMLElement).textContent = textoConfirmar;
+  dialogo.returnValue = "";
+  dialogo.showModal();
+  return new Promise((resolver) =>
+    dialogo.addEventListener("close", () => resolver(dialogo.returnValue === "confirmar"), {
+      once: true,
+    }),
+  );
+}
+
+/** Linhas do resumo de um pedido, local a local, como a pessoa as vai confirmar. */
+function listaDoResumo(pares: ParLocal[]): HTMLElement {
+  const nomes = new Map(pares.map((p) => [p.depois.id, p.depois.nome]));
+  return h(
+    "ul",
+    { class: "grid gap-3" },
+    ...resumirPedido(pares).map((r) =>
+      h(
+        "li",
+        {},
+        h("p", { class: "font-semibold" }, nomes.get(r.local) ?? r.local),
+        h(
+          "ul",
+          { class: "mt-1 grid gap-1 pl-4 text-texto-secundario" },
+          ...r.linhas.map((l) => h("li", {}, l)),
+        ),
+      ),
+    ),
+  );
+}
+
+async function enviarEAcompanhar(
+  corpo: Record<string, unknown>,
+  botao: HTMLButtonElement,
+  semAlteracoes: string,
+): Promise<void> {
+  botao.disabled = true;
+  try {
+    const { id } = await enviarPedido(corpo);
+    if (!id) {
+      notificar(semAlteracoes, "ok");
+      return;
+    }
+    const entidade = String(corpo.entidade);
+    void acompanhar(id, () => void mostrarEntidade(entidade));
+  } catch (e) {
+    if (!(e instanceof ErroApi && e.codigo === "confirmar_alertas"))
+      notificar(textoDoErro(e), "erro");
+  } finally {
+    botao.disabled = false;
+  }
+}
+
+/** P1 — Está tudo certo: mostra os horários atuais e pede a confirmação. */
+async function confirmarTudo(estado: EstadoEntidade, botao: HTMLButtonElement): Promise<void> {
+  const conteudo = [
+    h("p", {}, "Estes são os horários atuais:"),
+    h(
+      "ul",
+      { class: "grid gap-3" },
+      ...estado.locais.map(({ local }) =>
+        h(
+          "li",
+          {},
+          h("p", { class: "font-semibold" }, local.nome),
+          h(
+            "p",
+            { class: "text-texto-secundario" },
+            local.horarios.length ? descreverHorarios(local, "pt-PT") : "Sem horários registados.",
+          ),
+        ),
+      ),
+    ),
+  ];
+  if (
+    !(await perguntar("Está tudo certo?", conteudo, "Confirmo que estes horários estão corretos"))
+  )
+    return;
+  const hoje = momentoEmLisboa(new Date()).data;
+  const pares = estado.locais.map(({ local }) => ({
+    antes: local,
+    depois: { ...local, confirmado_em: hoje },
+  }));
+  // O `base` garante que se confirma exatamente o que a pessoa viu.
+  const base = Object.fromEntries(
+    estado.locais.filter((l) => l.sha).map((l) => [caminhoLocal(l.local.id), l.sha]),
+  );
+  await enviarEAcompanhar(
+    { tipo: "confirmacao", entidade: estado.entidade.id, base, resumo: resumirPedido(pares) },
+    botao,
+    "Os horários já estavam confirmados hoje.",
+  );
+}
+
+interface Versao {
+  sha: string;
+  data: string;
+  titulo: string;
+  linhas: string[];
+  contacto: { ref: string; funcao: string | null; nome?: string } | null;
+  canal: string | null;
+}
+
+const DATA_HORA = new Intl.DateTimeFormat("pt-PT", {
+  timeZone: "Europe/Lisbon",
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+/** Restaurar esta versão (só `admin`, §8.8): mostra a diferença e envia um pedido `restauro`. */
+async function restaurar(estado: EstadoEntidade, versao: Versao, botao: HTMLButtonElement) {
+  let antiga: { entidade: Entidade; locais: { local: Local }[] };
+  try {
+    antiga = await api(
+      `/api/entidades/${encodeURIComponent(estado.entidade.id)}/versao/${versao.sha}`,
+    );
+  } catch {
+    notificar("Não foi possível abrir essa versão.", "erro");
+    return;
+  }
+  const atuais = new Map(estado.locais.map((l) => [l.local.id, l]));
+  const arquivos: Record<string, unknown> = {};
+  const base: Record<string, string | null> = {};
+  const pares: ParLocal[] = [];
+  if (!iguais(antiga.entidade, estado.entidade)) {
+    arquivos[caminhoEntidade(estado.entidade.id)] = antiga.entidade;
+    base[caminhoEntidade(estado.entidade.id)] = estado.sha;
+  }
+  for (const { local } of antiga.locais) {
+    const atual = atuais.get(local.id);
+    if (atual && iguais(atual.local, local)) continue;
+    arquivos[caminhoLocal(local.id)] = local;
+    base[caminhoLocal(local.id)] = atual?.sha ?? null;
+    pares.push({ antes: atual?.local ?? null, depois: local });
+  }
+  if (Object.keys(arquivos).length === 0) {
+    notificar("Essa versão é igual à atual.", "ok");
+    return;
+  }
+  const alertas = alertasDeAnomalia(pares);
+  const conteudo = [
+    h("p", {}, `Repor os horários como estavam em ${DATA_HORA.format(new Date(versao.data))}:`),
+    pares.length
+      ? listaDoResumo(pares)
+      : h("p", { class: "text-texto-secundario" }, "Só muda a ficha da entidade."),
+    alertas.length > 0 &&
+      h(
+        "div",
+        { class: "rounded-cartao bg-aviso-fundo p-3 text-dourado-texto", role: "note" },
+        ...alertas.map((a) => h("p", {}, a)),
+      ),
+    h(
+      "p",
+      { class: "text-texto-secundario" },
+      "O restauro grava uma versão nova; as anteriores ficam no histórico.",
+    ),
+  ].filter((n): n is HTMLElement => n instanceof HTMLElement);
+  if (!(await perguntar("Restaurar esta versão?", conteudo, "Restaurar"))) return;
+  await enviarEAcompanhar(
+    {
+      tipo: "restauro",
+      entidade: estado.entidade.id,
+      restaura: versao.sha,
+      base,
+      arquivos,
+      resumo: resumirPedido(pares),
+      ...(alertas.length > 0 && { confirmar_alertas: true }),
+    },
+    botao,
+    "Essa versão é igual à atual.",
+  );
+}
+
+const FUNCOES: Record<string, string> = {
+  pároco: "Pároco",
+  secretaria: "Secretaria",
+  colaborador: "Colaborador",
+  equipa: "Equipa do Arciprestado",
+};
+
+async function mostrarHistorico(alvo: HTMLElement, estado: EstadoEntidade): Promise<void> {
+  alvo.replaceChildren(h("p", { class: "text-texto-secundario" }, "A carregar…"));
+  let versoes: Versao[];
+  try {
+    versoes = await api(`/api/entidades/${encodeURIComponent(estado.entidade.id)}/historico`);
+  } catch {
+    mostrarErro(alvo, "Não foi possível carregar o histórico.");
+    return;
+  }
+  if (versoes.length === 0) {
+    alvo.replaceChildren(h("p", { class: "text-texto-secundario" }, "Sem alterações registadas."));
+    return;
+  }
+  alvo.replaceChildren(
+    h(
+      "ol",
+      { class: "grid gap-3" },
+      ...versoes.map((v, i) => {
+        const quem = v.contacto
+          ? (v.contacto.nome ?? FUNCOES[v.contacto.funcao ?? ""] ?? "Contacto da paróquia")
+          : "Equipa técnica";
+        const botao =
+          eu.perfil === "admin" && i > 0 && estado.origem === "main"
+            ? h(
+                "button",
+                { type: "button", class: "botao-secundario" },
+                icone("history"),
+                "Restaurar esta versão",
+              )
+            : null;
+        botao?.addEventListener("click", () => void restaurar(estado, v, botao));
+        return h(
+          "li",
+          { class: "grid gap-2 rounded-cartao border border-borda bg-cartao p-4" },
+          h(
+            "p",
+            { class: "text-sm text-texto-secundario" },
+            `${DATA_HORA.format(new Date(v.data))} · ${quem}${i === 0 ? " · versão atual" : ""}`,
+          ),
+          h("p", { class: "font-semibold" }, v.titulo),
+          v.linhas.length > 0 &&
+            h(
+              "ul",
+              { class: "grid gap-1 text-base text-texto-secundario" },
+              ...v.linhas.map((l) => h("li", {}, l.trim())),
+            ),
+          botao && h("div", {}, botao),
+        );
+      }),
+    ),
+  );
+}
 
 const DIAS_CURTOS: Record<string, string> = {
   seg: "Seg",
@@ -220,6 +467,39 @@ async function mostrarEntidade(id: string): Promise<void> {
     const tipo = (
       estado.entidade.tipo in t.pelaEntidade ? estado.entidade.tipo : "outro"
     ) as TipoEntidade;
+    const botaoConfirmar = h(
+      "button",
+      {
+        type: "button",
+        class:
+          "mt-4 inline-flex min-h-12 items-center gap-2 rounded-cartao bg-confirmado px-5 text-base font-semibold text-white disabled:opacity-60",
+      },
+      icone("check_circle"),
+      "Está tudo certo",
+    );
+    botaoConfirmar.addEventListener("click", () => void confirmarTudo(estado, botaoConfirmar));
+    const listaHistorico = h("div", {});
+    const botaoHistorico = h(
+      "button",
+      { type: "button", class: "botao-secundario" },
+      icone("history"),
+      "Ver alterações",
+    );
+    botaoHistorico.addEventListener("click", () => {
+      botaoHistorico.hidden = true;
+      void mostrarHistorico(listaHistorico, estado);
+    });
+    const seccaoHistorico = h(
+      "section",
+      { class: "grid gap-3" },
+      h(
+        "h2",
+        { class: "text-base font-bold tracking-wide text-texto-secundario uppercase" },
+        "Histórico",
+      ),
+      botaoHistorico,
+      listaHistorico,
+    );
     conteudo.replaceChildren(
       h(
         "div",
@@ -228,10 +508,11 @@ async function mostrarEntidade(id: string): Promise<void> {
           "div",
           { class: "rounded-xl border border-borda bg-cartao p-5" },
           h("h1", { class: "text-2xl font-bold" }, estado.entidade.nome),
+          estado.origem === "main" && botaoConfirmar,
           h(
             "p",
-            { class: "mt-2 text-base text-texto-secundario" },
-            "Por agora o painel só mostra os horários. Confirmar, acrescentar e mudar horários chega nas próximas versões.",
+            { class: "mt-3 text-base text-texto-secundario" },
+            "Por agora pode confirmar os horários. Acrescentar e mudar horários chega nas próximas versões.",
           ),
           estado.origem === "site" &&
             h(
@@ -242,6 +523,7 @@ async function mostrarEntidade(id: string): Promise<void> {
         ),
         resumo(estado, hoje),
         ...estado.locais.map(({ local }) => seccaoLocal(local, tipo, hoje)),
+        estado.origem === "main" && seccaoHistorico,
       ),
     );
   } catch (e) {
@@ -275,7 +557,6 @@ function preencherSeletor(lista: EntidadeLista[], escolhida: string): void {
 }
 
 async function iniciar(): Promise<void> {
-  let eu: Eu;
   let lista: EntidadeLista[];
   try {
     eu = await carregarEu();

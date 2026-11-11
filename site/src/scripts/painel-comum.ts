@@ -13,6 +13,8 @@ export class ErroApi extends Error {
   constructor(
     readonly estado: number,
     readonly codigo: string,
+    /** Corpo da resposta (ex.: `motivo`, `alertas`). */
+    readonly corpo: Record<string, unknown> = {},
   ) {
     super(`${estado} ${codigo}`);
   }
@@ -25,7 +27,10 @@ export async function api<T>(caminho: string, init: RequestInit = {}): Promise<T
     headers: { ...(init.body ? { "content-type": "application/json" } : {}), ...init.headers },
     credentials: "same-origin",
   });
-  const corpo = (await resposta.json().catch(() => ({}))) as { erro?: string };
+  const corpo = (await resposta.json().catch(() => ({}))) as { erro?: string } & Record<
+    string,
+    unknown
+  >;
   if (resposta.status === 401) {
     location.href = "/admin/entrar/";
     throw new ErroApi(401, "sem_identidade");
@@ -34,7 +39,7 @@ export async function api<T>(caminho: string, init: RequestInit = {}): Promise<T
     location.href = "/admin/sem-acesso/";
     throw new ErroApi(403, corpo.erro);
   }
-  if (!resposta.ok) throw new ErroApi(resposta.status, corpo.erro ?? "erro");
+  if (!resposta.ok) throw new ErroApi(resposta.status, corpo.erro ?? "erro", corpo);
   return corpo as T;
 }
 

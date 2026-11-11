@@ -5,6 +5,7 @@
  *   GET  /api/pedidos(/:id)      estado dos pedidos (dono ou `admin`)
  *   POST /api/interno/estado     estados vindos do GitHub Actions (HMAC `AVISO_HMAC`, sem Access)
  *   GET  /api/entidades/:id/historico   commits que tocaram nos arquivos da entidade (§8.8)
+ *   GET  /api/entidades/:id/versao/:sha  a entidade e os seus locais num commit do `main`
  *
  * O Worker assina só o que o próprio contacto pode fazer: a entidade tem de estar no seu âmbito
  * e os restauros são só de `admin`. Os campos do servidor (id, instante, contacto, canal) nunca
@@ -20,6 +21,7 @@ import {
   caminhoEntidade,
   codificarPedido,
   lerEntidade,
+  lerLocal,
   lerPedido,
   novoIdPedido,
   PADRAO_ID_PEDIDO,
@@ -424,4 +426,37 @@ export async function historico(
       return nome && v.contacto ? { ...v, contacto: { ...v.contacto, nome } } : v;
     }),
   );
+}
+
+/**
+ * `GET /api/entidades/:id/versao/:sha` (o âmbito já foi verificado): a entidade e os locais que
+ * ela listava nesse commit, para o painel mostrar a diferença antes de um restauro. Só commits
+ * do histórico do `main`.
+ */
+export async function versaoDaEntidade(
+  env: EnvPedidos,
+  entidade: string,
+  sha: string,
+  deps: { buscar?: typeof fetch; agora?: Date } = {},
+): Promise<Response> {
+  if (!/^[0-9a-f]{40}$/.test(sha)) return erro(400, "sha");
+  const opcoes = opcoesGithub(deps);
+  try {
+    if (!(await eAntepassadoDoMain(env, sha, opcoes))) return erro(404, "versao");
+    const arquivo = await lerArquivo(env, caminhoEntidade(entidade), { ...opcoes, ref: sha });
+    if (!arquivo) return erro(404, "versao");
+    const dados = lerEntidade(arquivo.conteudo);
+    const locais = await Promise.all(
+      dados.locais.map(async (id) => {
+        const local = await lerArquivo(env, `dados/locais/${id}.yml`, { ...opcoes, ref: sha });
+        return local ? { local: lerLocal(local.conteudo) } : null;
+      }),
+    );
+    return json({ sha, entidade: dados, locais: locais.filter(Boolean) });
+  } catch (e) {
+    // Uma versão que já não cumpre o esquema atual não pode ser restaurada.
+    return e instanceof Error && e.name === "ErroLeitura"
+      ? erro(422, "versao_invalida")
+      : erro(502, "github");
+  }
 }

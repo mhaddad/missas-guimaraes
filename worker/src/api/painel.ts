@@ -27,6 +27,7 @@ import {
   historico,
   listarPedidos,
   obterPedido,
+  versaoDaEntidade,
   TAMANHO_MAXIMO_PEDIDO,
   type EnvPedidos,
 } from "../pedidos.ts";
@@ -191,6 +192,15 @@ export async function tratarApiPainel(
     if (!PADRAO_ID.test(id)) return erro(400, "id");
     if (!podeVer(eu, id)) return erro(403, "ambito");
     return historico(env, kv, eu, id, deps);
+  }
+
+  // GET /api/entidades/:id/versao/:sha (restauro, §8.8)
+  const mVersao = /^\/api\/entidades\/([^/]+)\/versao\/([^/]+)$/.exec(caminho);
+  if (mVersao && metodo === "GET") {
+    const id = mVersao[1] ?? "";
+    if (!PADRAO_ID.test(id)) return erro(400, "id");
+    if (!podeVer(eu, id)) return erro(403, "ambito");
+    return versaoDaEntidade(env, id, mVersao[2] ?? "", deps);
   }
 
   // /api/pedidos (E4)

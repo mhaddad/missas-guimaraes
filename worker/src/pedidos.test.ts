@@ -626,3 +626,44 @@ describe("lerMensagem", () => {
     });
   });
 });
+
+describe("GET /api/entidades/:id/versao/:sha", () => {
+  const ANTIGO = "a".repeat(40);
+  const localAntigo = { ...local("nespereira", "nespereira"), nome: "Nome antigo" } as Local;
+
+  beforeEach(() => {
+    configurarGithub({
+      revisoes: {
+        [ANTIGO]: {
+          [caminhoEntidade("nespereira")]: entidade("nespereira", ["nespereira"]),
+          [caminhoLocal("nespereira")]: serializar(localAntigo, "local"),
+        },
+      },
+    });
+  });
+
+  it("devolve a entidade e os locais nesse commit", async () => {
+    const r = await pedir(`/api/entidades/nespereira/versao/${ANTIGO}`);
+    expect(r.estado).toBe(200);
+    expect(r.corpo).toMatchObject({
+      sha: ANTIGO,
+      entidade: { id: "nespereira", locais: ["nespereira"] },
+      locais: [{ local: { id: "nespereira", nome: "Nome antigo" } }],
+    });
+  });
+
+  it("recusa commits fora do main, sha inválido, outras entidades e versões fora do esquema", async () => {
+    expect((await pedir(`/api/entidades/nespereira/versao/${"b".repeat(40)}`)).estado).toBe(404);
+    expect((await pedir("/api/entidades/nespereira/versao/main")).estado).toBe(400);
+    expect((await pedir(`/api/entidades/polvoreira/versao/${ANTIGO}`)).estado).toBe(403);
+    expect((await pedir(`/api/entidades/Nesp/versao/${ANTIGO}`)).estado).toBe(400);
+    configurarGithub({
+      revisoes: { [ANTIGO]: { [caminhoEntidade("nespereira")]: "id: nespereira\n" } },
+    });
+    expect((await pedir(`/api/entidades/nespereira/versao/${ANTIGO}`)).estado).toBe(422);
+    configurarGithub({ revisoes: { [ANTIGO]: {} } });
+    expect((await pedir(`/api/entidades/nespereira/versao/${ANTIGO}`)).estado).toBe(404);
+    delete env.GITHUB_PAINEL_APP_ID;
+    expect((await pedir(`/api/entidades/nespereira/versao/${ANTIGO}`)).estado).toBe(502);
+  });
+});
