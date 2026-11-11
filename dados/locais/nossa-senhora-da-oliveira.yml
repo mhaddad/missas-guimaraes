@@ -25,8 +25,10 @@ horarios:
   hora: '19:00'
 excecoes: []
 notas: []
-confirmado_em: null
-confirmado_por: null
+confirmado_em: '2026-11-11'
+confirmado_por:
+  canal: painel
+  ref: c_b0e194b1
 revisao:
   pendente: false
   motivos: []
