@@ -31,7 +31,9 @@ permissions:
 
 jobs:
   aplicar:
-    if: github.ref == 'refs/heads/main' && vars.BOT_APP_ID != ''
+    # Só no main. (Não se pode testar aqui `vars.BOT_APP_ID`: as variáveis do ambiente `gravacao`
+    # ainda não existem quando o `if` do job é avaliado. Sem a App, o passo do token falha.)
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: gravacao
     timeout-minutes: 15
