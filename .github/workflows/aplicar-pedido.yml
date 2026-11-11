@@ -1,0 +1,74 @@
+# Aplica um pedido assinado do painel ao main (PLANO §8.4). REVISÃO DE SEGURANÇA OBRIGATÓRIA.
+#
+# Só por workflow_dispatch, disparado pelo Worker (App missas-guimaraes-painel) ou por
+# scripts/enviar-pedido.ts. O pedido só é aplicado com uma assinatura HMAC válida (PEDIDO_HMAC);
+# grava com a App de escrita (missas-guimaraes-bot), cuja chave só existe no ambiente `gravacao`,
+# restrito ao main. Os inputs nunca são interpolados em comandos: passam por variáveis de ambiente.
+#
+# Os inputs (pedido e assinatura) ficam visíveis no log público: não têm dados pessoais, valem
+# 15 minutos e cada pedido só se aplica uma vez.
+#
+# Configuração (ambiente `gravacao`): variável BOT_APP_ID; segredos BOT_APP_PRIVATE_KEY,
+# PEDIDO_HMAC e AVISO_HMAC. Opcionais: variável AVISO_URL e segredos CF_ACCESS_CLIENT_ID e
+# CF_ACCESS_CLIENT_SECRET (token de serviço do Access, para o aviso chegar ao Worker).
+name: aplicar-pedido
+run-name: pedido
+
+on:
+  workflow_dispatch:
+    inputs:
+      pedido:
+        description: Pedido em JSON, codificado em base64 (Anexo B)
+        required: true
+        type: string
+      assinatura:
+        description: HMAC-SHA256 do pedido, em hexadecimal
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  aplicar:
+    if: github.ref == 'refs/heads/main' && vars.BOT_APP_ID != ''
+    runs-on: ubuntu-latest
+    environment: gravacao
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # O token de escrita só é criado depois da instalação das dependências.
+      - uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        id: app
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+      - name: Identidade do bot
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          SLUG: ${{ steps.app.outputs.app-slug }}
+        run: |
+          id="$(gh api "/users/${SLUG}%5Bbot%5D" --jq .id)"
+          git config user.name "${SLUG}[bot]"
+          git config user.email "${id}+${SLUG}[bot]@users.noreply.github.com"
+      - name: Aplicar o pedido
+        run: npx tsx scripts/aplicar-pedido.ts
+        env:
+          PEDIDO: ${{ inputs.pedido }}
+          ASSINATURA: ${{ inputs.assinatura }}
+          PEDIDO_HMAC: ${{ secrets.PEDIDO_HMAC }}
+          # Só o `git push` o recebe; o build corre sem segredos (scripts/aplicar-pedido.ts).
+          TOKEN_ESCRITA: ${{ steps.app.outputs.token }}
+          AVISO_HMAC: ${{ secrets.AVISO_HMAC }}
+          AVISO_URL: ${{ vars.AVISO_URL }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          VERIFICAR_BUILD: "1"
