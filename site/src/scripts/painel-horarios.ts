@@ -20,7 +20,10 @@ import { descreverExcecao } from "../lib/detalhe.ts";
 import { selo } from "../lib/portal.ts";
 import { classeSelo, textoSelo } from "../lib/selo.ts";
 import { api, carregarEu, ErroApi, h, icone, mostrarErro, type Eu } from "./painel-comum.ts";
+import { abrirDiasSantos } from "./painel-dias-santos.ts";
 import { abrirEditor, type OpcoesEditor } from "./painel-editar.ts";
+import { abrirExcecao, type OpcoesExcecao } from "./painel-excecoes.ts";
+import type { Alteracao } from "./painel-modal.ts";
 import { acompanhar, enviarPedido, notificar, textoDoErro } from "./painel-pedidos.ts";
 
 interface EntidadeLista {
@@ -154,7 +157,45 @@ async function editarHorario(
   opcoes: Pick<OpcoesEditor, "modo" | "indiceLocal" | "indiceRegra">,
   botao: HTMLButtonElement,
 ): Promise<void> {
-  const alteracao = await abrirEditor({ dialogo: dialogoEditor, locais: estado.locais, ...opcoes });
+  await gravarAlteracao(
+    estado,
+    await abrirEditor({ dialogo: dialogoEditor, locais: estado.locais, ...opcoes }),
+    botao,
+  );
+}
+
+/** P3 — Exceção numa data: nova, editar ou apagar. */
+async function editarExcecao(
+  estado: EstadoEntidade,
+  opcoes: Pick<OpcoesExcecao, "modo" | "indiceLocal" | "indiceExcecao">,
+  botao: HTMLButtonElement,
+): Promise<void> {
+  await gravarAlteracao(
+    estado,
+    await abrirExcecao({ dialogo: dialogoEditor, locais: estado.locais, ...opcoes }),
+    botao,
+  );
+}
+
+/** P4 — Regime dos dias santos de um local. */
+async function editarDiasSantos(
+  estado: EstadoEntidade,
+  indiceLocal: number,
+  botao: HTMLButtonElement,
+): Promise<void> {
+  await gravarAlteracao(
+    estado,
+    await abrirDiasSantos({ dialogo: dialogoEditor, locais: estado.locais, indiceLocal }),
+    botao,
+  );
+}
+
+/** Envia a alteração de um local (pedido `alteracao`) e acompanha o estado. */
+async function gravarAlteracao(
+  estado: EstadoEntidade,
+  alteracao: Alteracao | null,
+  botao: HTMLButtonElement,
+): Promise<void> {
   if (!alteracao) return;
   const { local, depois, confirmarAlertas } = alteracao;
   const caminho = caminhoLocal(local.local.id);
@@ -337,6 +378,13 @@ interface AcoesRegra {
   apagar(botao: HTMLButtonElement): void;
 }
 
+/** O que se pode fazer num local (só com os dados lidos do `main`). */
+interface AcoesLocal {
+  regra(indice: number): AcoesRegra;
+  excecao(indice: number): AcoesRegra;
+  diasSantos(botao: HTMLButtonElement): void;
+}
+
 function cartaoRegra(regra: Regra, hoje: string, acoes?: AcoesRegra): HTMLElement {
   const automaticas = etiquetas(regra, "pt-PT");
   const semSemanal = regra.semanas_do_mes || regra.quinzenal ? automaticas : automaticas.slice(1);
@@ -377,13 +425,12 @@ function cartaoRegra(regra: Regra, hoje: string, acoes?: AcoesRegra): HTMLElemen
         ),
         regra.nota && h("span", { class: "etiqueta bg-azul-fundo text-azul-texto" }, regra.nota),
       ),
-      acoes && botoesRegra(regra, acoes),
+      acoes && botoesEditarApagar(`${rotuloDias(regra)} às ${regra.hora}`, acoes),
     ),
   );
 }
 
-function botoesRegra(regra: Regra, acoes: AcoesRegra): HTMLElement {
-  const descricao = `${rotuloDias(regra)} às ${regra.hora}`;
+function botoesEditarApagar(descricao: string, acoes: AcoesRegra): HTMLElement {
   const editar = h(
     "button",
     { type: "button", class: "botao-secundario", "aria-label": `Editar: ${descricao}` },
@@ -403,15 +450,24 @@ function seccaoLocal(
   local: Local,
   tipoEntidade: TipoEntidade,
   hoje: string,
-  acoes?: (indice: number) => AcoesRegra,
+  acoes?: AcoesLocal,
 ): HTMLElement {
   // Ordenadas para mostrar, mas com o índice original em `local.horarios` (para editar).
   const regras = local.horarios
     .map((regra, indice) => ({ regra, indice }))
     .sort((a, b) => compararRegras(a.regra, b.regra));
   const excecoes = local.excecoes
-    .filter((e) => e.data >= hoje)
-    .sort((a, b) => a.data.localeCompare(b.data));
+    .map((excecao, indice) => ({ excecao, indice }))
+    .filter(({ excecao }) => excecao.data >= hoje)
+    .sort((a, b) => a.excecao.data.localeCompare(b.excecao.data));
+  const botaoDiasSantos =
+    acoes &&
+    h(
+      "button",
+      { type: "button", class: "botao-secundario" },
+      local.dias_santos === null ? "Indicar" : "Alterar",
+    );
+  botaoDiasSantos?.addEventListener("click", () => acoes?.diasSantos(botaoDiasSantos));
   const { estado, dias } = selo(local.confirmado_em, hoje);
   return h(
     "section",
@@ -461,7 +517,7 @@ function seccaoLocal(
       ? h(
           "ul",
           { class: "grid gap-3" },
-          ...regras.map(({ regra, indice }) => cartaoRegra(regra, hoje, acoes?.(indice))),
+          ...regras.map(({ regra, indice }) => cartaoRegra(regra, hoje, acoes?.regra(indice))),
         )
       : h("p", { class: "text-texto-secundario" }, "Sem horários registados."),
     h(
@@ -472,8 +528,16 @@ function seccaoLocal(
     excecoes.length
       ? h(
           "ul",
-          { class: "list-disc pl-5 text-base" },
-          ...excecoes.map((e) => h("li", {}, descreverExcecao(e, "pt-PT"))),
+          { class: "grid gap-3" },
+          ...excecoes.map(({ excecao, indice }) => {
+            const texto = descreverExcecao(excecao, "pt-PT");
+            return h(
+              "li",
+              { class: "rounded-cartao border border-borda bg-cartao p-4 text-base" },
+              h("p", {}, texto),
+              acoes && botoesEditarApagar(texto, acoes.excecao(indice)),
+            );
+          }),
         )
       : h("p", { class: "text-texto-secundario" }, "Nenhuma."),
     h(
@@ -481,7 +545,21 @@ function seccaoLocal(
       { class: "text-base font-bold tracking-wide text-texto-secundario uppercase" },
       "Dias santos de preceito",
     ),
-    h("p", { class: "text-base" }, t.regimes[local.dias_santos ?? "null"]),
+    h(
+      "div",
+      { class: "flex flex-wrap items-center gap-3" },
+      h(
+        "p",
+        {
+          class:
+            local.dias_santos === null
+              ? "rounded-cartao bg-aviso-fundo p-3 text-base text-dourado-texto"
+              : "text-base",
+        },
+        t.regimes[local.dias_santos ?? "null"],
+      ),
+      botaoDiasSantos,
+    ),
   );
 }
 
@@ -544,6 +622,18 @@ async function mostrarEntidade(id: string): Promise<void> {
       "click",
       () => void editarHorario(estado, { modo: "novo" }, botaoNovo),
     );
+    const botaoExcecao = h(
+      "button",
+      { type: "button", class: "botao-secundario" },
+      "+ Adicionar exceção",
+    );
+    botaoExcecao.addEventListener(
+      "click",
+      () => void editarExcecao(estado, { modo: "nova" }, botaoExcecao),
+    );
+    const semRegime = estado.locais
+      .filter(({ local }) => local.dias_santos === null)
+      .map(({ local }) => local.nome);
     const listaHistorico = h("div", {});
     const botaoHistorico = h(
       "button",
@@ -575,7 +665,20 @@ async function mostrarEntidade(id: string): Promise<void> {
           { class: "rounded-xl border border-borda bg-cartao p-5" },
           h("h1", { class: "text-2xl font-bold" }, estado.entidade.nome),
           estado.origem === "main" &&
-            h("div", { class: "mt-4 flex flex-wrap gap-3" }, botaoConfirmar, botaoNovo),
+            h(
+              "div",
+              { class: "mt-4 flex flex-wrap gap-3" },
+              botaoConfirmar,
+              botaoNovo,
+              botaoExcecao,
+            ),
+          estado.origem === "main" &&
+            semRegime.length > 0 &&
+            h(
+              "p",
+              { class: "mt-3 rounded-cartao bg-aviso-fundo p-3 text-base text-dourado-texto" },
+              `Falta indicar o que há nos dias santos de preceito em: ${semRegime.join(", ")}.`,
+            ),
           h(
             "p",
             { class: "mt-3 text-base text-texto-secundario" },
@@ -595,12 +698,21 @@ async function mostrarEntidade(id: string): Promise<void> {
             tipo,
             hoje,
             estado.origem === "main"
-              ? (indiceRegra) => ({
-                  editar: (b) =>
-                    void editarHorario(estado, { modo: "editar", indiceLocal, indiceRegra }, b),
-                  apagar: (b) =>
-                    void editarHorario(estado, { modo: "apagar", indiceLocal, indiceRegra }, b),
-                })
+              ? {
+                  regra: (indiceRegra) => ({
+                    editar: (b) =>
+                      void editarHorario(estado, { modo: "editar", indiceLocal, indiceRegra }, b),
+                    apagar: (b) =>
+                      void editarHorario(estado, { modo: "apagar", indiceLocal, indiceRegra }, b),
+                  }),
+                  excecao: (indiceExcecao) => ({
+                    editar: (b) =>
+                      void editarExcecao(estado, { modo: "editar", indiceLocal, indiceExcecao }, b),
+                    apagar: (b) =>
+                      void editarExcecao(estado, { modo: "apagar", indiceLocal, indiceExcecao }, b),
+                  }),
+                  diasSantos: (b) => void editarDiasSantos(estado, indiceLocal, b),
+                }
               : undefined,
           ),
         ),

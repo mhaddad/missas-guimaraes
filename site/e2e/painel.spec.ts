@@ -262,6 +262,63 @@ test("Alertas de anomalia: só grava depois de 'Tenho a certeza'", async ({ page
   expect((await clicarEEnviar(page, gravar)).confirmar_alertas).toBe(true);
 });
 
+test("Nova exceção (P3): muda a hora de uma celebração prevista para essa data", async ({
+  page,
+}) => {
+  await simular(page, "entidade");
+  await page.goto("/admin/");
+  await page.getByRole("button", { name: "+ Adicionar exceção" }).click();
+  const dialogo = page.getByRole("dialog", { name: "Nova exceção" });
+  await dialogo.getByLabel("Data").fill("2099-03-01");
+  await dialogo.getByText("Muda a hora", { exact: true }).click();
+  await dialogo.getByLabel("Que celebração?").selectOption({ label: "Missa às 11:15" });
+  await dialogo.getByLabel("Nova hora").fill("10:30");
+  await dialogo.getByLabel("Nota (opcional)").fill("Festa da paróquia");
+  await expect(dialogo.getByText(/10:30/).first()).toBeVisible();
+  const resultado = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+    .analyze();
+  expect(resultado.violations.map((v) => v.id)).toEqual([]);
+  const post = await clicarEEnviar(page, dialogo.getByRole("button", { name: "Gravar" }));
+  expect(post.arquivos["dados/locais/nespereira.yml"]?.excecoes).toContainEqual({
+    data: "2099-03-01",
+    acao: "alterar",
+    tipo: "missa",
+    hora_original: "11:15",
+    hora: "10:30",
+    nota: "Festa da paróquia",
+  });
+});
+
+test("Apagar exceção (P3): volta a valer o horário habitual", async ({ page }) => {
+  await simular(page, "entidade");
+  await page.goto("/admin/");
+  await page.getByRole("button", { name: /^Apagar: .*23:30/ }).click();
+  const dialogo = page.getByRole("dialog", { name: "Apagar exceção" });
+  await expect(dialogo.getByText(/Exceção retirada/)).toBeVisible();
+  const post = await clicarEEnviar(
+    page,
+    dialogo.getByRole("button", { name: "Apagar", exact: true }),
+  );
+  expect(post.arquivos["dados/locais/nespereira.yml"]?.excecoes).toEqual([]);
+});
+
+test("Dias santos (P4): horário próprio cria a missa dos dias santos", async ({ page }) => {
+  await simular(page, "entidade");
+  await page.goto("/admin/");
+  await page.getByRole("button", { name: "Alterar", exact: true }).click();
+  const dialogo = page.getByRole("dialog", { name: "Dias santos de preceito" });
+  await dialogo.getByLabel(/Horário próprio/).check();
+  await dialogo.getByLabel("Hora da missa").fill("19:00");
+  const post = (await clicarEEnviar(
+    page,
+    dialogo.getByRole("button", { name: "Gravar" }),
+  )) as unknown as { arquivos: Record<string, { dias_santos: string; horarios: unknown[] }> };
+  const local = post.arquivos["dados/locais/nespereira.yml"];
+  expect(local?.dias_santos).toBe("horario_proprio");
+  expect(local?.horarios).toContainEqual({ tipo: "missa", dias: ["santo"], hora: "19:00" });
+});
+
 test("Histórico: administrador restaura uma versão anterior", async ({ page }) => {
   const pedidos = await simular(page, "admin");
   await page.goto("/admin/");
