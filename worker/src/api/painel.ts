@@ -1,5 +1,6 @@
 /**
- * API do painel (§9.4): `/api/eu`, `/api/entidades`, `/api/entidades/:id`, `/api/acessos`.
+ * API do painel (§9.4): `/api/eu`, `/api/entidades`, `/api/entidades/:id(/historico)`,
+ * `/api/pedidos` (E4, em `../pedidos.ts`) e `/api/acessos`.
  * REVISÃO DE SEGURANÇA OBRIGATÓRIA: identidade, âmbito por perfil e escrita de contactos.
  *
  * Em todos os pedidos: JWT do Access verificado (`identidade`), contacto ativo no KV e âmbito
@@ -21,8 +22,16 @@ import {
 } from "../contactos.ts";
 import { ErroGithub, lerArquivo, type Buscar, type EnvGithub } from "../github.ts";
 import { identidade, type EnvIdentidade, type ObterChaves } from "../identidade.ts";
+import {
+  criarPedido,
+  historico,
+  listarPedidos,
+  obterPedido,
+  TAMANHO_MAXIMO_PEDIDO,
+  type EnvPedidos,
+} from "../pedidos.ts";
 
-export interface EnvPainel extends EnvIdentidade, EnvGithub {
+export interface EnvPainel extends EnvIdentidade, EnvGithub, EnvPedidos {
   ASSETS: { fetch(pedido: Request): Promise<Response> };
   KV?: KVNamespace;
 }
@@ -70,9 +79,9 @@ function publico(c: Contacto) {
   };
 }
 
-async function lerCorpo(pedido: Request): Promise<unknown> {
+async function lerCorpo(pedido: Request, maximo = TAMANHO_MAXIMO): Promise<unknown> {
   const texto = await pedido.text();
-  if (texto.length > TAMANHO_MAXIMO) throw new RangeError("tamanho");
+  if (texto.length > maximo) throw new RangeError("tamanho");
   return JSON.parse(texto);
 }
 
@@ -174,6 +183,29 @@ export async function tratarApiPainel(
       return erro(502, "github");
     }
   }
+
+  // GET /api/entidades/:id/historico (§8.8)
+  const mHistorico = /^\/api\/entidades\/([^/]+)\/historico$/.exec(caminho);
+  if (mHistorico && metodo === "GET") {
+    const id = mHistorico[1] ?? "";
+    if (!PADRAO_ID.test(id)) return erro(400, "id");
+    if (!podeVer(eu, id)) return erro(403, "ambito");
+    return historico(env, kv, eu, id, deps);
+  }
+
+  // /api/pedidos (E4)
+  if (caminho === "/api/pedidos" && metodo === "POST") {
+    let corpo: unknown;
+    try {
+      corpo = await lerCorpo(pedido, TAMANHO_MAXIMO_PEDIDO);
+    } catch (e) {
+      return e instanceof RangeError ? erro(413, "tamanho") : erro(400, "corpo");
+    }
+    return criarPedido(corpo, eu, env, kv, deps);
+  }
+  if (caminho === "/api/pedidos" && metodo === "GET") return listarPedidos(eu, kv);
+  const mPedido = /^\/api\/pedidos\/([^/]+)$/.exec(caminho);
+  if (mPedido && metodo === "GET") return obterPedido(eu, kv, mPedido[1] ?? "");
 
   // /api/acessos — só administradores (P8)
   if (caminho === "/api/acessos" || caminho.startsWith("/api/acessos/")) {

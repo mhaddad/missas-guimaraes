@@ -280,6 +280,12 @@ export interface OpcoesPedido {
   /** Exigir o calendário na validação (por omissão, sim, como na CI). */
   exigirCalendario?: boolean;
   /**
+   * Verificar o formato canónico de todos os arquivos (por omissão, sim). O Worker desliga-o
+   * para caber no tempo de CPU: os arquivos do `main` já passaram por ele, os novos saem do
+   * serializador e o GitHub Actions volta a verificá-lo antes de gravar.
+   */
+  formatoCanonico?: boolean;
+  /**
    * Só para `restauro`: o conteúdo de um arquivo no commit `restaura` (`undefined` se não
    * existia). Sem isto, os restauros são recusados.
    */
@@ -352,6 +358,7 @@ async function preparar(
     {
       hoje: momentoEmLisboa(opcoes.agora).data,
       exigirCalendario: opcoes.exigirCalendario ?? true,
+      formatoCanonico: opcoes.formatoCanonico ?? true,
     },
   );
   const erros = problemas.filter((p) => p.nivel === "erro");

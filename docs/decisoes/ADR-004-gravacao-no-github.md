@@ -1,6 +1,6 @@
 # ADR-004 — Gravação no GitHub: pedidos assinados e `aplicar-pedido`
 
-- **Estado:** aceite (primeira parte do E4)
+- **Estado:** aceite (E4, partes 1 e 2)
 - **Data:** 2026-11-11
 
 ## Contexto
@@ -41,9 +41,27 @@ Só o GitHub Actions grava no `main` (§8.1). O painel e o Worker não têm perm
 9. **Aviso ao Worker.** É opcional (`AVISO_URL`): `POST` com o corpo assinado por `AVISO_HMAC` e um instante, para o Worker recusar repetições. Na homologação, todo o Worker está atrás do Access, por isso o aviso leva um token de serviço do Access.
 10. **Sem interface.** `scripts/enviar-pedido.ts` monta e assina os pedidos a partir de arquivos editados à mão, ou de um commit no caso do restauro. Simula a aplicação sobre o `origin/main` e dispara com o `gh`.
 
+11. **Worker** (`worker/src/pedidos.ts`, parte 2).
+    - `POST /api/pedidos` monta o pedido. O id, o instante, o contacto (id opaco e função) e o canal são do servidor e nunca vêm do corpo.
+    - Antes de assinar verifica o âmbito (`podeVer`; restauro só `admin`) e o limite de 30 pedidos por hora e por contacto.
+    - Depois lê do `main` só a entidade, os seus locais, o calendário e os arquivos tocados, e corre o mesmo `prepararPedido`. O `base` só pode falar desses arquivos.
+    - Num restauro, confirma que o commit pertence ao histórico do `main` (a API também resolveria commits de forks) e lê os arquivos desse commit.
+    - Respostas: conflito (409), dados inválidos (422), alertas de anomalia sem confirmação reforçada (428).
+    - Só então assina, dispara o workflow e guarda `pedido:<id>` no KV como `A_GRAVAR` (90 dias).
+    - No Worker, a verificação do formato canónico fica desligada, para caber no tempo de CPU. Os arquivos do `main` já a passaram, os novos saem do serializador e o workflow repete-a.
+12. **Estados.** `POST /api/interno/estado` não passa pelo Access nem por um contacto.
+    - Vale só a assinatura `AVISO_HMAC` sobre o corpo exato, com o instante a menos de 5 minutos.
+    - Transições aceites: `A_GRAVAR` → `GRAVADO`, `CONFLITO` ou `ERRO`; `GRAVADO` → `PUBLICADO`. Um desfecho não muda para outro, por isso repetir um aviso não tem efeito.
+    - `PUBLICADO` só é aceite com o SHA do commit que gravou o pedido.
+    - O `deploy.yml` lê os *trailers* `Pedido:` dos commits gravados pelo bot desde o último deploy bem sucedido. Um *trailer* copiado num PR não conta.
+13. **Consulta.** `GET /api/pedidos` mostra os 50 pedidos mais recentes do próprio contacto, ou de todos a um `admin`. Lê só índices ordenados no KV (`recentes:` e `recentes-de:<contacto>:`), nunca todos os registos. Um pedido de outra pessoa dá 404.
+14. **Histórico.** `GET /api/entidades/:id/historico` junta os commits dos arquivos da entidade, com título, linhas do resumo e *trailers*. O nome de quem gravou só aparece a um `admin` ou à própria pessoa; os outros veem a função. O diff de cada versão chega com o ecrã *Histórico* (E5.7).
+
 ## Consequências
 
 - Quem tiver a chave da App de leitura pode disparar o workflow, mas não grava nada sem o `PEDIDO_HMAC`. Repetir um pedido do log público dentro dos 15 minutos não tem efeito.
+- Uma segunda revisão independente (parte 2) levou às correções das transições de estado, do índice dos pedidos, do `base`, da origem do commit no restauro e da fixação das ações no `deploy.yml`.
 - Uma revisão de segurança independente (11/11) encontrou e levou às correções de `confirmado_*`, do restauro, do token, dos logs e da idempotência em simultâneo. Não encontrou forma de contornar a assinatura, de sair de `dados/` nem de tocar noutra entidade.
 - O `main` precisa do *ruleset* de §8.7 (sem *force-push*, gravação direta só pela App de escrita) para o histórico ser uma garantia. Isso é configuração do GitHub, fora do código.
-- Ficam para a parte seguinte do E4: `POST /api/pedidos` e `/api/interno/estado` no Worker, os estados no KV, os *trailers* no `deploy.yml`, o histórico e o repositório de testes.
+- Na homologação, os avisos do GitHub Actions só chegam ao Worker com um token de serviço do Access (`CF_ACCESS_CLIENT_ID`/`SECRET`) e uma política *Service Auth* na aplicação. Sem isso, os pedidos ficam em `A_GRAVAR` no painel, embora sejam gravados.
+- Fica por fazer o repositório de testes com o mesmo workflow (E4.11). Os testes com repositórios Git temporários cobrem C28 e C30 entretanto.

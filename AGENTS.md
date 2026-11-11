@@ -44,7 +44,7 @@
 ## Segurança — revisão obrigatória
 
 Mudanças em qualquer um destes pontos pedem leitura humana linha a linha e uma revisão de segurança independente antes do *merge*:
-verificação do JWT do Cloudflare Access e âmbito por perfil (`admin` / `entidade`) (`worker/src/identidade.ts`, `worker/src/contactos.ts`, `worker/src/api/painel.ts`, ADR-003); assinatura HMAC e formato dos pedidos e guardas de âmbito (`pacotes/dados/src/pedido.ts`, `pacotes/dados/src/aplicar.ts`, ADR-004); `scripts/aplicar-pedido.ts` e `.github/workflows/aplicar-pedido.yml`; permissões das GitHub Apps e workflows; tokens de confirmação por e-mail.
+verificação do JWT do Cloudflare Access e âmbito por perfil (`admin` / `entidade`) (`worker/src/identidade.ts`, `worker/src/contactos.ts`, `worker/src/api/painel.ts`, ADR-003); assinatura HMAC e formato dos pedidos e guardas de âmbito (`pacotes/dados/src/pedido.ts`, `pacotes/dados/src/aplicar.ts`, `worker/src/pedidos.ts`, ADR-004); `scripts/aplicar-pedido.ts` e `.github/workflows/aplicar-pedido.yml`; permissões das GitHub Apps e workflows; tokens de confirmação por e-mail.
 
 ## Ambientes
 

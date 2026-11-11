@@ -139,15 +139,26 @@ export interface Arquivo {
   conteudo: string;
 }
 
-/** Lê um arquivo do `main`; `null` se não existir. */
+export interface OpcoesGithub {
+  buscar?: Buscar;
+  agora?: Date;
+}
+
+const PADRAO_REF = /^(main|[0-9a-f]{40})$/;
+
+/**
+ * Lê um arquivo do `main` (ou de um commit, para os restauros); `null` se não existir.
+ */
 export async function lerArquivo(
   env: EnvGithub,
   caminho: string,
-  opcoes: { buscar?: Buscar; agora?: Date } = {},
+  opcoes: OpcoesGithub & { ref?: string } = {},
 ): Promise<Arquivo | null> {
   const buscar = opcoes.buscar ?? fetch;
+  const ref = opcoes.ref ?? "main";
+  if (!PADRAO_REF.test(ref)) throw new ErroGithub("ref inválida", 400);
   const token = await tokenDeInstalacao(env, buscar, opcoes.agora ?? new Date());
-  const url = `${API}/repos/${env.GITHUB_REPOSITORIO}/contents/${caminho.split("/").map(encodeURIComponent).join("/")}?ref=main`;
+  const url = `${API}/repos/${env.GITHUB_REPOSITORIO}/contents/${caminho.split("/").map(encodeURIComponent).join("/")}?ref=${ref}`;
   const resposta = await buscar(url, {
     headers: { ...CABECALHOS, authorization: `Bearer ${token}` },
   });
@@ -163,4 +174,79 @@ export async function lerArquivo(
     throw new ErroGithub("não é um arquivo", 502);
   const conteudo = new TextDecoder().decode(base64ParaBytes(corpo.content.replace(/\s+/g, "")));
   return { caminho, sha: corpo.sha, conteudo };
+}
+
+/** Dispara um workflow no `main` (`workflow_dispatch`). Precisa de `actions: write` na App. */
+export async function dispararWorkflow(
+  env: EnvGithub,
+  arquivo: string,
+  inputs: Record<string, string>,
+  opcoes: OpcoesGithub = {},
+): Promise<void> {
+  const buscar = opcoes.buscar ?? fetch;
+  const token = await tokenDeInstalacao(env, buscar, opcoes.agora ?? new Date());
+  const resposta = await buscar(
+    `${API}/repos/${env.GITHUB_REPOSITORIO}/actions/workflows/${encodeURIComponent(arquivo)}/dispatches`,
+    {
+      method: "POST",
+      headers: { ...CABECALHOS, authorization: `Bearer ${token}` },
+      body: JSON.stringify({ ref: "main", inputs }),
+    },
+  );
+  if (!resposta.ok) throw new ErroGithub(`disparo: ${resposta.status}`, 502);
+}
+
+export interface Commit {
+  sha: string;
+  /** Data do commit (ISO 8601). */
+  data: string;
+  mensagem: string;
+}
+
+/** Commits do `main` que tocaram num caminho, do mais recente para o mais antigo. */
+export async function listarCommits(
+  env: EnvGithub,
+  caminho: string,
+  opcoes: OpcoesGithub & { porPagina?: number } = {},
+): Promise<Commit[]> {
+  const buscar = opcoes.buscar ?? fetch;
+  const token = await tokenDeInstalacao(env, buscar, opcoes.agora ?? new Date());
+  const parametros = new URLSearchParams({
+    sha: "main",
+    path: caminho,
+    per_page: String(opcoes.porPagina ?? 30),
+  });
+  const resposta = await buscar(
+    `${API}/repos/${env.GITHUB_REPOSITORIO}/commits?${parametros.toString()}`,
+    { headers: { ...CABECALHOS, authorization: `Bearer ${token}` } },
+  );
+  if (!resposta.ok) throw new ErroGithub(`commits: ${resposta.status}`, 502);
+  const corpo = (await resposta.json()) as {
+    sha: string;
+    commit: { message: string; committer?: { date?: string }; author?: { date?: string } };
+  }[];
+  return corpo.map((c) => ({
+    sha: c.sha,
+    data: c.commit.committer?.date ?? c.commit.author?.date ?? "",
+    mensagem: c.commit.message,
+  }));
+}
+
+/** O commit pertence ao histórico do `main` (e não, por exemplo, só a um fork). */
+export async function eAntepassadoDoMain(
+  env: EnvGithub,
+  sha: string,
+  opcoes: OpcoesGithub = {},
+): Promise<boolean> {
+  if (!/^[0-9a-f]{40}$/.test(sha)) return false;
+  const buscar = opcoes.buscar ?? fetch;
+  const token = await tokenDeInstalacao(env, buscar, opcoes.agora ?? new Date());
+  const resposta = await buscar(`${API}/repos/${env.GITHUB_REPOSITORIO}/compare/${sha}...main`, {
+    headers: { ...CABECALHOS, authorization: `Bearer ${token}` },
+  });
+  if (resposta.status === 404) return false;
+  if (!resposta.ok) throw new ErroGithub(`comparação: ${resposta.status}`, 502);
+  const { status } = (await resposta.json()) as { status?: string };
+  // base...head = sha...main: "ahead" (o main avançou) ou "identical".
+  return status === "ahead" || status === "identical";
 }

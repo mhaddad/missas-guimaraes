@@ -38,4 +38,22 @@ describe("worker", () => {
     const resposta = await pedir("/api/saude", "homologacao");
     expect(await resposta.json()).toEqual({ ok: true, ambiente: "homologacao" });
   });
+
+  it("o aviso interno não passa pelo Access: vale só a assinatura", async () => {
+    const resposta = await worker.fetch(
+      new Request("https://exemplo.workers.dev/api/interno/estado", {
+        method: "POST",
+        headers: { "x-assinatura": "0".repeat(64) },
+        body: "{}",
+      }),
+      {
+        ...env("homologacao"),
+        AVISO_HMAC: "segredo-dos-avisos-com-mais-de-32-caracteres",
+        KV: {} as KVNamespace,
+      },
+    );
+    expect(resposta.status).toBe(401);
+    expect(await resposta.json()).toMatchObject({ erro: "assinatura" });
+    expect(resposta.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+  });
 });
