@@ -1,5 +1,5 @@
 ---
-/** E-1 — Horários (§7.3): consulta, *Está tudo certo* (P1) e histórico com restauro (E-6). */
+/** E-1 — Horários (§7.3): *Está tudo certo* (P1), novo/editar/apagar horário (P2) e histórico (E-6). */
 import Painel from "../../layouts/Painel.astro";
 ---
 
@@ -32,6 +32,10 @@ import Painel from "../../layouts/Painel.astro";
   <div id="conteudo-entidade" aria-live="polite">
     <p class="text-texto-secundario">A carregar…</p>
   </div>
+  <dialog
+    id="dialogo-editor"
+    class="m-auto max-h-[calc(100dvh-2rem)] w-[min(44rem,calc(100%-2rem))] overflow-y-auto rounded-xl border border-borda bg-cartao p-0 text-ardosia shadow-xl backdrop:bg-ardosia/50"
+  ></dialog>
   <dialog
     id="dialogo-pedido"
     aria-labelledby="titulo-pedido"

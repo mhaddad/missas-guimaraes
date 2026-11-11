@@ -151,6 +151,117 @@ test("Está tudo certo (P1): mostra os horários, envia a confirmação e acompa
   });
 });
 
+const hojeLisboa = () =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Lisbon" }).format(new Date());
+
+/** Clica e devolve o corpo do POST /api/pedidos que o clique envia. */
+async function clicarEEnviar(page: Page, botao: ReturnType<Page["getByRole"]>) {
+  const [pedido] = await Promise.all([
+    page.waitForRequest((r) => r.method() === "POST" && r.url().endsWith("/api/pedidos")),
+    botao.click(),
+  ]);
+  return pedido.postDataJSON() as ReturnType<typeof ultimoPost>;
+}
+
+function ultimoPost(pedidos: { metodo: string; url: string; corpo: unknown }[]) {
+  return pedidos.filter((p) => p.metodo === "POST" && p.url === "/api/pedidos").at(-1)?.corpo as {
+    tipo: string;
+    arquivos: Record<string, { horarios: unknown[]; excecoes: unknown[] }>;
+    resumo: { linhas: string[] }[];
+    confirmar_alertas?: boolean;
+  };
+}
+
+test("Novo horário (P2): escolhe dias e hora, vê o resumo e grava a partir de hoje", async ({
+  page,
+}) => {
+  const pedidos = await simular(page, "entidade");
+  await page.goto("/admin/");
+  await page.getByRole("button", { name: "+ Novo horário" }).click();
+  const dialogo = page.getByRole("dialog", { name: "Novo horário" });
+  await dialogo.getByLabel("Hora", { exact: true }).fill("18:30");
+  await dialogo.getByText("Sex", { exact: true }).click();
+  await expect(dialogo.getByText(/➕ Missa: sextas-feiras às 18:30/)).toBeVisible();
+  const resultado = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+    .analyze();
+  expect(resultado.violations.map((v) => v.id)).toEqual([]);
+  await dialogo.getByRole("button", { name: "Gravar" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Publicado no site." })).toBeVisible({
+    timeout: 15_000,
+  });
+  const post = ultimoPost(pedidos);
+  expect(post.tipo).toBe("alteracao");
+  expect(post.arquivos["dados/locais/nespereira.yml"]?.horarios).toContainEqual({
+    tipo: "missa",
+    dias: ["sex"],
+    hora: "18:30",
+    validade: { de: hojeLisboa() },
+  });
+});
+
+test("Editar horário (P2): a regra antiga termina e a nova começa na data escolhida", async ({
+  page,
+}) => {
+  await simular(page, "entidade");
+  await page.goto("/admin/");
+  await page.getByRole("button", { name: "Editar: Dom às 11:15" }).click();
+  const dialogo = page.getByRole("dialog", { name: "Editar horário" });
+  await expect(dialogo.getByLabel("Hora", { exact: true })).toHaveValue("11:15");
+  await dialogo.getByLabel("Hora", { exact: true }).fill("10:30");
+  await dialogo.getByLabel("A partir de", { exact: true }).fill("2099-01-04");
+  await expect(dialogo.getByText(/➕.*10:30/)).toBeVisible();
+  const enviado = await clicarEEnviar(page, dialogo.getByRole("button", { name: "Gravar" }));
+  const horarios = enviado.arquivos["dados/locais/nespereira.yml"]?.horarios;
+  expect(horarios).toContainEqual({
+    tipo: "missa",
+    dias: ["dom"],
+    hora: "11:15",
+    nota: "Com coro",
+    validade: { ate: "2099-01-03" },
+  });
+  expect(horarios).toContainEqual({
+    tipo: "missa",
+    dias: ["dom"],
+    hora: "10:30",
+    nota: "Com coro",
+    validade: { de: "2099-01-04" },
+  });
+});
+
+test("Apagar horário (P2): cancelar só numa data cria uma exceção", async ({ page }) => {
+  await simular(page, "entidade");
+  await page.goto("/admin/");
+  await page.getByRole("button", { name: "Apagar: Dom às 11:15" }).click();
+  const dialogo = page.getByRole("dialog", { name: "Apagar horário" });
+  await dialogo.getByLabel("Data a cancelar").fill("2099-03-01");
+  await expect(dialogo.getByText(/sem missa às 11:15/)).toBeVisible();
+  const post = await clicarEEnviar(
+    page,
+    dialogo.getByRole("button", { name: "Apagar", exact: true }),
+  );
+  expect(post.arquivos["dados/locais/nespereira.yml"]?.excecoes).toContainEqual({
+    data: "2099-03-01",
+    acao: "cancelar",
+    tipo: "missa",
+    hora: "11:15",
+  });
+  expect(post.arquivos["dados/locais/nespereira.yml"]?.horarios).toHaveLength(2);
+});
+
+test("Alertas de anomalia: só grava depois de 'Tenho a certeza'", async ({ page }) => {
+  await simular(page, "entidade");
+  await page.goto("/admin/");
+  await page.getByRole("button", { name: "Editar: Dom às 11:15" }).click();
+  const dialogo = page.getByRole("dialog", { name: "Editar horário" });
+  await dialogo.getByLabel("Hora", { exact: true }).fill("23:30");
+  await expect(dialogo.getByText(/hora fora do habitual \(23:30\)/)).toBeVisible();
+  const gravar = dialogo.getByRole("button", { name: "Gravar" });
+  await expect(gravar).toBeDisabled();
+  await dialogo.getByLabel("Tenho a certeza").check();
+  expect((await clicarEEnviar(page, gravar)).confirmar_alertas).toBe(true);
+});
+
 test("Histórico: administrador restaura uma versão anterior", async ({ page }) => {
   const pedidos = await simular(page, "admin");
   await page.goto("/admin/");
