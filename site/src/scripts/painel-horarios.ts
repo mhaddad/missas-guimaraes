@@ -20,6 +20,7 @@ import { descreverExcecao } from "../lib/detalhe.ts";
 import { selo } from "../lib/portal.ts";
 import { classeSelo, textoSelo } from "../lib/selo.ts";
 import { api, carregarEu, ErroApi, h, icone, mostrarErro, type Eu } from "./painel-comum.ts";
+import { abrirEditor, type OpcoesEditor } from "./painel-editar.ts";
 import { acompanhar, enviarPedido, notificar, textoDoErro } from "./painel-pedidos.ts";
 
 interface EntidadeLista {
@@ -43,6 +44,7 @@ const seletor = document.getElementById("entidade") as HTMLSelectElement;
 const filtro = document.getElementById("filtro-entidade") as HTMLInputElement;
 const caixaFiltro = document.getElementById("caixa-filtro") as HTMLElement;
 const dialogo = document.getElementById("dialogo-pedido") as HTMLDialogElement;
+const dialogoEditor = document.getElementById("dialogo-editor") as HTMLDialogElement;
 let eu: Eu;
 
 const caminhoLocal = (id: string) => `dados/locais/${id}.yml`;
@@ -143,6 +145,30 @@ async function confirmarTudo(estado: EstadoEntidade, botao: HTMLButtonElement): 
     { tipo: "confirmacao", entidade: estado.entidade.id, base, resumo: resumirPedido(pares) },
     botao,
     "Os horários já estavam confirmados hoje.",
+  );
+}
+
+/** P2 — Novo horário, editar ou apagar: um pedido `alteracao` por gravação (D24). */
+async function editarHorario(
+  estado: EstadoEntidade,
+  opcoes: Pick<OpcoesEditor, "modo" | "indiceLocal" | "indiceRegra">,
+  botao: HTMLButtonElement,
+): Promise<void> {
+  const alteracao = await abrirEditor({ dialogo: dialogoEditor, locais: estado.locais, ...opcoes });
+  if (!alteracao) return;
+  const { local, depois, confirmarAlertas } = alteracao;
+  const caminho = caminhoLocal(local.local.id);
+  await enviarEAcompanhar(
+    {
+      tipo: "alteracao",
+      entidade: estado.entidade.id,
+      base: { [caminho]: local.sha },
+      arquivos: { [caminho]: depois },
+      resumo: resumirPedido([{ antes: local.local, depois }]),
+      ...(confirmarAlertas && { confirmar_alertas: true }),
+    },
+    botao,
+    "Nada mudou.",
   );
 }
 
@@ -306,7 +332,12 @@ function rotuloDias(regra: Regra): string {
   return dias.map((d) => DIAS_CURTOS[d] ?? d).join(" · ");
 }
 
-function cartaoRegra(regra: Regra, hoje: string): HTMLElement {
+interface AcoesRegra {
+  editar(botao: HTMLButtonElement): void;
+  apagar(botao: HTMLButtonElement): void;
+}
+
+function cartaoRegra(regra: Regra, hoje: string, acoes?: AcoesRegra): HTMLElement {
   const automaticas = etiquetas(regra, "pt-PT");
   const semSemanal = regra.semanas_do_mes || regra.quinzenal ? automaticas : automaticas.slice(1);
   const inativa = regra.validade?.ate !== undefined && regra.validade.ate < hoje;
@@ -346,12 +377,38 @@ function cartaoRegra(regra: Regra, hoje: string): HTMLElement {
         ),
         regra.nota && h("span", { class: "etiqueta bg-azul-fundo text-azul-texto" }, regra.nota),
       ),
+      acoes && botoesRegra(regra, acoes),
     ),
   );
 }
 
-function seccaoLocal(local: Local, tipoEntidade: TipoEntidade, hoje: string): HTMLElement {
-  const regras = [...local.horarios].sort(compararRegras);
+function botoesRegra(regra: Regra, acoes: AcoesRegra): HTMLElement {
+  const descricao = `${rotuloDias(regra)} às ${regra.hora}`;
+  const editar = h(
+    "button",
+    { type: "button", class: "botao-secundario", "aria-label": `Editar: ${descricao}` },
+    "Editar",
+  );
+  const apagar = h(
+    "button",
+    { type: "button", class: "botao-secundario", "aria-label": `Apagar: ${descricao}` },
+    "Apagar",
+  );
+  editar.addEventListener("click", () => acoes.editar(editar));
+  apagar.addEventListener("click", () => acoes.apagar(apagar));
+  return h("div", { class: "mt-3 flex flex-wrap gap-2" }, editar, apagar);
+}
+
+function seccaoLocal(
+  local: Local,
+  tipoEntidade: TipoEntidade,
+  hoje: string,
+  acoes?: (indice: number) => AcoesRegra,
+): HTMLElement {
+  // Ordenadas para mostrar, mas com o índice original em `local.horarios` (para editar).
+  const regras = local.horarios
+    .map((regra, indice) => ({ regra, indice }))
+    .sort((a, b) => compararRegras(a.regra, b.regra));
   const excecoes = local.excecoes
     .filter((e) => e.data >= hoje)
     .sort((a, b) => a.data.localeCompare(b.data));
@@ -401,7 +458,11 @@ function seccaoLocal(local: Local, tipoEntidade: TipoEntidade, hoje: string): HT
       "Horários habituais",
     ),
     regras.length
-      ? h("ul", { class: "grid gap-3" }, ...regras.map((r) => cartaoRegra(r, hoje)))
+      ? h(
+          "ul",
+          { class: "grid gap-3" },
+          ...regras.map(({ regra, indice }) => cartaoRegra(regra, hoje, acoes?.(indice))),
+        )
       : h("p", { class: "text-texto-secundario" }, "Sem horários registados."),
     h(
       "h3",
@@ -472,12 +533,17 @@ async function mostrarEntidade(id: string): Promise<void> {
       {
         type: "button",
         class:
-          "mt-4 inline-flex min-h-12 items-center gap-2 rounded-cartao bg-confirmado px-5 text-base font-semibold text-white disabled:opacity-60",
+          "inline-flex min-h-12 items-center gap-2 rounded-cartao bg-confirmado px-5 text-base font-semibold text-white disabled:opacity-60",
       },
       icone("check_circle"),
       "Está tudo certo",
     );
     botaoConfirmar.addEventListener("click", () => void confirmarTudo(estado, botaoConfirmar));
+    const botaoNovo = h("button", { type: "button", class: "botao-secundario" }, "+ Novo horário");
+    botaoNovo.addEventListener(
+      "click",
+      () => void editarHorario(estado, { modo: "novo" }, botaoNovo),
+    );
     const listaHistorico = h("div", {});
     const botaoHistorico = h(
       "button",
@@ -508,11 +574,12 @@ async function mostrarEntidade(id: string): Promise<void> {
           "div",
           { class: "rounded-xl border border-borda bg-cartao p-5" },
           h("h1", { class: "text-2xl font-bold" }, estado.entidade.nome),
-          estado.origem === "main" && botaoConfirmar,
+          estado.origem === "main" &&
+            h("div", { class: "mt-4 flex flex-wrap gap-3" }, botaoConfirmar, botaoNovo),
           h(
             "p",
             { class: "mt-3 text-base text-texto-secundario" },
-            "Por agora pode confirmar os horários. Acrescentar e mudar horários chega nas próximas versões.",
+            "As alterações aparecem no site em poucos minutos.",
           ),
           estado.origem === "site" &&
             h(
@@ -522,7 +589,21 @@ async function mostrarEntidade(id: string): Promise<void> {
             ),
         ),
         resumo(estado, hoje),
-        ...estado.locais.map(({ local }) => seccaoLocal(local, tipo, hoje)),
+        ...estado.locais.map(({ local }, indiceLocal) =>
+          seccaoLocal(
+            local,
+            tipo,
+            hoje,
+            estado.origem === "main"
+              ? (indiceRegra) => ({
+                  editar: (b) =>
+                    void editarHorario(estado, { modo: "editar", indiceLocal, indiceRegra }, b),
+                  apagar: (b) =>
+                    void editarHorario(estado, { modo: "apagar", indiceLocal, indiceRegra }, b),
+                })
+              : undefined,
+          ),
+        ),
         estado.origem === "main" && seccaoHistorico,
       ),
     );

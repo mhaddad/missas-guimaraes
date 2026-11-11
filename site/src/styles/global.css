@@ -54,6 +54,23 @@
   .ligacao {
     @apply font-semibold text-azul-texto underline underline-offset-2;
   }
+  /* Opção do painel (rádio ou caixa) com aspeto de botão; o próprio input fica escondido. */
+  .opcao {
+    @apply inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-cartao border border-borda bg-cartao px-4 text-base font-semibold text-ardosia hover:bg-superficie;
+  }
+  .opcao:has(:checked) {
+    @apply border-ardosia bg-ardosia text-white hover:bg-ardosia;
+  }
+  .opcao:has(:focus-visible) {
+    outline: 3px solid var(--color-dourado-texto);
+    outline-offset: 2px;
+  }
+  .campo {
+    @apply min-h-12 rounded-cartao border border-borda bg-cartao px-3 text-base;
+  }
+  .rotulo {
+    @apply text-sm font-bold tracking-wide text-texto-secundario uppercase;
+  }
   .etiqueta {
     @apply inline-flex items-center rounded px-2 py-0.5 text-sm font-semibold;
   }
