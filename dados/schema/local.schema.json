@@ -179,7 +179,9 @@
           ]
         },
         "ref": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^c_[0-9a-f]{4,32}$",
+          "description": "Id opaco do contacto (nunca nome nem e-mail)."
         }
       }
     },

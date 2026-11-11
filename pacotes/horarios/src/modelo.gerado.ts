@@ -69,6 +69,9 @@ export interface Local {
   confirmado_em: DataISO | null;
   confirmado_por?: {
     canal?: "painel" | "email" | "secretaria" | "moderacao";
+    /**
+     * Id opaco do contacto (nunca nome nem e-mail).
+     */
     ref?: string;
   } | null;
   revisao: {
