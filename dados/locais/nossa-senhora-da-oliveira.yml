@@ -17,6 +17,13 @@ horarios:
 - tipo: missa
   dias: [seg, ter, qua, qui, sex]
   hora: '19:00'
+  validade:
+    ate: '2026-11-10'
+- tipo: missa
+  dias: [sab, dom]
+  hora: '19:30'
+  validade:
+    de: '2026-11-11'
 - tipo: missa
   dias: [dom]
   hora: '12:00'
