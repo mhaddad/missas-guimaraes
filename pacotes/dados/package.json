@@ -5,7 +5,8 @@
   "description": "Leitura, validação e (a partir do E1) escrita canónica dos YAML de dados/ (PLANO §8.3)",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./resumo": "./src/resumo.ts"
   },
   "dependencies": {
     "@missas/horarios": "0.0.0",

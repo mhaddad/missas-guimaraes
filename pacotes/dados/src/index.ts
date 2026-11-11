@@ -29,13 +29,11 @@ export {
   type TipoPedido,
 } from "./pedido.ts";
 export {
-  alertasDeAnomalia,
   caminhoEntidade,
   caminhoLocal,
   prepararPedido,
-  resumirPedido,
   CAMPOS_ALTERACAO,
   type OpcoesPedido,
-  type ParLocal,
   type ResultadoPedido,
 } from "./aplicar.ts";
+export { alertasDeAnomalia, resumirPedido, type ParLocal } from "./resumo.ts";

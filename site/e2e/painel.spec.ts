@@ -48,6 +48,40 @@ async function simular(page: Page, perfil: "admin" | "entidade", contactos: unkn
       });
     if (url.pathname === "/api/entidades")
       return responder(perfil === "admin" ? entidades : entidades.slice(0, 1));
+    if (url.pathname.endsWith("/historico"))
+      return responder([
+        {
+          sha: "b".repeat(40),
+          data: "2026-11-20T10:00:00Z",
+          titulo: "Horários: Paróquia de Nespereira (alteração)",
+          linhas: ["Igreja de Santa Eulália", "  ✏️ Missa: domingos às 10:30 → Domingos às 11:15"],
+          contacto: { ref: "c_bbbbbbbb", funcao: "secretaria" },
+          canal: "painel",
+        },
+        {
+          sha: "a".repeat(40),
+          data: "2026-11-01T10:00:00Z",
+          titulo: "Importação inicial",
+          linhas: [],
+          contacto: null,
+          canal: null,
+        },
+      ]);
+    if (url.pathname.includes("/versao/"))
+      return responder({
+        sha: "a".repeat(40),
+        entidade: entidades[0],
+        locais: [
+          { local: { ...local, horarios: [{ tipo: "missa", dias: ["dom"], hora: "10:30" }] } },
+        ],
+      });
+    if (url.pathname === "/api/pedidos" && pedido.method() === "POST")
+      return responder(
+        { ok: true, id: "p_0123456789abcdef", estado: "A_GRAVAR", alertas: [] },
+        202,
+      );
+    if (url.pathname === "/api/pedidos/p_0123456789abcdef")
+      return responder({ id: "p_0123456789abcdef", estado: "PUBLICADO" });
     if (url.pathname.startsWith("/api/entidades/"))
       return responder({
         origem: "main",
@@ -63,7 +97,7 @@ async function simular(page: Page, perfil: "admin" | "entidade", contactos: unkn
   return pedidos;
 }
 
-test("Horários: contacto de uma entidade vê a sua, só de leitura", async ({ page }) => {
+test("Horários: contacto de uma entidade vê a sua", async ({ page }) => {
   await simular(page, "entidade");
   await page.goto("/admin/");
   await expect(page.getByRole("heading", { name: "Paróquia de Nespereira" })).toBeVisible();
@@ -88,6 +122,67 @@ test("Horários: administrador escolhe entre todas as entidades", async ({ page 
   await page.getByLabel("Entidade").selectOption("polvoreira");
   await expect(page).toHaveURL(/entidade=polvoreira/);
   expect(pedidos.some((p) => p.url === "/api/entidades/polvoreira")).toBe(true);
+});
+
+test("Está tudo certo (P1): mostra os horários, envia a confirmação e acompanha o estado", async ({
+  page,
+}) => {
+  const pedidos = await simular(page, "entidade");
+  await page.goto("/admin/");
+  await page.getByRole("button", { name: "Está tudo certo" }).click();
+  const dialogo = page.getByRole("dialog", { name: "Está tudo certo?" });
+  await expect(dialogo.getByText("Igreja de Santa Eulália")).toBeVisible();
+  const resultado = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+    .analyze();
+  expect(resultado.violations.map((v) => v.id)).toEqual([]);
+  await dialogo.getByRole("button", { name: "Confirmo que estes horários estão corretos" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Publicado no site." })).toBeVisible({
+    timeout: 15_000,
+  });
+  const post = pedidos.find((p) => p.metodo === "POST" && p.url === "/api/pedidos");
+  expect(post?.corpo).toMatchObject({
+    tipo: "confirmacao",
+    entidade: "nespereira",
+    base: { "dados/locais/nespereira.yml": "s1" },
+    resumo: [
+      { local: "nespereira", linhas: [expect.stringMatching(/^✅ Horários confirmados em/)] },
+    ],
+  });
+});
+
+test("Histórico: administrador restaura uma versão anterior", async ({ page }) => {
+  const pedidos = await simular(page, "admin");
+  await page.goto("/admin/");
+  await page.getByRole("button", { name: "Ver alterações" }).click();
+  await expect(page.getByText("Importação inicial")).toBeVisible();
+  await expect(page.getByText(/versão atual/)).toBeVisible();
+  // Só as versões anteriores à atual podem ser restauradas.
+  await expect(page.getByRole("button", { name: "Restaurar esta versão" })).toHaveCount(1);
+  await page.getByRole("button", { name: "Restaurar esta versão" }).click();
+  const dialogo = page.getByRole("dialog", { name: "Restaurar esta versão?" });
+  await expect(dialogo.getByText(/Domingos às 10:30/)).toBeVisible();
+  await dialogo.getByRole("button", { name: "Restaurar", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Publicado no site." })).toBeVisible({
+    timeout: 15_000,
+  });
+  const post = pedidos.find((p) => p.metodo === "POST" && p.url === "/api/pedidos");
+  expect(post?.corpo).toMatchObject({
+    tipo: "restauro",
+    entidade: "nespereira",
+    restaura: "a".repeat(40),
+    base: { "dados/locais/nespereira.yml": "s1" },
+    arquivos: { "dados/locais/nespereira.yml": { horarios: [{ hora: "10:30" }] } },
+  });
+});
+
+test("Histórico: um contacto vê as alterações mas não restaura", async ({ page }) => {
+  await simular(page, "entidade");
+  await page.goto("/admin/");
+  await page.getByRole("button", { name: "Ver alterações" }).click();
+  await expect(page.getByText("Importação inicial")).toBeVisible();
+  await expect(page.getByText("Secretaria", { exact: false }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Restaurar esta versão" })).toHaveCount(0);
 });
 
 test("Acessos: lista, formulário e erro do servidor", async ({ page }) => {

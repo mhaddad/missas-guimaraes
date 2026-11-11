@@ -2,14 +2,13 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import type { Local } from "@missas/horarios";
 import {
-  alertasDeAnomalia,
   caminhoEntidade,
   caminhoLocal,
   prepararPedido,
-  resumirPedido,
   type OpcoesPedido,
   type ResultadoPedido,
 } from "./aplicar.ts";
+import { alertasDeAnomalia, resumirPedido } from "./resumo.ts";
 import { shaBlob, type Pedido } from "./pedido.ts";
 import { serializar } from "./serializar.ts";
 
