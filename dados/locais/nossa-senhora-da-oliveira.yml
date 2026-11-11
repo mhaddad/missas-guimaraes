@@ -30,6 +30,8 @@ horarios:
 - tipo: missa
   dias: [dom]
   hora: '19:00'
+  validade:
+    ate: '2026-11-10'
 excecoes: []
 notas: []
 confirmado_em: '2026-11-11'
