@@ -31,7 +31,7 @@ import {
   type ProblemaDados,
 } from "@missas/dados";
 
-export type Estado = "GRAVADO" | "CONFLITO" | "ERRO";
+export type Estado = "GRAVADO" | "CONFLITO" | "ERRO" | "PUBLICADO";
 
 export interface Desfecho {
   estado: Estado;
@@ -188,8 +188,9 @@ export async function aplicar(opcoes: OpcoesAplicar): Promise<Desfecho> {
         motivo: r.motivo,
         ...(r.problemas && { problemas: r.problemas }),
       });
+    // Nada a gravar (ex.: segunda confirmação no mesmo dia): sem commit, por isso sem SHA.
     if (r.estado === "sem_alteracoes")
-      return comId({ estado: "GRAVADO", sha: git(raiz, ["rev-parse", "HEAD"]) });
+      return comId({ estado: "GRAVADO", motivo: "sem alterações" });
 
     for (const a of r.escritos) writeFileSync(join(raiz, a.caminho), a.conteudo);
     if (tentativa === 1 && env.VERIFICAR_BUILD === "1") {

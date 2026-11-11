@@ -3,6 +3,7 @@
  * recebe os relatos do público (E2.9) e responde à API do painel (E3). Os crons entram no E6.
  */
 import { tratarApiPainel, type EnvPainel } from "./api/painel.ts";
+import { tratarEstadoInterno } from "./pedidos.ts";
 import { tratarRelato, type EnvRelato } from "./relato.ts";
 
 export interface Env extends EnvRelato, EnvPainel {
@@ -32,6 +33,12 @@ export default {
 
     if (url.pathname === "/api/relato") {
       const resposta = await tratarRelato(pedido, env);
+      return homologacao ? semIndexacao(resposta) : resposta;
+    }
+
+    // Do GitHub Actions: autenticado só pela assinatura AVISO_HMAC (sem Access nem contacto).
+    if (url.pathname === "/api/interno/estado") {
+      const resposta = await tratarEstadoInterno(pedido, env);
       return homologacao ? semIndexacao(resposta) : resposta;
     }
 
