@@ -6,15 +6,12 @@
  * erros e `resumirPedido` mostra o que vai mudar, ao vivo, antes de gravar. O mesmo cálculo é
  * repetido no Worker e no GitHub Actions.
  */
-import { alertasDeAnomalia, resumirPedido } from "@missas/dados/resumo";
 import {
   aplicarMudanca,
   descreverRegra,
-  momentoEmLisboa,
   MudancaInvalida,
   ocorrencias,
   somarDias,
-  validar,
   type Dia,
   type Local,
   type Mudanca,
@@ -22,18 +19,21 @@ import {
   type Regra,
 } from "@missas/horarios";
 import { h } from "./painel-comum.ts";
+import {
+  abrirModal,
+  campo,
+  grupo,
+  hoje,
+  marcados,
+  opcao,
+  seletorLocal,
+  valorDe,
+  type Alteracao,
+  type Calculo,
+  type LocalComSha,
+} from "./painel-modal.ts";
 
-export interface LocalComSha {
-  local: Local;
-  sha: string | null;
-}
-
-/** O que o editor devolve para enviar: o local alterado e o resumo. */
-export interface Alteracao {
-  local: LocalComSha;
-  depois: Local;
-  confirmarAlertas: boolean;
-}
+export type { Alteracao, LocalComSha } from "./painel-modal.ts";
 
 const TIPOS: [Regra["tipo"], string][] = [
   ["missa", "Missa"],
@@ -62,54 +62,6 @@ const SEMANAS: [number, string][] = [
   [5, "5.ª"],
   [-1, "Última"],
 ];
-
-const hoje = () => momentoEmLisboa(new Date()).data;
-
-let contador = 0;
-const novoId = (prefixo: string) => `${prefixo}-${++contador}`;
-
-/** Opção com aspeto de botão (rádio ou caixa). */
-function opcao(
-  tipo: "radio" | "checkbox",
-  nome: string,
-  valor: string,
-  texto: string,
-  marcada: boolean,
-) {
-  return h(
-    "label",
-    { class: "opcao" },
-    h("input", { type: tipo, name: nome, value: valor, class: "sr-only", checked: marcada }),
-    texto,
-  );
-}
-
-function grupo(legenda: string, ...filhos: (Node | false | null)[]): HTMLFieldSetElement {
-  return h(
-    "fieldset",
-    { class: "grid gap-2" },
-    h("legend", { class: "rotulo mb-2" }, legenda),
-    h("div", { class: "flex flex-wrap gap-2" }, ...filhos),
-  );
-}
-
-function campo(rotulo: string, entrada: HTMLElement, ajuda?: string): HTMLElement {
-  const id = novoId("campo");
-  entrada.id = id;
-  return h(
-    "div",
-    { class: "grid gap-1" },
-    h("label", { for: id, class: "rotulo" }, rotulo),
-    entrada,
-    ajuda ? h("p", { class: "text-sm text-texto-secundario" }, ajuda) : null,
-  );
-}
-
-const valorDe = (form: HTMLFormElement, nome: string) =>
-  (form.elements.namedItem(nome) as HTMLInputElement | RadioNodeList | null)?.value ?? "";
-
-const marcados = (form: HTMLFormElement, nome: string) =>
-  [...form.querySelectorAll<HTMLInputElement>(`input[name="${nome}"]:checked`)].map((i) => i.value);
 
 /** Próxima data em que a regra `indice` acontece (para *Cancelar só numa data*). */
 function proximaData(local: Local, indice: number): string {
@@ -303,13 +255,6 @@ function lerRegra(form: HTMLFormElement, original?: Regra): Regra | string {
 function formularioHorario(locais: LocalComSha[], indiceLocal: number, regra?: Regra) {
   const r = regra;
   const frequencia = r?.semanas_do_mes ? "semanas" : r?.quinzenal ? "quinzenal" : "semanal";
-  const seletorLocal = h(
-    "select",
-    { name: "local", class: "campo", disabled: regra !== undefined },
-    ...locais.map((l, i) =>
-      h("option", { value: String(i), selected: i === indiceLocal }, l.local.nome),
-    ),
-  );
   const horaFim = h("input", {
     type: "time",
     name: "hora_fim",
@@ -345,7 +290,7 @@ function formularioHorario(locais: LocalComSha[], indiceLocal: number, regra?: R
       h(
         "div",
         { class: "grid gap-4 sm:grid-cols-2" },
-        locais.length > 1 ? campo("Local", seletorLocal) : null,
+        seletorLocal(locais, indiceLocal, regra !== undefined),
         campo(
           "Hora",
           h("input", {
@@ -411,10 +356,7 @@ export interface OpcoesEditor {
   indiceRegra?: number;
 }
 
-/**
- * Abre o editor e resolve com a alteração a gravar, ou `null` se a pessoa cancelar. O diálogo
- * só fecha com *Gravar* quando há uma mudança válida.
- */
+/** Abre E-2 (novo/editar) ou E-3 (apagar); resolve com a alteração a gravar, ou `null`. */
 export function abrirEditor(opcoes: OpcoesEditor): Promise<Alteracao | null> {
   const { dialogo, locais, modo } = opcoes;
   const indiceLocal = opcoes.indiceLocal ?? 0;
@@ -422,135 +364,60 @@ export function abrirEditor(opcoes: OpcoesEditor): Promise<Alteracao | null> {
   if (!original) return Promise.resolve(null);
   const regraOriginal =
     opcoes.indiceRegra === undefined ? undefined : original.local.horarios[opcoes.indiceRegra];
-
-  const titulo = { novo: "Novo horário", editar: "Editar horário", apagar: "Apagar horário" }[modo];
-  const idTitulo = novoId("titulo");
-  const resumo = h("div", { class: "grid gap-2", "aria-live": "polite" });
-  const confirmar = h(
-    "label",
-    { class: "flex min-h-12 items-center gap-3 font-semibold", hidden: true },
-    h("input", { type: "checkbox", name: "confirmar_alertas", class: "size-5" }),
-    "Tenho a certeza",
-  );
-  const gravar = h(
-    "button",
-    {
-      type: "submit",
-      class:
-        "inline-flex min-h-12 items-center rounded-cartao bg-ardosia px-5 text-base font-semibold text-white disabled:opacity-50",
-    },
-    modo === "apagar" ? "Apagar" : "Gravar",
-  );
-  const cancelar = h("button", { type: "button", class: "botao-secundario" }, "Cancelar");
-
   const formulario =
     modo === "apagar" ? null : formularioHorario(locais, indiceLocal, regraOriginal);
-  const cabecalhoApagar =
-    modo === "apagar" && regraOriginal
-      ? h(
-          "div",
-          { class: "rounded-cartao bg-superficie p-4" },
-          h(
-            "p",
-            { class: "font-semibold" },
-            descreverRegra(regraOriginal, "pt-PT", { comTipo: true }),
-          ),
-          h("p", { class: "text-texto-secundario" }, original.local.nome),
-        )
-      : null;
 
-  const form = h(
-    "form",
-    { class: "grid gap-5 p-5 md:p-6", novalidate: true },
-    h("h2", { id: idTitulo, class: "text-xl font-semibold" }, titulo),
-    cabecalhoApagar,
-    ...(formulario?.campos ?? []),
-    camposNatureza(modo, original.local, opcoes.indiceRegra),
-    h(
-      "section",
-      { class: "grid gap-2 rounded-cartao border border-borda bg-superficie p-4" },
-      h("h3", { class: "rotulo" }, "O que vai mudar"),
-      resumo,
-    ),
-    confirmar,
-    h("div", { class: "flex flex-wrap justify-end gap-3" }, cancelar, gravar),
-  );
-  dialogo.setAttribute("aria-labelledby", idTitulo);
-  dialogo.replaceChildren(form);
-
-  let pronta: Alteracao | null = null;
-
-  const atualizar = () => {
-    if (formulario) {
-      const freq = valorDe(form, "frequencia");
-      formulario.caixaSemanas.hidden = freq !== "semanas";
-      formulario.caixaQuinzenal.hidden = freq !== "quinzenal";
-    }
-    pronta = null;
+  const calcular = (form: HTMLFormElement): Calculo => {
     const escolhido = locais[Number(valorDe(form, "local") || indiceLocal)] ?? original;
-    const mensagem = (texto: string, erro = true) => {
-      gravar.disabled = true;
-      confirmar.hidden = true;
-      resumo.replaceChildren(
-        h("p", { class: erro ? "font-semibold text-erro" : "text-texto-secundario" }, texto),
-      );
-    };
-    let mudanca: Mudanca;
     const natureza = lerNatureza(form);
+    let mudanca: Mudanca;
     if (modo === "apagar") {
       mudanca = { acao: "apagar", indice: opcoes.indiceRegra ?? -1, natureza };
     } else {
       const regra = lerRegra(form, regraOriginal);
-      if (typeof regra === "string") return mensagem(regra, false);
+      if (typeof regra === "string") return { mensagem: regra, erro: false };
       mudanca =
         modo === "novo"
           ? { acao: "adicionar", regra, natureza }
           : { acao: "editar", indice: opcoes.indiceRegra ?? -1, regra, natureza };
     }
-    let depois: Local;
     try {
-      depois = aplicarMudanca(escolhido.local, mudanca);
+      return { escolhido, depois: aplicarMudanca(escolhido.local, mudanca) };
     } catch (e) {
-      return mensagem(
-        e instanceof MudancaInvalida ? e.message : "Não foi possível aplicar a mudança.",
-      );
+      return {
+        mensagem: e instanceof MudancaInvalida ? e.message : "Não foi possível aplicar a mudança.",
+        erro: true,
+      };
     }
-    const erros = validar(depois, { hoje: hoje() }).filter((p) => p.nivel === "erro");
-    if (erros.length > 0) return mensagem(erros.map((e) => e.mensagem).join(" "));
-    const pares = [{ antes: escolhido.local, depois }];
-    const linhas = resumirPedido(pares).flatMap((r) => r.linhas);
-    if (linhas.length === 0) return mensagem("Nada muda.", false);
-    const alertas = alertasDeAnomalia(pares);
-    resumo.replaceChildren(h("ul", { class: "grid gap-1" }, ...linhas.map((l) => h("li", {}, l))));
-    if (alertas.length > 0)
-      resumo.append(
-        h(
-          "div",
-          { class: "rounded-cartao bg-aviso-fundo p-3 text-dourado-texto", role: "note" },
-          ...alertas.map((a) => h("p", {}, a)),
-        ),
-      );
-    confirmar.hidden = alertas.length === 0;
-    const certeza = (form.elements.namedItem("confirmar_alertas") as HTMLInputElement).checked;
-    pronta = { local: escolhido, depois, confirmarAlertas: alertas.length > 0 };
-    gravar.disabled = alertas.length > 0 && !certeza;
   };
 
-  form.addEventListener("input", atualizar);
-  form.addEventListener("change", atualizar);
-  atualizar();
-
-  return new Promise((resolver) => {
-    let resultado: Alteracao | null = null;
-    cancelar.addEventListener("click", () => dialogo.close());
-    form.addEventListener("submit", (ev) => {
-      ev.preventDefault();
-      atualizar();
-      if (!pronta || gravar.disabled) return;
-      resultado = pronta;
-      dialogo.close();
-    });
-    dialogo.addEventListener("close", () => resolver(resultado), { once: true });
-    dialogo.showModal();
+  return abrirModal({
+    dialogo,
+    titulo: { novo: "Novo horário", editar: "Editar horário", apagar: "Apagar horário" }[modo],
+    textoGravar: modo === "apagar" ? "Apagar" : "Gravar",
+    cabecalho:
+      modo === "apagar" && regraOriginal
+        ? h(
+            "div",
+            { class: "rounded-cartao bg-superficie p-4" },
+            h(
+              "p",
+              { class: "font-semibold" },
+              descreverRegra(regraOriginal, "pt-PT", { comTipo: true }),
+            ),
+            h("p", { class: "text-texto-secundario" }, original.local.nome),
+          )
+        : null,
+    campos: [
+      ...(formulario?.campos ?? []),
+      camposNatureza(modo, original.local, opcoes.indiceRegra),
+    ],
+    calcular,
+    aoMudar: (form) => {
+      if (!formulario) return;
+      const freq = valorDe(form, "frequencia");
+      formulario.caixaSemanas.hidden = freq !== "semanas";
+      formulario.caixaQuinzenal.hidden = freq !== "quinzenal";
+    },
   });
 }
