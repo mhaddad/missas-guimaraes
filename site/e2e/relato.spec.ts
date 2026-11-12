@@ -15,7 +15,7 @@ async function preparar(page: Page, estado = 201): Promise<{ corpos: unknown[] }
   await page.route("https://challenges.cloudflare.com/**", (rota) =>
     rota.fulfill({ contentType: "text/javascript", body: TURNSTILE_FALSO }),
   );
-  await page.route("**/api/relato", async (rota) => {
+  await page.route("**/relato", async (rota) => {
     corpos.push(rota.request().postDataJSON());
     await rota.fulfill({
       status: estado,

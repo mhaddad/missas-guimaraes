@@ -1,5 +1,6 @@
 /**
- * `POST /api/relato` (§6.7, E2.9): o público reporta um erro nos horários de um local.
+ * `POST /relato` (§6.7, E2.9): o público reporta um erro nos horários de um local. Fica fora de
+ * `/api/` para não passar pelo Access; `/api/relato` continua a responder.
  * Turnstile contra spam, limite por IP e corpo pequeno. O relato fica no Workers KV
  * (`relato:<data>:<id>`), privado: o repositório é público, por isso não vira Issue
  * (decisão de 09/11/2026). Não se guarda o IP nem nenhum dado de quem relata.
