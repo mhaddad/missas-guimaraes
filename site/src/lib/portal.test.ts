@@ -143,9 +143,10 @@ describe("selo (§6.6)", () => {
       "Not recently confirmed — please check with the brotherhood",
     );
     expect(textoSelo("es", "longo", "importado", -1, null, "paroquia")).toBe(
-      "Horario importado de una fuente pública; aún no confirmado por la parroquia",
+      "Aún no confirmado por la parroquia",
     );
-    expect(textoSelo("es", "curto", "importado", -1, null, "paroquia")).toBe("Importado");
+    // Sem confirmação não há etiqueta curta (só o texto longo no detalhe).
+    expect(textoSelo("es", "curto", "importado", -1, null, "paroquia")).toBe("");
   });
 });
 

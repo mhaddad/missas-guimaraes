@@ -42,11 +42,6 @@ const nomeSolenidade = (s: (typeof solenidades)[number]) =>
 
   <p id="faixa-idioma" class="mb-4 rounded-cartao bg-slate-100 px-4 py-3 text-base" hidden></p>
 
-  <p class="mb-6 flex gap-3 rounded-cartao border border-borda bg-cartao px-4 py-3 text-base text-texto-secundario">
-    <Icone nome="info" class="mt-0.5 size-5 text-azul-texto" />
-    <span>{t.aviso}</span>
-  </p>
-
   <noscript>
     <p class="mb-6 rounded-cartao bg-slate-100 px-4 py-3 text-base">{t.semJavaScript}</p>
   </noscript>
@@ -54,7 +49,7 @@ const nomeSolenidade = (s: (typeof solenidades)[number]) =>
   <!-- Controlos: só com JavaScript -->
   <section
     id="controlos"
-    class="mb-8 rounded-cartao border border-borda bg-cartao p-4 md:p-5"
+    class="mb-4 rounded-cartao border border-borda bg-cartao p-3 md:p-5"
     hidden
   >
     <div class="relative">
@@ -82,8 +77,8 @@ const nomeSolenidade = (s: (typeof solenidades)[number]) =>
         <Icone nome="close" class="size-6" />
       </button>
     </div>
-    <div class="mt-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-      <div role="group" aria-label={t.diaRotulo} class="flex flex-wrap gap-2">
+    <div class="mt-3 flex flex-col gap-3 md:mt-4 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-x-6">
+      <div role="group" aria-label={t.diaRotulo} class="grid grid-cols-3 gap-2 md:flex">
         <button type="button" class="chip chip-dia" data-dia="hoje" aria-pressed="true">
           {t.hoje}
         </button>
@@ -97,7 +92,7 @@ const nomeSolenidade = (s: (typeof solenidades)[number]) =>
       <div role="group" aria-labelledby="rotulo-concelho" class="flex flex-wrap items-center gap-2">
         <span
           id="rotulo-concelho"
-          class="text-sm font-bold tracking-wide text-texto-secundario uppercase"
+          class="sr-only text-sm font-bold tracking-wide text-texto-secundario uppercase md:not-sr-only"
         >
           {t.concelho}:
         </span>
@@ -112,8 +107,8 @@ const nomeSolenidade = (s: (typeof solenidades)[number]) =>
         </button>
       </div>
     </div>
-    <div class="mt-4 flex flex-wrap items-center gap-2 border-t border-borda pt-4">
-      <span class="text-sm font-bold tracking-wide text-texto-secundario uppercase">
+    <div class="mt-3 flex flex-wrap items-center gap-2 border-t border-borda pt-3 md:mt-4 md:pt-4">
+      <span class="sr-only text-sm font-bold tracking-wide text-texto-secundario uppercase md:not-sr-only">
         {t.vista}:
       </span>
       <button type="button" class="chip" data-vista="hora" aria-pressed="true">
@@ -135,6 +130,11 @@ const nomeSolenidade = (s: (typeof solenidades)[number]) =>
     </div>
   </section>
 
+  <p class="mb-6 flex items-start gap-2 px-1 text-sm text-texto-secundario">
+    <Icone nome="info" class="mt-0.5 size-4 text-azul-texto" />
+    <span>{t.aviso}</span>
+  </p>
+
   <p
     id="faixa-dia-santo"
     class="mb-6 flex items-center gap-3 rounded-cartao bg-aviso-fundo px-4 py-3 text-base font-semibold text-dourado-texto"
@@ -147,17 +147,17 @@ const nomeSolenidade = (s: (typeof solenidades)[number]) =>
   <section id="a-seguir" class="mb-8" aria-live="polite" hidden></section>
 
   <section id="por-hora" class="mb-10" hidden>
-    <div class="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-      <h2 class="text-xl font-semibold">
+    <div class="mb-3 flex items-center justify-between gap-3 md:mb-4">
+      <h2 class="text-base font-semibold md:text-xl">
         <span id="titulo-dia"></span>
       </h2>
       <p
         id="ainda-hoje"
-        class="rounded-full bg-aviso-fundo px-3 py-1 text-sm font-semibold text-dourado-texto"
+        class="shrink-0 rounded-full bg-aviso-fundo px-3 py-1 text-xs font-semibold text-dourado-texto md:text-sm"
         hidden
       ></p>
     </div>
-    <ol id="lista-hora" class="grid gap-3"></ol>
+    <ol id="lista-hora" class="grid grid-cols-1 gap-3"></ol>
     <p
       id="vazio-hora"
       class="rounded-cartao border border-dashed border-borda p-6 text-center text-texto-secundario"
@@ -205,18 +205,22 @@ const nomeSolenidade = (s: (typeof solenidades)[number]) =>
     <p class="mt-1 text-base text-texto-secundario">{t.solenidadesTexto}</p>
     <ul class="mt-4 grid gap-2">
       {solenidades.map((s) => (
-        <li class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-borda pt-2">
-          <span class="w-40 font-semibold">{formatarDiaEMes(s.data, idioma)}</span>
-          <span class="flex-1">
-            {nomeSolenidade(s)}
-            {s.preceito && (
-              <span class="etiqueta ml-2 bg-aviso-fundo text-dourado-texto">
-                {t.diaSantoDePreceito}
-              </span>
-            )}
+        <li class="flex items-center gap-3 border-t border-borda pt-2 md:gap-4">
+          <span class="min-w-0 flex-1 md:flex md:items-center md:gap-4">
+            <span class="block text-texto-secundario md:w-40 md:shrink-0 md:font-semibold md:text-ardosia">
+              {formatarDiaEMes(s.data, idioma)}
+            </span>
+            <span class="block font-semibold md:font-normal">
+              {nomeSolenidade(s)}
+              {s.preceito && (
+                <span class="etiqueta mt-1 bg-aviso-fundo text-dourado-texto md:mt-0 md:ml-2">
+                  {t.diaSantoDePreceito}
+                </span>
+              )}
+            </span>
           </span>
           <a
-            class="ligacao inline-flex min-h-12 items-center"
+            class="ligacao inline-flex min-h-12 shrink-0 items-center"
             href={`?dia=${s.data}`}
             data-ir-para-dia={s.data}
           >

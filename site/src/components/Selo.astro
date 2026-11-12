@@ -17,19 +17,18 @@ interface Props {
 
 const { idioma, confirmadoEm, tipoEntidade, hoje, forma } = Astro.props;
 const { estado, dias } = selo(confirmadoEm, hoje);
+const texto = textoSelo(idioma, forma, estado, dias, confirmadoEm, tipoEntidade);
 ---
 
 <span
   data-selo={forma}
   data-confirmado-em={confirmadoEm ?? ""}
   data-entidade-tipo={tipoEntidade}
+  hidden={texto === ""}
   class:list={[
-    forma === "curto"
-      ? "rounded px-2 py-0.5 text-xs font-bold tracking-wide uppercase"
-      : "rounded-cartao px-3 py-2 text-base",
-    "inline-block",
+    forma === "curto" ? "selo-curto" : "inline-block rounded-cartao px-3 py-2 text-base",
     classeSelo(estado),
   ]}
 >
-  {textoSelo(idioma, forma, estado, dias, confirmadoEm, tipoEntidade)}
+  {texto}
 </span>

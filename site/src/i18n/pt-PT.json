@@ -62,7 +62,7 @@
     "confirmado": "Confirmado",
     "aConfirmar": "A confirmar",
     "antigo": "Por confirmar",
-    "importado": "Importado"
+    "importado": ""
   },
   "seloLongo": {
     "confirmadoHoje": "Confirmado {pela} hoje",
@@ -72,7 +72,7 @@
     },
     "confirmadoEm": "Confirmado em {data}",
     "antigo": "Sem confirmação recente — confirme {com}",
-    "importado": "Horário importado de fonte pública; ainda não confirmado {pela}"
+    "importado": "Ainda não confirmado {pela}"
   },
   "pelaEntidade": {
     "paroquia": "pela paróquia",

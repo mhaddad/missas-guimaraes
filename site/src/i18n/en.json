@@ -62,7 +62,7 @@
     "confirmado": "Confirmed",
     "aConfirmar": "To be confirmed",
     "antigo": "Not recently confirmed",
-    "importado": "Imported"
+    "importado": ""
   },
   "seloLongo": {
     "confirmadoHoje": "Confirmed {pela} today",
@@ -72,7 +72,7 @@
     },
     "confirmadoEm": "Confirmed on {data}",
     "antigo": "Not recently confirmed — please check {com}",
-    "importado": "Times imported from a public source; not yet confirmed {pela}"
+    "importado": "Not yet confirmed {pela}"
   },
   "pelaEntidade": {
     "paroquia": "by the parish",
