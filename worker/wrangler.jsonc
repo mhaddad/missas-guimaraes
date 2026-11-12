@@ -14,9 +14,10 @@
     // "homologacao" até ao E8 (§9.9); em produção passa a "producao".
     "AMBIENTE": "homologacao",
     // Verificação do JWT do Access (§7.2, E3.2). Não são segredos: o domínio da equipa e o AUD
-    // aparecem no próprio redirecionamento para o login.
+    // aparecem no próprio redirecionamento para o login. AUD da aplicação "missas-painel", que
+    // protege só /admin/* e /api/* (a parte pública da homologação abriu a 12/11).
     "ACCESS_TEAM_DOMAIN": "jolly-mouse-ff5d.cloudflareaccess.com",
-    "ACCESS_AUD": "53a552d99248a72f046b8d19a7d5ee501587c0c4c2fc5577c48c9081effc7cbe",
+    "ACCESS_AUD": "32f09d828bf8e6c970d97324f92656541983bc3643a2124ca6fe9a5a2f06835e",
     // Repositório lido pela GitHub App do painel (§9.5). O App ID não é segredo; a chave privada
     // é um segredo do Worker (GITHUB_PAINEL_APP_PRIVATE_KEY, definido no painel da Cloudflare).
     "GITHUB_REPOSITORIO": "mhaddad/missas-guimaraes",
