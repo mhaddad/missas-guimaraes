@@ -32,7 +32,8 @@ horarios:
   hora: '19:00'
   validade:
     ate: '2026-11-10'
-excecoes: []
+excecoes:
+- {data: '2026-11-12', acao: cancelar, nota: O Padre Paulino participará de um evento em Braga.}
 notas: []
 confirmado_em: '2026-11-11'
 confirmado_por:
