@@ -10,7 +10,7 @@ import {
   type Ocorrencia,
 } from "@missas/horarios";
 import { formatar, plural, TEXTOS, type Idioma, type TipoEntidade } from "../i18n/index.ts";
-import { formatarDiaCurto, formatarDiaDaSemanaEData, formatarDiaEMes } from "../lib/formatos.ts";
+import { formatarDiaDaSemanaEData, formatarDiaEMes } from "../lib/formatos.ts";
 import {
   celebracoesDoDia,
   escreverEstado,
@@ -423,16 +423,6 @@ function desenhar(): void {
 
   const filtrados = filtrarLocais(dados.locais, estado);
   const dia = celebracoesDoDia(filtrados, estado.dia, hoje, calendario, estado.tipo);
-  const todosDoDia =
-    estado.concelho === "todos"
-      ? dia
-      : celebracoesDoDia(
-          filtrarLocais(dados.locais, { ...estado, concelho: "todos" }),
-          estado.dia,
-          hoje,
-          calendario,
-          estado.tipo,
-        );
 
   // Faixa de dia santo (§6.4)
   if (dia.diaSanto) {
@@ -442,13 +432,6 @@ function desenhar(): void {
       nome: dia.diaSanto.nome,
     });
   } else elFaixaDiaSanto.hidden = true;
-
-  const totalTodos =
-    estado.vista === "hora"
-      ? todosDoDia.celebracoes.length + todosDoDia.semInformacao.length
-      : filtrarLocais(dados.locais, { ...estado, concelho: "todos" }).length;
-  const chipTodos = document.querySelector('button[data-concelho="todos"]');
-  if (chipTodos) chipTodos.textContent = formatar(t.todos, { n: totalTodos });
 
   if (estado.vista === "hora") {
     elIgrejas.hidden = true;
@@ -600,9 +583,6 @@ function iniciar(): void {
   });
   atualizarSelos(document, hoje);
   prepararAcoes(document);
-
-  const chipHoje = document.querySelector('[data-dia="hoje"]');
-  if (chipHoje) chipHoje.textContent = formatar(t.hoje, { dia: formatarDiaCurto(hoje, idioma) });
 
   // Eventos
   document
