@@ -31,10 +31,13 @@
     @apply inline-flex min-h-12 items-center gap-2 rounded-cartao bg-white/10 px-4 text-base font-semibold text-white hover:bg-white/20;
   }
   .chip {
-    @apply inline-flex min-h-12 items-center rounded-cartao bg-slate-100 px-4 text-base font-semibold text-texto-secundario hover:bg-slate-200;
+    @apply inline-flex min-h-12 items-center justify-center rounded-cartao bg-slate-100 px-3 text-base font-semibold text-texto-secundario hover:bg-slate-200 md:px-4;
   }
   .chip[aria-pressed="true"] {
     @apply bg-ardosia text-white;
+  }
+  .chip-dia {
+    @apply px-2 text-sm whitespace-nowrap sm:text-base md:px-4;
   }
   .chip-dia[aria-pressed="true"] {
     @apply bg-dourado-texto text-white;
@@ -70,6 +73,14 @@
   }
   .rotulo {
     @apply text-sm font-bold tracking-wide text-texto-secundario uppercase;
+  }
+  /* Selo curto (§6.6), como nos protótipos: pílula com um ponto da cor do estado. */
+  .selo-curto {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold;
+  }
+  .selo-curto::before {
+    content: "";
+    @apply size-1.5 shrink-0 rounded-full bg-current;
   }
   .etiqueta {
     @apply inline-flex items-center rounded px-2 py-0.5 text-sm font-semibold;

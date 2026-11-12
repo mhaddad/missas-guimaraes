@@ -76,15 +76,11 @@ function icone(nome: string, classe = "size-5"): SVGSVGElement {
   return svg;
 }
 
-function seloCurto(local: LocalPortal, hoje: string, extra = ""): HTMLSpanElement {
+/** Selo curto; vazio (sem confirmação) não aparece. */
+function seloCurto(local: LocalPortal, hoje: string, extra = ""): HTMLSpanElement | null {
   const { estado: e, dias } = selo(local.confirmado_em, hoje);
-  return h(
-    "span",
-    {
-      class: `inline-block rounded px-2 py-0.5 text-xs font-bold tracking-wide uppercase ${classeSelo(e)} ${extra}`,
-    },
-    textoSelo(idioma, "curto", e, dias, local.confirmado_em, local.entidade.tipo),
-  );
+  const texto = textoSelo(idioma, "curto", e, dias, local.confirmado_em, local.entidade.tipo);
+  return texto ? h("span", { class: `selo-curto ${classeSelo(e)} ${extra}` }, texto) : null;
 }
 
 /** Recalcula os selos do HTML estático com a data de hoje. */
@@ -101,6 +97,7 @@ function atualizarSelos(raiz: ParentNode, hoje: string): void {
       confirmadoEm,
       el.dataset.entidadeTipo as TipoEntidade,
     );
+    el.hidden = el.textContent === "";
     el.classList.remove(
       "bg-confirmado-fundo",
       "text-confirmado",
@@ -222,7 +219,8 @@ function linhaCelebracao(o: CelebracaoPortal, hoje: string, passada = false): HT
     "button",
     {
       type: "button",
-      class: "text-left text-lg font-semibold underline-offset-4 hover:underline",
+      class:
+        "text-left text-base leading-snug font-semibold underline-offset-4 hover:underline md:text-lg",
       "aria-expanded": "false",
       "aria-controls": detalheId,
     },
@@ -248,15 +246,15 @@ function linhaCelebracao(o: CelebracaoPortal, hoje: string, passada = false): HT
 
   return h(
     "li",
-    { class: "rounded-cartao border border-borda bg-cartao" },
+    { class: "min-w-0 rounded-cartao border border-borda bg-cartao" },
     h(
       "div",
-      { class: "flex items-start gap-4 p-4 md:p-5" },
+      { class: "flex items-start gap-3 p-3 md:gap-4 md:p-5" },
       h(
         "div",
         {
           class:
-            "flex w-20 shrink-0 flex-col items-center rounded-cartao bg-superficie py-2 md:w-24",
+            "flex w-[4.5rem] shrink-0 flex-col items-center rounded-cartao bg-superficie py-2 md:w-24",
         },
         h("span", { class: "text-timetable-time font-bold tabular-nums" }, o.hora),
         h(
@@ -278,11 +276,17 @@ function linhaCelebracao(o: CelebracaoPortal, hoje: string, passada = false): HT
         ),
         h(
           "p",
-          { class: "mt-0.5 flex items-center gap-1 text-base text-texto-secundario" },
+          {
+            class: "mt-0.5 flex items-center gap-1 text-sm text-texto-secundario md:text-base",
+          },
           icone("location_on", "size-4"),
-          lugarDe(local),
+          h("span", { class: "truncate" }, lugarDe(local)),
         ),
-        h("p", { class: "mt-2 flex flex-wrap gap-2 empty:hidden" }, ...etiquetasDe(o, local)),
+        h(
+          "p",
+          { class: "mt-2 flex flex-wrap gap-1.5 empty:hidden md:gap-2" },
+          ...etiquetasDe(o, local),
+        ),
       ),
       botaoComoChegar(local),
     ),
@@ -316,7 +320,7 @@ function cartaoASeguir(o: CelebracaoPortal, minutos: number, hoje: string): HTML
     "div",
     {
       class:
-        "flex flex-col gap-6 rounded-xl bg-ardosia p-6 text-white shadow-lg md:flex-row md:items-center md:p-8",
+        "flex flex-col gap-5 rounded-xl bg-ardosia p-5 text-white shadow-lg md:flex-row md:items-center md:gap-6 md:p-8",
     },
     h(
       "div",
@@ -358,7 +362,12 @@ function cartaoASeguir(o: CelebracaoPortal, minutos: number, hoje: string): HTML
         lugarDe(local),
       ),
     ),
-    h("div", { class: "flex flex-wrap gap-3" }, botaoComoChegar(local, "botao-claro"), partilhar),
+    h(
+      "div",
+      { class: "grid grid-cols-[1fr_auto] gap-3 md:flex" },
+      botaoComoChegar(local, "botao-claro justify-center"),
+      partilhar,
+    ),
   );
 }
 
