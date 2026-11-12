@@ -30,17 +30,18 @@
   .botao-escuro {
     @apply inline-flex min-h-12 items-center gap-2 rounded-cartao bg-white/10 px-4 text-base font-semibold text-white hover:bg-white/20;
   }
-  .chip {
-    @apply inline-flex min-h-12 items-center justify-center rounded-cartao bg-slate-100 px-3 text-base font-semibold text-texto-secundario hover:bg-slate-200 md:px-4;
+  /* Filtros do portal: controlos segmentados, discretos (o selecionado em branco). */
+  .segmentos {
+    @apply gap-1 rounded-cartao bg-slate-100 p-1;
   }
-  .chip[aria-pressed="true"] {
-    @apply bg-ardosia text-white;
+  .segmento {
+    @apply inline-flex min-h-9 items-center justify-center rounded px-3 text-sm font-semibold whitespace-nowrap text-texto-secundario hover:text-ardosia;
   }
-  .chip-dia {
-    @apply px-2 text-sm whitespace-nowrap sm:text-base md:px-4;
+  .segmento[aria-pressed="true"] {
+    @apply bg-cartao text-ardosia shadow-sm;
   }
-  .chip-dia[aria-pressed="true"] {
-    @apply bg-dourado-texto text-white;
+  .segmento-dia[aria-pressed="true"] {
+    @apply text-dourado-texto;
   }
   .atalho {
     @apply inline-flex min-h-12 items-center rounded-cartao px-3 text-base font-semibold text-texto-secundario hover:bg-superficie hover:text-ardosia;
