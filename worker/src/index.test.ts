@@ -56,4 +56,15 @@ describe("worker", () => {
     expect(await resposta.json()).toMatchObject({ erro: "assinatura" });
     expect(resposta.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
   });
+
+  it("o relato do público responde em /relato (fora de /api/, sem Access) e em /api/relato", async () => {
+    for (const caminho of ["/relato", "/api/relato"]) {
+      const resposta = await worker.fetch(
+        new Request(`https://exemplo.workers.dev${caminho}`, { method: "GET" }),
+        env("homologacao"),
+      );
+      // Só aceita POST: chegar aqui (405) mostra que a rota é a do relato, não a dos estáticos.
+      expect(resposta.status).toBe(405);
+    }
+  });
 });

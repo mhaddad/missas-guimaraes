@@ -1,6 +1,6 @@
 /**
  * Formulário "Reportar erro" (§6.7, E2.9). O script do Turnstile só é carregado quando a pessoa
- * abre o formulário. O relato vai para `POST /api/relato` sem nenhum dado de quem o envia.
+ * abre o formulário. O relato vai para `POST /relato` sem nenhum dado de quem o envia.
  */
 import { TEXTOS, type Idioma } from "../i18n/index.ts";
 
@@ -88,7 +88,7 @@ export function iniciarRelatos(idioma: Idioma): void {
     enviar.disabled = true;
     mostrar(t.relatoEnviando);
     try {
-      const resposta = await fetch("/api/relato", {
+      const resposta = await fetch("/relato", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({

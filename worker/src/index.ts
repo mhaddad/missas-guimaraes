@@ -31,7 +31,9 @@ export default {
       return homologacao ? semIndexacao(resposta) : resposta;
     }
 
-    if (url.pathname === "/api/relato") {
+    // Fora de /api/: a parte pública não passa pelo Access (só /admin/* e /api/* passam).
+    // `/api/relato` fica por compatibilidade com páginas ainda em cache.
+    if (url.pathname === "/relato" || url.pathname === "/api/relato") {
       const resposta = await tratarRelato(pedido, env);
       return homologacao ? semIndexacao(resposta) : resposta;
     }
