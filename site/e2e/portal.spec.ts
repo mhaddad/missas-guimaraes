@@ -54,7 +54,10 @@ test.describe("filtros e endereço", () => {
     for (const linha of await page.locator("#lista-hora > li").all()) {
       await expect(linha).toContainText("Vizela");
     }
-    await page.getByRole("button", { name: "Por igreja" }).click();
+    // No telemóvel, a vista muda-se na barra inferior.
+    if ((page.viewportSize()?.width ?? 1280) < 768)
+      await page.locator('button[data-barra="paroquias"]').click();
+    else await page.getByRole("button", { name: "Por igreja" }).click();
     await expect(page.locator("article.igreja:visible")).toHaveCount(1);
     await expect(page.locator("#contagem-igrejas")).toHaveText("1 igreja");
     await page.locator('a[data-idioma="/en/"]').click();

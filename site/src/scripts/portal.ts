@@ -604,27 +604,6 @@ function iniciar(): void {
   const chipHoje = document.querySelector('[data-dia="hoje"]');
   if (chipHoje) chipHoje.textContent = formatar(t.hoje, { dia: formatarDiaCurto(hoje, idioma) });
 
-  // Faixa "também disponível em…" (§6.8), sem redireção automática.
-  const preferido = (navigator.languages?.[0] ?? navigator.language ?? "").slice(0, 2);
-  const outro =
-    preferido === "en"
-      ? TEXTOS.en
-      : preferido === "es"
-        ? TEXTOS.es
-        : preferido === "pt"
-          ? TEXTOS["pt-PT"]
-          : undefined;
-  if (outro && outro.idioma !== idioma) {
-    const faixa = porId("faixa-idioma");
-    faixa.lang = outro.idioma;
-    faixa.replaceChildren(
-      outro.disponivelEmOutroIdioma,
-      " ",
-      h("a", { class: "ligacao", href: outro.caminho, hreflang: outro.idioma }, outro.abrirVersao),
-    );
-    faixa.hidden = false;
-  }
-
   // Eventos
   document
     .querySelectorAll<HTMLButtonElement>("button[data-dia]")
