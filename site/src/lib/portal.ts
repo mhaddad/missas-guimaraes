@@ -73,17 +73,15 @@ export function correspondePesquisa(
 }
 
 // ---------------------------------------------------------------------------------------------
-// Estado da página na query string (§6.2): /?dia=amanha&concelho=vizela&q=penha&vista=igreja
+// Estado da página na query string (§6.2): /?dia=amanha&concelho=vizela&q=penha
 
 export type EscolhaDia = "hoje" | "amanha" | "domingo" | Data;
 export type Concelho = "todos" | "guimaraes" | "vizela";
-export type Vista = "hora" | "igreja";
 
 export interface Estado {
   dia: EscolhaDia;
   concelho: Concelho;
   q: string;
-  vista: Vista;
   tipo: TipoCelebracao | null;
 }
 
@@ -91,7 +89,6 @@ export const ESTADO_INICIAL: Estado = {
   dia: "hoje",
   concelho: "todos",
   q: "",
-  vista: "hora",
   tipo: null,
 };
 
@@ -109,7 +106,6 @@ export function lerEstado(pesquisa: string): Estado {
         : "hoje",
     concelho: concelho === "guimaraes" || concelho === "vizela" ? concelho : "todos",
     q: (p.get("q") ?? "").slice(0, 100),
-    vista: p.get("vista") === "igreja" ? "igreja" : "hora",
     tipo: TIPOS.includes(tipo as TipoCelebracao) ? (tipo as TipoCelebracao) : null,
   };
 }
@@ -120,7 +116,6 @@ export function escreverEstado(estado: Estado): string {
   if (estado.dia !== "hoje") p.set("dia", estado.dia);
   if (estado.concelho !== "todos") p.set("concelho", estado.concelho);
   if (estado.q.trim()) p.set("q", estado.q.trim());
-  if (estado.vista !== "hora") p.set("vista", estado.vista);
   if (estado.tipo) p.set("tipo", estado.tipo);
   const texto = p.toString();
   return texto ? `?${texto}` : "";
@@ -250,12 +245,9 @@ export function minutosAte(
   return dias * 1440 + (h2 * 60 + m2) - (h1 * 60 + m1);
 }
 
-/** Ligação para a aplicação de mapas com as coordenadas (§6.5). */
-export function ligacaoMapa(geo: { lat: number; lon: number }, apple = false): string {
-  const destino = `${geo.lat},${geo.lon}`;
-  return apple
-    ? `https://maps.apple.com/?daddr=${destino}`
-    : `https://www.google.com/maps/dir/?api=1&destination=${destino}`;
+/** Ligação para o Google Maps com o caminho até às coordenadas (§6.5), em qualquer dispositivo. */
+export function ligacaoMapa(geo: { lat: number; lon: number }): string {
+  return `https://www.google.com/maps/dir/?api=1&destination=${geo.lat},${geo.lon}`;
 }
 
 /** Próximos dias santos e datas móveis a partir de `hoje` (atalho *Solenidades*). */

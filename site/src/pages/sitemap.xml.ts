@@ -1,4 +1,4 @@
-/** Sitemap com as três versões da página principal e a página de cada paróquia (§6.5). */
+/** Sitemap: as três versões da página principal, da lista das paróquias e de cada paróquia. */
 import type { APIRoute } from "astro";
 import { IDIOMAS, TEXTOS } from "../i18n/index.ts";
 
@@ -23,7 +23,7 @@ export const GET: APIRoute = ({ site, locals }) => {
     .map((e) => entrada(`paroquia/${e.id}/`, "weekly"));
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
-${[entrada("", "daily"), ...paroquias].join("\n")}
+${[entrada("", "daily"), entrada("paroquias/", "weekly"), ...paroquias].join("\n")}
 </urlset>
 `;
   return new Response(xml, { headers: { "content-type": "application/xml; charset=utf-8" } });

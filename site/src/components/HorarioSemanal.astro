@@ -1,0 +1,84 @@
+---
+/**
+ * Horário semanal de um local (§6.5): blocos por época, regime dos dias santos, próximas
+ * alterações e notas. Usado na página da paróquia e no detalhe aberto na página principal.
+ */
+import type { Local } from "@missas/horarios";
+import { TEXTOS, type Idioma } from "../i18n/index.ts";
+import { blocosHorario, descreverExcecao, notasDoLocal } from "../lib/detalhe.ts";
+
+interface Props {
+  idioma: Idioma;
+  local: Local;
+  hoje: string;
+  /** Nível dos títulos das secções (h2/h3 na página da paróquia, h4 dentro de um cartão). */
+  nivel?: "h2" | "h3" | "h4";
+}
+
+const { idioma, local, hoje, nivel = "h4" } = Astro.props;
+const Titulo = nivel;
+const t = TEXTOS[idioma];
+const blocos = blocosHorario(local, idioma, hoje);
+const excecoes = local.excecoes.filter((e) => e.data >= hoje).slice(0, 6);
+const notas = notasDoLocal(local, idioma);
+---
+
+<section>
+  <Titulo class="font-semibold">{t.horarioSemanal}</Titulo>
+  {blocos.length === 0 && <p class="text-texto-secundario">{t.semHorarios}</p>}
+  {blocos.map((bloco) => (
+    <div class:list={["mt-2", !bloco.atual && "text-texto-secundario"]}>
+      {bloco.titulo && (
+        <p class="text-sm font-semibold">
+          {bloco.titulo}
+          {bloco.atual && (
+            <span class="ml-1 rounded bg-confirmado-fundo px-1.5 text-xs text-confirmado">
+              {t.epocaAtual}
+            </span>
+          )}
+        </p>
+      )}
+      <ul class="mt-1 list-disc space-y-0.5 pl-5">
+        {bloco.linhas.map((l) => (
+          <li>
+            {l.texto}
+            {l.nota && (
+              <span class="text-texto-secundario">
+                {" "}
+                — {l.nota}
+                {l.notaEmPortugues && ` ${t.emPortugues}`}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  ))}
+</section>
+<section>
+  <Titulo class="font-semibold">{t.diasSantosTitulo}</Titulo>
+  <p class="text-texto-secundario">{t.regimes[local.dias_santos ?? "null"]}</p>
+</section>
+{excecoes.length > 0 && (
+  <section>
+    <Titulo class="font-semibold">{t.proximasAlteracoes}</Titulo>
+    <ul class="mt-1 list-disc pl-5">
+      {excecoes.map((e) => (
+        <li>{descreverExcecao(e, idioma)}</li>
+      ))}
+    </ul>
+  </section>
+)}
+{notas.length > 0 && (
+  <section>
+    <Titulo class="font-semibold">{t.notas}</Titulo>
+    <ul class="mt-1 list-disc pl-5">
+      {notas.map((n) => (
+        <li>
+          {n.texto}
+          {n.emPortugues && <span class="text-texto-secundario"> {t.emPortugues}</span>}
+        </li>
+      ))}
+    </ul>
+  </section>
+)}

@@ -1,7 +1,7 @@
 /**
- * Página pública de ponta a ponta (§14, E2.11), com os dados fixos de `site/e2e/dados/`:
- * relógio simulado, fuso do navegador diferente (C16, C17), filtros, idiomas, ligação a um
- * local, dias santos, funcionamento sem JavaScript e acessibilidade (axe, WCAG 2.1 AA).
+ * Páginas públicas de ponta a ponta (§14, E2.11), com os dados fixos de `site/e2e/dados/`:
+ * relógio simulado, fuso do navegador diferente (C16, C17), filtros, idiomas, lista e página de
+ * cada paróquia, dias santos, funcionamento sem JavaScript e acessibilidade (axe, WCAG 2.1 AA).
  */
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
@@ -12,7 +12,7 @@ const DOMINGO_1050 = new Date("2026-11-01T10:50:00Z");
 async function abrir(page: Page, caminho: string, quando = DOMINGO_1050): Promise<void> {
   await page.clock.setFixedTime(quando);
   await page.goto(caminho);
-  await expect(page.locator("#controlos")).toBeVisible();
+  await expect(page.locator("html[data-pronto]")).toHaveCount(1);
 }
 
 test.describe("próximas celebrações (C16, C17)", () => {
@@ -45,55 +45,41 @@ test.describe("próximas celebrações (C16, C17)", () => {
 });
 
 test.describe("filtros e endereço", () => {
-  test("concelho, pesquisa e vista ficam no endereço e passam para os outros idiomas", async ({
-    page,
-  }) => {
-    await abrir(page, "/?dia=domingo");
+  test("concelho e dia ficam no endereço e passam para os outros idiomas", async ({ page }) => {
+    await abrir(page, "/?dia=amanha");
+    await expect(page.getByRole("button", { name: "Por igreja" })).toHaveCount(0);
     await page.getByRole("button", { name: "Vizela", exact: true }).click();
     await expect(page).toHaveURL(/concelho=vizela/);
+    await expect(page.locator("#lista-hora > li").first()).toBeVisible();
     for (const linha of await page.locator("#lista-hora > li").all()) {
       await expect(linha).toContainText("Vizela");
     }
-    // No telemóvel, a vista muda-se na barra inferior.
-    if ((page.viewportSize()?.width ?? 1280) < 768)
-      await page.locator('button[data-barra="paroquias"]').click();
-    else await page.getByRole("button", { name: "Por igreja" }).click();
-    await expect(page.locator("article.igreja:visible")).toHaveCount(1);
-    await expect(page.locator("#contagem-igrejas")).toHaveText("1 igreja");
     await page.locator('a[data-idioma="/en/"]').click();
-    await expect(page).toHaveURL(/\/en\/\?dia=domingo&concelho=vizela&vista=igreja/);
-    await expect(page.locator("#contagem-igrejas")).toHaveText("1 church");
+    await expect(page).toHaveURL(/\/en\/\?dia=amanha&concelho=vizela$/);
+    await expect(page.locator("#lista-hora > li").first()).toContainText("Vizela");
   });
 
   test("pesquisa sem acentos", async ({ page }) => {
-    await abrir(page, "/?vista=igreja");
+    await abrir(page, "/?dia=domingo");
+    const todas = await page.locator("#lista-hora > li").count();
     await page.getByLabel("Pesquisar").fill("SANTA EULALIA");
-    await expect(page.locator("article.igreja:visible")).toHaveCount(1);
-    await expect(page.locator("article.igreja:visible")).toContainText("Nespereira");
+    await expect(page.locator("#lista-hora > li").first()).toContainText("Nespereira");
+    for (const linha of await page.locator("#lista-hora > li").all()) {
+      await expect(linha).toContainText("Nespereira");
+    }
     await page.getByRole("button", { name: "Limpar a pesquisa" }).click();
-    await expect(page.locator("article.igreja:visible")).toHaveCount(4);
+    await expect(page.locator("#lista-hora > li")).toHaveCount(todas);
   });
 
-  test("locais não publicados não aparecem", async ({ page }) => {
-    await abrir(page, "/?vista=igreja");
-    await expect(page.locator("#serzedelo")).toHaveCount(0);
+  test("as ligações antigas /#id levam à página da paróquia", async ({ page }) => {
+    await page.goto("/#nespereira");
+    await expect(page).toHaveURL(/\/paroquia\/nespereira\/#nespereira$/);
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Nespereira");
   });
 
-  test("tocar num cartão não mexe nos filtros", async ({ page }) => {
-    await abrir(page, "/?vista=igreja");
-    await page.locator("#nespereira summary").click();
-    await expect(page).toHaveURL(/\/\?vista=igreja$/);
-    await expect(page.locator("#nespereira details")).toHaveAttribute("open", "");
-  });
-
-  test("a ligação /#id abre o local", async ({ page }) => {
-    await abrir(page, "/#nespereira");
-    await expect(page.locator("#nespereira details")).toHaveAttribute("open", "");
-    await expect(page.locator("#nespereira")).toContainText("Horário semanal");
-    await expect(page.locator("#nespereira")).toBeInViewport();
-  });
-
-  test("o detalhe abre por baixo da linha na vista por hora", async ({ page }) => {
+  test("o detalhe abre por baixo da linha, com a ligação para a página da paróquia", async ({
+    page,
+  }) => {
     await abrir(page, "/?q=oliveira");
     await page
       .locator("#lista-hora")
@@ -101,29 +87,112 @@ test.describe("filtros e endereço", () => {
       .first()
       .click();
     await expect(page.locator("#lista-hora")).toContainText("Domingos às 12:00 e 19:00");
+    await expect(
+      page.locator("#lista-hora").getByRole("link", { name: "Página da paróquia" }).first(),
+    ).toHaveAttribute("href", "/paroquia/nossa-senhora-da-oliveira/");
+  });
+
+  test("Como chegar abre sempre o Google Maps, também num iPhone", async ({ browser }) => {
+    const contexto = await browser.newContext({
+      userAgent:
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
+    });
+    const page = await contexto.newPage();
+    await abrir(page, "/?q=oliveira");
+    await expect(page.getByRole("link", { name: "Como chegar" }).first()).toHaveAttribute(
+      "href",
+      /^https:\/\/www\.google\.com\/maps\/dir\/\?api=1&destination=/,
+    );
+    await contexto.close();
+  });
+});
+
+test.describe("lista das paróquias", () => {
+  test("filtro por concelho, sem locais não publicados, e ligação para cada página", async ({
+    page,
+  }) => {
+    await page.goto("/paroquias/");
+    const itens = page.locator("#lista-paroquias > li");
+    await expect(itens).toHaveCount(4);
+    await expect(page.locator('a[href="/paroquia/serzedelo/"]')).toHaveCount(0);
+    await page.getByRole("button", { name: "Vizela", exact: true }).click();
+    await expect(page).toHaveURL(/\/paroquias\/\?concelho=vizela$/);
+    await expect(page.locator("#lista-paroquias > li:visible")).toHaveCount(1);
+    await expect(page.locator("#contagem-paroquias")).toHaveText("1 paróquia");
+    await page.getByRole("button", { name: "Todos" }).click();
+    await page.getByRole("link", { name: /Paróquia de Santa Eulália de Nespereira/ }).click();
+    await expect(page).toHaveURL(/\/paroquia\/nespereira\/$/);
+  });
+
+  test("o atalho Paróquias do cabeçalho leva à lista", async ({ page }) => {
+    await abrir(page, "/");
+    if ((page.viewportSize()?.width ?? 1280) < 768)
+      await page
+        .getByRole("navigation", { name: "Atalhos" })
+        .last()
+        .getByRole("link", { name: "Paróquias" })
+        .click();
+    else await page.getByRole("link", { name: "Paróquias" }).first().click();
+    await expect(page).toHaveURL(/\/paroquias\/$/);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Paróquias");
   });
 });
 
 test.describe("página de cada paróquia", () => {
-  test("igrejas com o detalhe, dados estruturados com as celebrações e ligação de volta", async ({
-    page,
-  }) => {
+  test("nome, fotografia, informações, dados estruturados e ligação de volta", async ({ page }) => {
     await page.goto("/en/paroquia/nespereira/");
-    await expect(page.locator("article#nespereira h2")).toBeVisible();
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      "Paróquia de Santa Eulália de Nespereira",
+    );
+    await expect(page.getByRole("img", { name: /Photo of the church coming soon/ })).toBeVisible();
+    await expect(page.locator("article#nespereira")).toContainText("Weekly times");
+    await expect(page.locator("article#nespereira")).toContainText("253 565 949");
     const ld = JSON.parse(
       (await page.locator('script[type="application/ld+json"]').textContent()) ?? "{}",
     ) as { "@graph": { "@type": string; event?: unknown[] }[] };
     expect(ld["@graph"][0]?.["@type"]).toBe("Church");
     expect(ld["@graph"][0]?.event?.length).toBeGreaterThan(0);
-    await expect(page.getByRole("link", { name: /All mass times/ })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: /Parishes/ }).first()).toHaveAttribute(
       "href",
-      "/en/",
+      "/en/paroquias/",
+    );
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+      "href",
+      /\/en\/paroquia\/nespereira\/$/,
+    );
+    // A escolha de idioma fica na mesma paróquia.
+    await expect(page.locator('a[hreflang="pt-PT"]')).toHaveAttribute(
+      "href",
+      "/paroquia/nespereira/",
     );
   });
 
-  test("o sitemap tem as páginas das paróquias com locais publicados", async ({ request }) => {
+  test("celebrações de hoje, amanhã e do próximo domingo, só desta paróquia", async ({ page }) => {
+    await page.clock.setFixedTime(DOMINGO_1050);
+    await page.goto("/paroquia/nossa-senhora-da-oliveira/");
+    const lista = page.locator("#lista-dia > li");
+    await expect(page.locator("#titulo-dia")).toHaveText("Celebrações de hoje");
+    await expect(page.getByRole("button", { name: "Hoje" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(lista).toHaveCount(2);
+    await expect(lista.first()).toContainText("12:00");
+    await expect(lista.first()).toContainText("A seguir · em 1 h 10 min");
+    await page.getByRole("button", { name: "Amanhã" }).click();
+    await expect(page).toHaveURL(/\?dia=amanha$/);
+    await expect(page.locator("#titulo-dia")).toHaveText("Celebrações de amanhã");
+    await expect(lista).toHaveCount(1);
+    await expect(lista.first()).toContainText("19:00");
+    await page.getByRole("button", { name: "Próx. domingo" }).click();
+    await expect(lista).toHaveCount(2);
+  });
+
+  test("o sitemap tem a lista e as páginas das paróquias com locais publicados", async ({
+    request,
+  }) => {
     const xml = await (await request.get("/sitemap.xml")).text();
+    expect(xml).toContain("/paroquias/</loc>");
     expect(xml).toContain("/paroquia/nespereira/</loc>");
     expect(xml).toContain("/en/paroquia/nespereira/</loc>");
     expect(xml).not.toContain("/paroquia/serzedelo/");
@@ -170,16 +239,17 @@ test.describe("dias santos (§6.4)", () => {
 
 test.describe("sem JavaScript", () => {
   test.use({ javaScriptEnabled: false });
-  test("mostra todos os locais; cada um leva à página da paróquia com o horário semanal", async ({
+  test("a página principal leva à lista; cada paróquia mostra o horário semanal", async ({
     page,
   }) => {
     await page.goto("/");
     await expect(page.locator("#controlos")).toBeHidden();
-    await expect(page.locator("article.igreja")).toHaveCount(4);
-    await page.locator("#nossa-senhora-da-oliveira summary").click();
-    await page.getByRole("link", { name: "Ver horário semanal e contactos" }).first().click();
-    await expect(page).toHaveURL(/\/paroquia\/[a-z0-9-]+\/#nossa-senhora-da-oliveira$/);
+    await page.getByRole("link", { name: "Ver a lista de paróquias" }).click();
+    await expect(page.locator("#lista-paroquias > li")).toHaveCount(4);
+    await page.getByRole("link", { name: /Paróquia de Nossa Senhora da Oliveira/ }).click();
+    await expect(page).toHaveURL(/\/paroquia\/nossa-senhora-da-oliveira\/$/);
     await expect(page.locator("#nossa-senhora-da-oliveira")).toContainText("Dias úteis às 19:00");
+    await expect(page.locator("#celebracoes")).toBeHidden();
   });
 });
 
@@ -195,23 +265,32 @@ test.describe("acessibilidade (WCAG 2.1 AA)", () => {
     ).toEqual([]);
   };
 
-  test("vista por hora", async ({ page }) => {
+  test("página principal", async ({ page }) => {
     await abrir(page, "/");
     await verificar(page);
   });
 
-  test("vista por igreja com um detalhe aberto, em inglês", async ({ page }) => {
-    await abrir(page, "/en/#nossa-senhora-da-oliveira");
+  test("página principal com um detalhe aberto, em inglês", async ({ page }) => {
+    await abrir(page, "/en/?q=oliveira");
+    await page
+      .locator("#lista-hora")
+      .getByRole("button", { name: "Igreja de Nossa Senhora da Oliveira" })
+      .first()
+      .click();
+    await expect(page.locator("#lista-hora .detalhe").first()).toBeVisible();
     await verificar(page);
   });
 
-  test("espanhol, com todos os detalhes abertos", async ({ page }) => {
-    await abrir(page, "/es/?vista=igreja");
-    for (const d of await page.locator("article.igreja details").all()) {
-      await d.evaluate((el) => ((el as unknown as { open: boolean }).open = true));
-    }
-    // O detalhe de cada igreja é pedido ao servidor ao abrir.
-    await expect(page.locator("article.igreja .detalhe")).toHaveCount(4);
+  test("lista das paróquias, em inglês", async ({ page }) => {
+    await page.goto("/en/paroquias/");
+    await expect(page.locator("#filtro-concelho")).toBeVisible();
+    await verificar(page);
+  });
+
+  test("página da paróquia, em espanhol", async ({ page }) => {
+    await page.clock.setFixedTime(DOMINGO_1050);
+    await page.goto("/es/paroquia/nossa-senhora-da-oliveira/");
+    await expect(page.locator("#lista-dia > li").first()).toBeVisible();
     await verificar(page);
   });
 });

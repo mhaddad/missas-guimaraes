@@ -1,17 +1,21 @@
 ---
 /**
- * Página de uma paróquia (`/paroquia/<id>/`): todas as suas igrejas e capelas publicadas, cada
- * uma com o detalhe completo (âncora `#<id-do-local>`), e as celebrações nos dados estruturados.
- * É também a versão sem JavaScript dos cartões e o link que a paróquia pode divulgar. Lê do D1
- * só esta entidade e os seus locais (middleware).
+ * Página de uma paróquia (`/paroquia/<id>/`), uma "mini-versão" do site: nome, fotografia,
+ * morada, responsáveis e contactos, horário semanal, dias santos e as celebrações de hoje,
+ * amanhã ou do próximo domingo (`scripts/paroquia.ts`). Sem JavaScript, fica o horário semanal.
+ * Lê do D1 só esta entidade e os seus locais (middleware).
  */
 import { momentoEmLisboa } from "@missas/horarios";
 import Base from "../layouts/Base.astro";
 import { TEXTOS, type Idioma } from "../i18n/index.ts";
+import { dadosPortal } from "../lib/dados.ts";
 import { jsonLd } from "../lib/jsonld.ts";
-import DetalheLocal from "./DetalheLocal.astro";
+import { ligacaoMapa } from "../lib/portal.ts";
+import FotoIgreja from "./FotoIgreja.astro";
+import HorarioSemanal from "./HorarioSemanal.astro";
 import Icone from "./Icone.astro";
 import Icones from "./Icones.astro";
+import Relato from "./Relato.astro";
 import Selo from "./Selo.astro";
 
 interface Props {
@@ -21,9 +25,11 @@ interface Props {
 const { idioma } = Astro.props;
 const t = TEXTOS[idioma];
 const paroquia = Astro.locals.paroquia;
-const { data: hoje } = momentoEmLisboa(new Date());
+const agora = new Date();
+const { data: hoje } = momentoEmLisboa(agora);
 if (!paroquia) Astro.response.status = 404;
-const url = new URL(Astro.url.pathname, Astro.site).toString();
+const caminho = paroquia ? `paroquia/${paroquia.entidade.id}/` : "";
+const url = new URL(t.caminho + caminho, Astro.site).toString();
 const estruturados =
   paroquia &&
   JSON.stringify(
@@ -35,48 +41,238 @@ const estruturados =
       { urlLocal: (id) => `${url}#${id}` },
     ),
   ).replace(/</g, "\\u003c");
-const lugar = (l: Pick<import("@missas/horarios").Local, "localidade" | "concelho">) =>
-  [l.localidade, l.concelho].filter(Boolean).join(" · ");
+const dados =
+  paroquia &&
+  dadosPortal(
+    {
+      locais: paroquia.locais,
+      entidades: [paroquia.entidade],
+      calendario: paroquia.calendario,
+    },
+    agora,
+    hoje,
+  );
+const entidade = paroquia?.entidade;
+const varios = (paroquia?.locais.length ?? 0) > 1;
+const principal = paroquia?.locais[0];
+const lugar = principal
+  ? [principal.localidade, principal.concelho].filter(Boolean).join(" · ")
+  : "";
+const responsaveis = entidade?.responsaveis ?? [];
+const telefones = entidade?.telefones_publicos ?? [];
 ---
 
 <Base
-  titulo={paroquia ? `${paroquia.entidade.nome} — ${t.titulo}` : t.titulo}
+  titulo={entidade ? `${entidade.nome} — ${t.aplicacao}` : t.titulo}
   descricao={paroquia ? paroquia.locais.map((l) => l.nome).join(" · ") : t.descricao}
   idioma={idioma}
   publico
+  caminho={caminho}
 >
   <Icones />
-  <p class="mb-4">
-    <a class="ligacao inline-flex min-h-12 items-center" href={t.caminho}>
-      ← {t.todosOsHorarios}
+  <p class="mb-2">
+    <a class="ligacao inline-flex min-h-12 items-center gap-1" href={`${t.caminho}paroquias/`}>
+      ← {t.paroquiasTitulo}
     </a>
   </p>
-  {paroquia ? (
-    <div class="grid gap-6">
-      <h1 class="text-2xl font-bold md:text-3xl">{paroquia.entidade.nome}</h1>
-      {paroquia.locais.map((local) => (
-        <article
-          id={local.id}
-          class="scroll-mt-4 rounded-cartao border border-borda bg-cartao p-4 md:p-6"
-        >
-          <h2 class="text-xl font-semibold">{local.nome}</h2>
-          <p class="mt-1 flex items-center gap-1 text-base text-texto-secundario">
-            <Icone nome="location_on" class="size-4" />
-            {lugar(local)}
-          </p>
-          <p class="mt-2">
-            <Selo
-              idioma={idioma}
-              confirmadoEm={local.confirmado_em}
-              tipoEntidade={paroquia.entidade.tipo}
-              hoje={hoje}
-              forma="longo"
-            />
-          </p>
-          <DetalheLocal idioma={idioma} local={local} entidade={paroquia.entidade} hoje={hoje} />
+  {paroquia && entidade && dados ? (
+    <>
+      <header class="mb-4">
+        <h1 class="text-2xl leading-tight font-bold md:text-3xl">{entidade.nome}</h1>
+        <p class="mt-1 flex items-center gap-1 text-base text-texto-secundario">
+          <Icone nome="location_on" class="size-4" />
+          {lugar}
+        </p>
+      </header>
+
+      {paroquia.locais.map((local, i) => (
+        <article id={local.id} class="mb-6 grid scroll-mt-4 gap-5">
+          {varios && <h2 class="text-xl font-semibold">{local.nome}</h2>}
+          <FotoIgreja idioma={idioma} local={local} />
+
+          <div class="flex flex-wrap gap-3">
+            <a
+              class="botao-secundario"
+              href={ligacaoMapa(local.geo)}
+              target="_blank"
+              rel="noopener"
+            >
+              <Icone nome="navigation" />
+              {t.comoChegar}
+            </a>
+            <button
+              type="button"
+              class="botao-secundario"
+              data-partilhar={`${t.caminho}${caminho}`}
+              data-titulo={entidade.nome}
+              hidden
+            >
+              <Icone nome="share" />
+              {t.partilhar}
+            </button>
+            <button type="button" class="botao-secundario" data-relatar={local.id} hidden>
+              <Icone nome="flag" />
+              {t.reportar}
+            </button>
+          </div>
+
+          <div class="grid gap-6 rounded-cartao border border-borda bg-cartao p-4 text-base md:grid-cols-2 md:p-6">
+            <div class="grid content-start gap-3">
+              <dl class="grid content-start gap-3">
+                {!varios && (
+                  <div>
+                    <dt class="font-semibold">{t.igreja}</dt>
+                    <dd class="text-texto-secundario">{local.nome}</dd>
+                  </div>
+                )}
+                {local.morada && (
+                  <div>
+                    <dt class="font-semibold">{t.morada}</dt>
+                    <dd class="text-texto-secundario">{local.morada}</dd>
+                  </div>
+                )}
+                {i === 0 && responsaveis.length > 0 && (
+                  <div>
+                    <dt class="font-semibold">{t.responsavel}</dt>
+                    {responsaveis.map((nome) => (
+                      <dd class="text-texto-secundario">{nome}</dd>
+                    ))}
+                  </div>
+                )}
+                {i === 0 && telefones.length > 0 && (
+                  <div>
+                    <dt class="font-semibold">{t.telefone}</dt>
+                    <dd>
+                      {telefones.map((tel) => (
+                        <a
+                          class="ligacao mr-3 inline-flex min-h-12 items-center gap-1"
+                          href={`tel:${tel.replace(/\s/g, "")}`}
+                        >
+                          <Icone nome="call" class="size-4" />
+                          {tel}
+                        </a>
+                      ))}
+                    </dd>
+                  </div>
+                )}
+                {i === 0 && entidade.email && (
+                  <div>
+                    <dt class="font-semibold">{t.email}</dt>
+                    <dd>
+                      <a
+                        class="ligacao inline-flex min-h-12 items-center gap-1 break-all"
+                        href={`mailto:${entidade.email}`}
+                      >
+                        <Icone nome="mail" class="size-4" />
+                        {entidade.email}
+                      </a>
+                    </dd>
+                  </div>
+                )}
+                {i === 0 && entidade.site && /^https?:\/\//.test(entidade.site) && (
+                  <div>
+                    <dt class="font-semibold">{t.site}</dt>
+                    <dd>
+                      <a
+                        class="ligacao inline-flex min-h-12 items-center gap-1 break-all"
+                        href={entidade.site}
+                        rel="noopener"
+                      >
+                        <Icone nome="language" class="size-4" />
+                        {entidade.site.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
+                      </a>
+                    </dd>
+                  </div>
+                )}
+              </dl>
+              <div>
+                <Selo
+                  idioma={idioma}
+                  confirmadoEm={local.confirmado_em}
+                  tipoEntidade={entidade.tipo}
+                  hoje={hoje}
+                  forma="longo"
+                />
+              </div>
+            </div>
+            <div class="grid content-start gap-4">
+              <HorarioSemanal
+                idioma={idioma}
+                local={local}
+                hoje={hoje}
+                nivel={varios ? "h3" : "h2"}
+              />
+            </div>
+          </div>
         </article>
       ))}
-    </div>
+
+      <section id="celebracoes" class="mb-10 scroll-mt-4" aria-labelledby="titulo-dia" hidden>
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 id="titulo-dia" class="text-xl font-semibold"></h2>
+          <div
+            role="group"
+            aria-label={t.diaRotulo}
+            class="segmentos grid w-full grid-cols-3 md:flex md:w-auto"
+          >
+            <button type="button" class="segmento segmento-dia" data-dia="hoje" aria-pressed="true">
+              {t.hoje}
+            </button>
+            <button
+              type="button"
+              class="segmento segmento-dia"
+              data-dia="amanha"
+              aria-pressed="false"
+            >
+              {t.amanha}
+            </button>
+            <button
+              type="button"
+              class="segmento segmento-dia"
+              data-dia="domingo"
+              aria-pressed="false"
+            >
+              {t.proximoDomingo}
+            </button>
+          </div>
+        </div>
+        <p
+          id="faixa-dia-santo"
+          class="mb-4 flex items-center gap-3 rounded-cartao bg-aviso-fundo px-4 py-3 text-base font-semibold text-dourado-texto"
+          hidden
+        >
+          <Icone nome="event" class="size-6" />
+          <span></span>
+        </p>
+        <ol id="lista-dia" class="grid grid-cols-1 gap-3"></ol>
+        <p
+          id="vazio-dia"
+          class="rounded-cartao border border-dashed border-borda p-6 text-center text-texto-secundario"
+          hidden
+        ></p>
+        <details id="anteriores" class="mt-4 rounded-cartao border border-borda bg-cartao" hidden>
+          <summary class="flex min-h-12 cursor-pointer list-none items-center gap-3 px-4 text-base text-texto-secundario [&::-webkit-details-marker]:hidden">
+            <Icone nome="history" />
+            <span id="anteriores-texto"></span>
+            <Icone nome="keyboard_arrow_down" class="ml-auto size-6" />
+          </summary>
+          <ol id="lista-anteriores" class="grid gap-2 px-4 pb-4"></ol>
+        </details>
+        <section id="sem-informacao" class="mt-6" hidden>
+          <h3 class="text-lg font-semibold">{t.semInformacaoDiaSanto}</h3>
+          <p class="mt-1 text-base text-texto-secundario">{t.semInformacaoDiaSantoTexto}</p>
+          <ol id="lista-sem-informacao" class="mt-3 grid gap-3"></ol>
+        </section>
+      </section>
+
+      <Relato idioma={idioma} locais={paroquia.locais} />
+      <script
+        type="application/json"
+        id="dados-paroquia"
+        set:html={JSON.stringify(dados).replace(/</g, "\\u003c")}
+      />
+      <script type="application/json" id="idioma-paroquia" set:html={JSON.stringify({ idioma })} />
+    </>
   ) : (
     <p class="rounded-cartao border border-borda bg-cartao p-6 text-base">
       {t.igrejaNaoEncontrada}
@@ -84,3 +280,7 @@ const lugar = (l: Pick<import("@missas/horarios").Local, "localidade" | "concelh
   )}
   {estruturados && <script type="application/ld+json" set:html={estruturados} />}
 </Base>
+
+<script>
+  import "../scripts/paroquia.ts";
+</script>

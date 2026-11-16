@@ -116,6 +116,32 @@
         "null"
       ]
     },
+    "foto": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Fotografia da igreja (exterior ou interior) na página da paróquia. Só imagens com autorização ou licença livre, com o crédito.",
+      "additionalProperties": false,
+      "required": [
+        "url"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "pattern": "^(https://[^\\s\"'<>]+|/[^/\\s\"'<>][^\\s\"'<>]*)$",
+          "description": "Endereço https da imagem, ou caminho no próprio site."
+        },
+        "alt": {
+          "type": "string",
+          "description": "Descrição da imagem para leitores de ecrã (por omissão, o nome da igreja)."
+        },
+        "credito": {
+          "type": "string",
+          "description": "Autor e licença, mostrados por baixo da imagem."
+        }
+      }
+    },
     "horarios": {
       "type": "array",
       "items": {

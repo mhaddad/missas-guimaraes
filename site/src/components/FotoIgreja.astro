@@ -1,0 +1,56 @@
+---
+/**
+ * Fotografia da igreja na página da paróquia (campo `foto` do local), num retângulo de
+ * proporção fixa. Sem fotografia, uma imagem provisória com o nome da igreja.
+ */
+import type { Local } from "@missas/horarios";
+import { formatar, TEXTOS, type Idioma } from "../i18n/index.ts";
+import Icone from "./Icone.astro";
+
+interface Props {
+  idioma: Idioma;
+  local: Local;
+}
+
+const { idioma, local } = Astro.props;
+const t = TEXTOS[idioma];
+const foto = local.foto ?? null;
+const proporcao = "aspect-[16/9] md:aspect-[21/9]";
+---
+
+{foto ? (
+  <figure>
+    <img
+      src={foto.url}
+      alt={foto.alt ?? local.nome}
+      width="1200"
+      height="675"
+      decoding="async"
+      class:list={["w-full rounded-cartao bg-slate-100 object-cover", proporcao]}
+    />
+    {foto.credito && (
+      <figcaption class="mt-1 text-sm text-texto-secundario">
+        {formatar(t.fotoCredito, { credito: foto.credito })}
+      </figcaption>
+    )}
+  </figure>
+) : (
+  <div
+    role="img"
+    aria-label={`${local.nome} — ${t.fotoEmBreve}`}
+    class:list={[
+      "relative flex flex-col items-center justify-center gap-2 overflow-hidden rounded-cartao bg-ardosia px-6 text-center text-white",
+      proporcao,
+    ]}
+  >
+    <img
+      src="/marca/selo-mono.svg"
+      alt=""
+      aria-hidden="true"
+      class="pointer-events-none absolute -right-10 -bottom-12 h-[140%] w-auto opacity-[0.06] invert"
+    />
+    <Icone nome="church" class="size-12 text-dourado md:size-16" />
+    <span class="relative text-lg font-semibold md:text-xl">{local.nome}</span>
+    <span class="relative text-sm text-slate-300">{t.fotoEmBreve}</span>
+  </div>
+)}
