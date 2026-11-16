@@ -122,19 +122,27 @@ export async function verificarIdToken(
       base64UrlParaBytes(a),
       new TextEncoder().encode(`${c}.${p}`),
     );
-    if (!valida) return null;
+    if (!valida) {
+      console.warn("login: ID token recusado (assinatura)");
+      return null;
+    }
   } catch {
+    console.warn("login: ID token recusado (chaves do Google)");
     return null;
   }
   const agora = Math.floor(agoraMs / 1000);
-  if (!EMISSORES.includes(String(carga.iss))) return null;
+  const recusar = (motivo: string) => {
+    console.warn(`login: ID token recusado (${motivo})`);
+    return null;
+  };
+  if (!EMISSORES.includes(String(carga.iss))) return recusar("iss");
   // Só para nós: `aud` tem de ser exatamente o nosso client id.
-  if (carga.aud !== opcoes.clientId) return null;
-  if (typeof carga.exp !== "number" || carga.exp + FOLGA_S < agora) return null;
-  if (typeof carga.iat === "number" && carga.iat - FOLGA_S > agora) return null;
-  if (carga.nonce !== opcoes.nonce) return null;
-  if (carga.email_verified !== true) return null;
-  if (typeof carga.email !== "string" || !carga.email.includes("@")) return null;
+  if (carga.aud !== opcoes.clientId) return recusar("aud");
+  if (typeof carga.exp !== "number" || carga.exp + FOLGA_S < agora) return recusar("exp");
+  if (typeof carga.iat === "number" && carga.iat - FOLGA_S > agora) return recusar("iat");
+  if (carga.nonce !== opcoes.nonce) return recusar("nonce");
+  if (carga.email_verified !== true) return recusar("email_verified");
+  if (typeof carga.email !== "string" || !carga.email.includes("@")) return recusar("email");
   return carga.email.trim().toLowerCase();
 }
 
@@ -169,7 +177,7 @@ export async function tratarAuth(
 ): Promise<Response> {
   const url = new URL(pedido.url);
   const bd = env.BD;
-  const clientId = env.GOOGLE_CLIENT_ID;
+  const clientId = env.GOOGLE_CLIENT_ID?.trim();
   if (!bd || !clientId || !env.GOOGLE_CLIENT_SECRET)
     return new Response("Login indisponível.", { status: 503 });
   const agora = deps.agora ?? new Date();
@@ -229,8 +237,14 @@ export async function tratarAuth(
     const codigo = url.searchParams.get("code") ?? "";
     const navegador = lerCookie(pedido.headers.get("cookie"), COOKIE_ENTRADA);
     const limpar = cookieEntrada("", 0);
-    const falhou = () => redirecionar("/admin/entrar/?erro=1", [limpar]);
-    if (!/^[A-Za-z0-9_-]{43}$/.test(estado) || !codigo || !navegador) return falhou();
+    // O motivo vai para os logs do Worker (sem tokens nem e-mails), para diagnosticar falhas.
+    const falhou = (motivo: string) => {
+      console.warn(`login: ${motivo}`);
+      return redirecionar("/admin/entrar/?erro=1", [limpar]);
+    };
+    if (!/^[A-Za-z0-9_-]{43}$/.test(estado) || !codigo)
+      return falhou(`regresso sem state ou code (${url.searchParams.get("error") ?? "-"})`);
+    if (!navegador) return falhou("sem o cookie de entrada");
     // Uso único e só no navegador que começou o login: a entrada é apagada ao ser lida.
     const entrada = await bd
       .prepare(
@@ -238,7 +252,8 @@ export async function tratarAuth(
       )
       .bind(estado, await sha256Hex(navegador))
       .first<{ verificador: string; nonce: string; voltar: string; expira_em: string }>();
-    if (!entrada || entrada.expira_em <= agora.toISOString()) return falhou();
+    if (!entrada) return falhou("entrada inexistente ou de outro navegador");
+    if (entrada.expira_em <= agora.toISOString()) return falhou("entrada expirada");
 
     const buscar = deps.buscar ?? fetch;
     let idToken: string | undefined;
@@ -249,15 +264,19 @@ export async function tratarAuth(
         body: new URLSearchParams({
           code: codigo,
           client_id: clientId,
-          client_secret: env.GOOGLE_CLIENT_SECRET,
+          client_secret: env.GOOGLE_CLIENT_SECRET.trim(),
           redirect_uri: retorno,
           grant_type: "authorization_code",
           code_verifier: entrada.verificador,
         }),
       });
       if (resposta.ok) idToken = ((await resposta.json()) as { id_token?: string }).id_token;
+      else {
+        const corpo = (await resposta.json().catch(() => ({}))) as { error?: string };
+        return falhou(`troca do código: ${resposta.status} ${corpo.error ?? ""}`);
+      }
     } catch {
-      idToken = undefined;
+      return falhou("troca do código: sem resposta do Google");
     }
     const email =
       idToken &&
@@ -267,7 +286,7 @@ export async function tratarAuth(
         agora,
         ...(deps.obterChaves && { obterChaves: deps.obterChaves }),
       }));
-    if (!email) return falhou();
+    if (!email) return falhou(idToken ? "ID token recusado" : "sem ID token");
 
     const contacto = await obterPorEmail(bd, email);
     if (!contacto || !podeEntrar(contacto)) return redirecionar("/admin/sem-acesso/", [limpar]);
