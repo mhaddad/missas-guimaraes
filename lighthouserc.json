@@ -1,12 +1,14 @@
 {
   "ci": {
     "collect": {
-      "staticDistDir": "./site/dist",
-      "url": ["http://localhost/", "http://localhost/en/"],
+      "url": ["http://localhost:4322/", "http://localhost:4322/en/"],
       "numberOfRuns": 3,
       "settings": {
         "chromeFlags": "--headless=new --no-sandbox"
-      }
+      },
+      "startServerCommand": "npm run servidor:e2e",
+      "startServerReadyPattern": "Ready on",
+      "startServerReadyTimeout": 120000
     },
     "assert": {
       "assertions": {

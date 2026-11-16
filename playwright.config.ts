@@ -18,7 +18,7 @@ export default defineConfig({
   ],
   webServer: {
     command:
-      "PUBLIC_TURNSTILE_SITE_KEY=chave-de-teste npm run build -w site && tsx scripts/semear-e2e.ts && cd site && npx wrangler dev --config dist/server/wrangler.json --port 4322 --persist-to .wrangler/e2e --var GOOGLE_CLIENT_ID:cliente-e2e --show-interactive-dev-session=false",
+      "PUBLIC_TURNSTILE_SITE_KEY=chave-de-teste npm run build -w site && npm run servidor:e2e",
     url: "http://localhost:4322/api/saude",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

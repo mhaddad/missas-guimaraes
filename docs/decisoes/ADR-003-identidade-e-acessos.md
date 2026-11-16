@@ -1,6 +1,6 @@
 # ADR-003 — Identidade, perfis e acessos do painel
 
-- **Estado:** aceite
+- **Estado:** substituído em parte pelo ADR-005 (o login passou do Cloudflare Access para o Worker; os contactos passaram do KV para o D1). O âmbito por perfil mantém-se.
 - **Data:** 2026-11-10
 
 ## Contexto

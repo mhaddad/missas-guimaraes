@@ -1,5 +1,6 @@
 # Testes do site no navegador (§14, E2.11): Playwright com axe (WCAG 2.1 AA) e Lighthouse com os
-# orçamentos de §6.9 (desempenho e acessibilidade ≥ 95). Corre em cada PR e em cada push para o main.
+# orçamentos de §6.9 (desempenho e acessibilidade ≥ 95), contra o Worker local (wrangler dev) com
+# um D1 local e dados fixos. Sem segredos. O deploy é feito pela Cloudflare (Workers Builds).
 name: site
 
 on:

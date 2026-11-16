@@ -1,14 +1,15 @@
 # AGENTS.md — regras para quem programa neste repositório (pessoas e IA)
 
-**Horários de Missas e Celebrações — Arciprestado de Guimarães e Vizela.** Site de uma só página com os horários das igrejas dos concelhos de Guimarães e Vizela, e um painel onde as paróquias mantêm os seus horários. Os dados são arquivos YAML neste repositório; não há base de dados.
+**Horários de Missas e Celebrações — Arciprestado de Guimarães e Vizela.** Site de uma só página com os horários das igrejas dos concelhos de Guimarães e Vizela, e um painel onde as paróquias mantêm os seus horários. Os dados estão no **Cloudflare D1**; este repositório tem só o código (ADR-005).
 
 ## Arquitetura em poucas linhas
 
-- **Site e painel:** Astro (`site/`), servidos como *static assets* por um único Cloudflare Worker (`worker/`), que também tem a API e os crons.
-- **Dados:** `dados/entidades/<id>.yml` (paróquias e outras entidades responsáveis) e `dados/locais/<id>.yml` (igrejas e capelas, com as regras de horário), validados por `dados/schema/*.schema.json`.
-- **Escrita:** o painel nunca escreve no repositório. O Worker valida e dispara um workflow assinado; **só o GitHub Actions grava no `main`**, com um commit por pedido. O histórico do Git é a auditoria e o mecanismo de restauro.
-- **Motor de horários** (`pacotes/horarios`): expande regras e exceções em celebrações concretas. Corre no navegador, no Worker e no GitHub Actions, sempre com o mesmo código.
-- **Validação** (`pacotes/dados`, `scripts/validar.ts`): a mesma no painel, no Worker e na CI.
+- **Um só Cloudflare Worker** serve tudo. O Astro (`site/`, modo *server*) gera todas as páginas a partir do D1; as páginas públicas ficam numa cache por idioma, dia de Lisboa e versão dos dados. A API, o login e os relatos estão em `worker/` (biblioteca `@missas/worker`), chamados por `site/src/worker.ts`.
+- **Dados:** D1 (`worker/migracoes/`). Entidades e locais guardam-se como documento JSON no esquema de `dados/schema/*.schema.json`. Cada gravação fica em `gravacoes` + `versoes`, que só crescem (*triggers* recusam `UPDATE` e `DELETE`): é o histórico e o restauro.
+- **Login:** Google, feito pelo próprio Worker (OAuth com PKCE). Só entra quem estiver registado e ativo no ecrã *Acessos*. Sessões no D1 (só o *hash* do cookie).
+- **Gravação:** imediata. O Worker aplica as guardas e a validação (`pacotes/dados/src/gravacao.ts`) e grava numa transação, com controlo de versões (conflito → 409).
+- **Motor de horários** (`pacotes/horarios`): expande regras e exceções em celebrações concretas. Corre no navegador e no Worker, sempre com o mesmo código.
+- **Deploy:** Cloudflare Workers Builds a cada merge no `main`. O GitHub Actions só corre testes, sem segredos.
 
 ## Comandos
 
@@ -18,7 +19,9 @@
 | `npm run dev` | Site em modo de desenvolvimento |
 | `npm run verificar` | Formatação, lint, tipos, testes e validação dos dados: **tem de passar antes de cada PR** |
 | `npm test` | Testes (Vitest) |
-| `npm run validar` | Valida todos os YAML de `dados/` |
+| `npm run validar` | Valida os YAML de `dados/` (fonte da importação inicial para o D1) |
+| `npm run importar:d1 -- --local` | Importa os YAML para o D1 local (`--remote` só na migração; ver o script) |
+| `npm run e2e` | Testes no navegador contra o `wrangler dev` com um D1 local e dados fixos |
 | `npm run build` | Gera o site em `site/dist` |
 | `npm run formatar:dados` | Reescreve os YAML de `dados/` no formato canónico |
 | `npm run gerar:tipos` / `npm run gerar:validadores` | Depois de mudar `dados/schema/`: tipos TypeScript e validadores pré-compilados |
@@ -35,20 +38,20 @@
 ## O que nunca fazer
 
 1. **Nunca citar a origem da importação inicial dos dados** (nome do site, URLs, identificadores numéricos da fonte), nem em dados, nem em código, nem em commits. Os dados públicos não têm proveniência.
-2. **Nunca acrescentar dados pessoais** ao repositório: e-mails, nomes ou telefones de contactos do painel. Os contactos vivem no Workers KV. Os commits identificam pessoas só por um id opaco (`c_7f3a`).
-3. **Nunca pôr segredos** no código, nos testes ou nos workflows (chaves, tokens, HMAC). Usam-se segredos do Worker e do ambiente `gravacao` do GitHub Actions.
-4. **Nunca inventar afirmações institucionais nem integrações.** Este projeto é uma aplicação do Arciprestado de Guimarães e Vizela; **não é uma plataforma oficial da Arquidiocese de Braga** e não está ligado à Cúria, a agendas diocesanas nem a outros sistemas. Ficam fora textos como "Plataforma Eclesiástica Oficial", "Sincronização Curial", "Gestão canónica", "Conforme com as normas canónicas", "Comunidade notificada em tempo real", "refletidas imediatamente" (o correto é "em poucos minutos"). Na dúvida, texto simples e factual.
+2. **Nunca acrescentar dados pessoais** ao repositório: e-mails, nomes ou telefones de contactos do painel. Os contactos vivem no D1. O histórico identifica pessoas só por um id opaco (`c_7f3a`).
+3. **Nunca pôr segredos** no código, nos testes ou nos workflows. Há só dois, ambos segredos do Worker (*Type: Secret*): `GOOGLE_CLIENT_SECRET` e `TURNSTILE_SECRET`.
+4. **Nunca inventar afirmações institucionais nem integrações.** Este projeto é uma aplicação do Arciprestado de Guimarães e Vizela; **não é uma plataforma oficial da Arquidiocese de Braga** e não está ligado à Cúria, a agendas diocesanas nem a outros sistemas. Ficam fora textos como "Plataforma Eclesiástica Oficial", "Sincronização Curial", "Gestão canónica", "Conforme com as normas canónicas", "Comunidade notificada em tempo real". Sobre a publicação, dizer só o que é verdade: uma gravação aparece no site logo a seguir (ADR-005), mas ninguém é notificado. Na dúvida, texto simples e factual.
 5. **Nunca usar o dourado `#B09247` nem o celeste `#6EB1E4` em texto** (contraste insuficiente). Texto dourado: `dourado-texto` (`#735B28`); texto azul: `azul-texto` (`#006493`). Tokens em `site/src/styles/tokens.css`.
-6. **Nunca gravar diretamente no `main`** fora do GitHub Actions (a partir do E4 há um *ruleset* que o impede).
+6. **Nunca escrever SQL que altere ou apague `gravacoes` ou `versoes`.** O histórico só cresce; a única exceção é a substituição completa na migração (`importar-d1.ts --substituir`).
 
 ## Segurança — revisão obrigatória
 
 Mudanças em qualquer um destes pontos pedem leitura humana linha a linha e uma revisão de segurança independente antes do *merge*:
-verificação do JWT do Cloudflare Access e âmbito por perfil (`admin` / `entidade`) (`worker/src/identidade.ts`, `worker/src/contactos.ts`, `worker/src/api/painel.ts`, ADR-003); assinatura HMAC e formato dos pedidos e guardas de âmbito (`pacotes/dados/src/pedido.ts`, `pacotes/dados/src/aplicar.ts`, `worker/src/pedidos.ts`, ADR-004); `scripts/aplicar-pedido.ts` e `.github/workflows/aplicar-pedido.yml`; permissões das GitHub Apps e workflows; tokens de confirmação por e-mail.
+login e sessões (`worker/src/google.ts`, `worker/src/sessao.ts`, `site/src/middleware.ts`); âmbito por perfil e API (`worker/src/contactos.ts`, `worker/src/api/painel.ts`); gravação e histórico (`pacotes/dados/src/gravacao.ts`, `worker/src/bd.ts`, `worker/migracoes/`); ADR-005; tokens de confirmação por e-mail (E6).
 
 ## Ambientes
 
-- **Homologação** (atual): `*.workers.dev`, todo protegido pelo Cloudflare Access, com `noindex`; e-mails só para uma lista fixa de destinatários.
+- **Homologação** (atual): `*.workers.dev`, com `noindex`; a parte pública abre sem login, o painel pede login Google; e-mails só para uma lista fixa de destinatários.
 - **Produção**: no domínio próprio, depois da validação.
 
 Decisões de arquitetura: `docs/decisoes/`.

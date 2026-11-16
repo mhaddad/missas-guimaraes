@@ -14,7 +14,7 @@
   "scripts": {
     "dev": "npm run dev -w site",
     "build": "npm run build -w site",
-    "deploy": "npm run build && npm run deploy -w worker",
+    "deploy": "npm run build && cd site && npx wrangler deploy",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
@@ -29,7 +29,9 @@
     "gerados:verificar": "tsx scripts/gerar-tipos.ts --verificar && tsx pacotes/dados/scripts/gerar-validadores.ts --verificar",
     "test:cobertura": "vitest run --coverage",
     "e2e": "playwright test",
-    "lighthouse": "npm run build && lhci autorun"
+    "lighthouse": "PUBLIC_TURNSTILE_SITE_KEY=chave-de-teste npm run build && lhci autorun",
+    "servidor:e2e": "tsx scripts/semear-e2e.ts && cd site && npx wrangler dev --config dist/server/wrangler.json --port 4322 --persist-to .wrangler/e2e --var GOOGLE_CLIENT_ID:cliente-e2e --show-interactive-dev-session=false",
+    "importar:d1": "tsx scripts/importar-d1.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
