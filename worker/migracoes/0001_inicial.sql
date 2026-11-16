@@ -82,6 +82,8 @@ CREATE INDEX sessoes_contacto ON sessoes (contacto_id);
 -- Logins em curso (10 minutos): estado OAuth, verificador PKCE, nonce e página de regresso.
 CREATE TABLE entradas (
   estado TEXT PRIMARY KEY,
+  -- SHA-256 do cookie __Host-entrada: o regresso do Google só vale no navegador que começou.
+  navegador TEXT NOT NULL,
   verificador TEXT NOT NULL,
   nonce TEXT NOT NULL,
   voltar TEXT NOT NULL,

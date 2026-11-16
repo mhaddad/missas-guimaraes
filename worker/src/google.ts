@@ -17,6 +17,8 @@ import {
   cookieSessao,
   criarSessao,
   DURACAO_SESSAO_MS,
+  lerCookie,
+  sha256Hex,
   terminarSessao,
 } from "./sessao.ts";
 
@@ -24,6 +26,8 @@ export interface EnvGoogle {
   BD?: D1Database;
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
+  /** Limite de pedidos a /auth/entrar e /auth/retorno, por IP. */
+  LIMITE_ENTRADAS?: RateLimit;
 }
 
 interface Jwk {
@@ -43,6 +47,8 @@ const EMISSORES = ["https://accounts.google.com", "accounts.google.com"];
 const FOLGA_S = 60;
 const DURACAO_ENTRADA_MS = 10 * 60 * 1000;
 const DURACAO_CACHE_MS = 60 * 60 * 1000;
+/** Prende o login ao navegador que o começou (contra login CSRF e injeção do código). */
+const COOKIE_ENTRADA = "__Host-entrada";
 
 let cacheChaves: { chaves: Jwk[]; obtidasEm: number } | undefined;
 
@@ -122,9 +128,8 @@ export async function verificarIdToken(
   }
   const agora = Math.floor(agoraMs / 1000);
   if (!EMISSORES.includes(String(carga.iss))) return null;
-  const aud = carga.aud;
-  if (!(aud === opcoes.clientId || (Array.isArray(aud) && aud.includes(opcoes.clientId))))
-    return null;
+  // Só para nós: `aud` tem de ser exatamente o nosso client id.
+  if (carga.aud !== opcoes.clientId) return null;
   if (typeof carga.exp !== "number" || carga.exp + FOLGA_S < agora) return null;
   if (typeof carga.iat === "number" && carga.iat - FOLGA_S > agora) return null;
   if (carga.nonce !== opcoes.nonce) return null;
@@ -133,18 +138,23 @@ export async function verificarIdToken(
   return carga.email.trim().toLowerCase();
 }
 
-/** Só caminhos do painel, sem `//` (evita redirecionar para fora do site). */
-function voltarSeguro(valor: string | null): string {
-  return valor && /^\/admin\/[A-Za-z0-9/_?=&.-]*$/.test(valor) && !valor.startsWith("//")
+/** Só caminhos do painel, sem `..`, `//` nem `\` (nunca redireciona para fora do site). */
+export function voltarSeguro(valor: string | null): string {
+  return valor &&
+    /^\/admin\/[A-Za-z0-9/_?=&.-]*$/.test(valor) &&
+    !/(^|\/)\.\.(\/|$)|\/\/|\\/.test(valor)
     ? valor
     : "/admin/";
 }
 
-const redirecionar = (local: string, cabecalhos: Record<string, string> = {}) =>
-  new Response(null, {
-    status: 302,
-    headers: { location: local, "cache-control": "no-store", ...cabecalhos },
-  });
+function redirecionar(local: string, cookies: string[] = []): Response {
+  const cabecalhos = new Headers({ location: local, "cache-control": "no-store" });
+  for (const c of cookies) cabecalhos.append("set-cookie", c);
+  return new Response(null, { status: 302, headers: cabecalhos });
+}
+
+const cookieEntrada = (valor: string, maxIdadeS: number) =>
+  `${COOKIE_ENTRADA}=${valor}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxIdadeS}`;
 
 export interface DependenciasGoogle {
   agora?: Date;
@@ -165,25 +175,39 @@ export async function tratarAuth(
   const agora = deps.agora ?? new Date();
   const retorno = `${url.origin}/auth/retorno`;
 
+  if (
+    env.LIMITE_ENTRADAS &&
+    (url.pathname === "/auth/entrar" || url.pathname === "/auth/retorno")
+  ) {
+    const ip = pedido.headers.get("cf-connecting-ip") ?? "sem-ip";
+    if (!(await env.LIMITE_ENTRADAS.limit({ key: `auth:${ip}` })).success)
+      return new Response("Demasiadas tentativas. Aguarde um minuto.", { status: 429 });
+  }
+
   if (url.pathname === "/auth/entrar" && pedido.method === "GET") {
     const estado = aleatorio();
     const verificador = aleatorio(48);
     const nonce = aleatorio();
+    const navegador = aleatorio();
     const desafio = base64Url(
       new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verificador))),
     );
-    await bd
-      .prepare(
-        "INSERT INTO entradas (estado, verificador, nonce, voltar, expira_em) VALUES (?, ?, ?, ?, ?)",
-      )
-      .bind(
-        estado,
-        verificador,
-        nonce,
-        voltarSeguro(url.searchParams.get("voltar")),
-        new Date(agora.getTime() + DURACAO_ENTRADA_MS).toISOString(),
-      )
-      .run();
+    await bd.batch([
+      // Entradas abandonadas não se acumulam.
+      bd.prepare("DELETE FROM entradas WHERE expira_em < ?").bind(agora.toISOString()),
+      bd
+        .prepare(
+          "INSERT INTO entradas (estado, navegador, verificador, nonce, voltar, expira_em) VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(
+          estado,
+          await sha256Hex(navegador),
+          verificador,
+          nonce,
+          voltarSeguro(url.searchParams.get("voltar")),
+          new Date(agora.getTime() + DURACAO_ENTRADA_MS).toISOString(),
+        ),
+    ]);
     const destino = new URL(AUTORIZAR);
     for (const [k, v] of Object.entries({
       client_id: clientId,
@@ -197,23 +221,24 @@ export async function tratarAuth(
       prompt: "select_account",
     }))
       destino.searchParams.set(k, v);
-    return redirecionar(destino.toString());
+    return redirecionar(destino.toString(), [cookieEntrada(navegador, DURACAO_ENTRADA_MS / 1000)]);
   }
 
   if (url.pathname === "/auth/retorno" && pedido.method === "GET") {
     const estado = url.searchParams.get("state") ?? "";
     const codigo = url.searchParams.get("code") ?? "";
-    if (!/^[A-Za-z0-9_-]{43}$/.test(estado) || !codigo)
-      return redirecionar("/admin/entrar/?erro=1");
-    // Uso único: a entrada é apagada ao ser lida.
+    const navegador = lerCookie(pedido.headers.get("cookie"), COOKIE_ENTRADA);
+    const limpar = cookieEntrada("", 0);
+    const falhou = () => redirecionar("/admin/entrar/?erro=1", [limpar]);
+    if (!/^[A-Za-z0-9_-]{43}$/.test(estado) || !codigo || !navegador) return falhou();
+    // Uso único e só no navegador que começou o login: a entrada é apagada ao ser lida.
     const entrada = await bd
       .prepare(
-        "DELETE FROM entradas WHERE estado = ? RETURNING verificador, nonce, voltar, expira_em",
+        "DELETE FROM entradas WHERE estado = ? AND navegador = ? RETURNING verificador, nonce, voltar, expira_em",
       )
-      .bind(estado)
+      .bind(estado, await sha256Hex(navegador))
       .first<{ verificador: string; nonce: string; voltar: string; expira_em: string }>();
-    if (!entrada || entrada.expira_em <= agora.toISOString())
-      return redirecionar("/admin/entrar/?erro=1");
+    if (!entrada || entrada.expira_em <= agora.toISOString()) return falhou();
 
     const buscar = deps.buscar ?? fetch;
     let idToken: string | undefined;
@@ -242,20 +267,18 @@ export async function tratarAuth(
         agora,
         ...(deps.obterChaves && { obterChaves: deps.obterChaves }),
       }));
-    if (!email) return redirecionar("/admin/entrar/?erro=1");
+    if (!email) return falhou();
 
     const contacto = await obterPorEmail(bd, email);
-    if (!contacto || !podeEntrar(contacto)) return redirecionar("/admin/sem-acesso/");
+    if (!contacto || !podeEntrar(contacto)) return redirecionar("/admin/sem-acesso/", [limpar]);
     const token = await criarSessao(bd, contacto.id, agora);
-    return redirecionar(entrada.voltar, {
-      "set-cookie": cookieSessao(token, DURACAO_SESSAO_MS / 1000),
-    });
+    return redirecionar(entrada.voltar, [cookieSessao(token, DURACAO_SESSAO_MS / 1000), limpar]);
   }
 
   if (url.pathname === "/auth/sair" && pedido.method === "POST") {
     if (pedido.headers.get("origin") !== url.origin) return new Response(null, { status: 403 });
     await terminarSessao(bd, pedido);
-    return redirecionar("/admin/entrar/?saiu=1", { "set-cookie": cookieSessao("", 0) });
+    return redirecionar("/admin/entrar/?saiu=1", [cookieSessao("", 0)]);
   }
 
   return new Response(null, { status: 404 });

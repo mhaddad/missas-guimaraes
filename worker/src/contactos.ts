@@ -214,7 +214,8 @@ export async function gravarContacto(
         .prepare("INSERT INTO contacto_entidades (contacto_id, entidade_id) VALUES (?, ?)")
         .bind(contacto.id, e),
     ),
-    ...(podeEntrar(contacto)
+    // Suspender, remover ou mudar o e-mail (outra pessoa) termina as sessões abertas.
+    ...(podeEntrar(contacto) && (!anterior || anterior.email === contacto.email)
       ? []
       : [bd.prepare("DELETE FROM sessoes WHERE contacto_id = ?").bind(contacto.id)]),
   ]);

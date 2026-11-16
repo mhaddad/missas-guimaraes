@@ -294,6 +294,16 @@ describe("acessos", () => {
     expect(((await pedir("/api/acessos", { quem: "admin" })).corpo as unknown[]).length).toBe(3);
   });
 
+  it("mudar o e-mail (outra pessoa) termina as sessões abertas", async () => {
+    const outraPessoa = { ...novo, email: "nova-secretaria@gmail.com" };
+    expect(
+      (await pedir("/api/acessos/c_bbbbbbbb", { quem: "admin", metodo: "PUT", corpo: outraPessoa }))
+        .estado,
+    ).toBe(200);
+    const sessao = new Request(ORIGEM, { headers: { cookie: cookies.nespereira ?? "" } });
+    expect(await lerSessao(bd, sessao, AGORA)).toBeNull();
+  });
+
   it("suspender termina as sessões; ninguém se tira a si próprio; fica sempre um admin", async () => {
     const suspenso = { ...novo, email: "nespereira@gmail.com", estado: "suspenso" };
     expect(

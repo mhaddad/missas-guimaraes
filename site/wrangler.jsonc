@@ -30,6 +30,8 @@
   "ratelimits": [
     // Relatos do público por IP: 5 por minuto.
     { "name": "LIMITE_RELATOS", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } },
+    // Início e regresso do login Google por IP: 10 por minuto.
+    { "name": "LIMITE_ENTRADAS", "namespace_id": "1003", "simple": { "limit": 10, "period": 60 } },
     // Gravações do painel por contacto: 10 por minuto.
     { "name": "LIMITE_PAINEL", "namespace_id": "1002", "simple": { "limit": 10, "period": 60 } },
   ],

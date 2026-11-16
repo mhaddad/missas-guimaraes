@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { limparCacheChaves, tratarAuth, verificarIdToken, type EnvGoogle } from "./google.ts";
+import {
+  limparCacheChaves,
+  tratarAuth,
+  verificarIdToken,
+  voltarSeguro,
+  type EnvGoogle,
+} from "./google.ts";
 import { COOKIE_SESSAO, lerCookie, lerSessao } from "./sessao.ts";
 import { comSessao, contacto, criarGoogleFalso, novaBase } from "./teste-util.ts";
 
@@ -64,6 +70,9 @@ describe("fluxo de entrada", () => {
     return { mem, env };
   }
 
+  /** Cookie __Host-entrada do último /auth/entrar (o navegador que começou o login). */
+  let navegador = "";
+
   async function entrar(env: EnvGoogle, voltar = "/admin/acessos/") {
     const r = await tratarAuth(
       new Request(`${ORIGEM}/auth/entrar?voltar=${encodeURIComponent(voltar)}`),
@@ -71,11 +80,18 @@ describe("fluxo de entrada", () => {
       { agora: AGORA },
     );
     const destino = new URL(r.headers.get("location") ?? "");
+    navegador = lerCookie(r.headers.get("set-cookie"), "__Host-entrada") ?? "";
     return { r, destino };
   }
 
   /** Simula o regresso do Google com um token emitido para `email`. */
-  async function regressar(env: EnvGoogle, estado: string, email: string, nonce: string) {
+  async function regressar(
+    env: EnvGoogle,
+    estado: string,
+    email: string,
+    nonce: string,
+    cookie: string | null = `__Host-entrada=${navegador}`,
+  ) {
     const token = await google.idToken(google.cargaValida(email, nonce, AGORA));
     const pedidos: Request[] = [];
     const buscar = (async (url: string, init: RequestInit) => {
@@ -83,7 +99,9 @@ describe("fluxo de entrada", () => {
       return Response.json({ id_token: token });
     }) as typeof fetch;
     const r = await tratarAuth(
-      new Request(`${ORIGEM}/auth/retorno?state=${estado}&code=codigo-1`),
+      new Request(`${ORIGEM}/auth/retorno?state=${estado}&code=codigo-1`, {
+        headers: cookie ? { cookie } : {},
+      }),
       env,
       { agora: AGORA, buscar, obterChaves: google.obterChaves },
     );
@@ -133,7 +151,7 @@ describe("fluxo de entrada", () => {
     await regressar(env, estado, "pessoa@gmail.com", nonce);
     const { r } = await regressar(env, estado, "pessoa@gmail.com", nonce);
     expect(r.headers.get("location")).toBe("/admin/entrar/?erro=1");
-    expect(r.headers.get("set-cookie")).toBeNull();
+    expect(r.headers.get("set-cookie") ?? "").not.toMatch(/__Host-sessao=[A-Za-z0-9_-]{43}/);
   });
 
   it("e-mail sem registo ou suspenso vai para 'sem acesso', sem sessão", async () => {
@@ -152,7 +170,7 @@ describe("fluxo de entrada", () => {
         destino.searchParams.get("nonce") ?? "",
       );
       expect(r.headers.get("location")).toBe("/admin/sem-acesso/");
-      expect(r.headers.get("set-cookie")).toBeNull();
+      expect(r.headers.get("set-cookie") ?? "").not.toMatch(/__Host-sessao=[A-Za-z0-9_-]{43}/);
     }
   });
 
@@ -201,5 +219,58 @@ describe("fluxo de entrada", () => {
       agora: AGORA,
     });
     expect(r.headers.get("location")).toBe("/admin/entrar/?erro=1");
+  });
+
+  it("o regresso só vale no navegador que começou o login (login CSRF)", async () => {
+    const { env } = await ambiente();
+    await comSessao(env.BD as D1Database, contacto("c_aaaaaaaa", "pessoa@gmail.com"), AGORA);
+    const { r, destino } = await entrar(env);
+    expect(r.headers.get("set-cookie")).toMatch(
+      /^__Host-entrada=[A-Za-z0-9_-]{43}; Path=\/; HttpOnly; Secure; SameSite=Lax; Max-Age=600/,
+    );
+    const estado = destino.searchParams.get("state") ?? "";
+    const nonce = destino.searchParams.get("nonce") ?? "";
+    for (const cookie of [null, "__Host-entrada=outro-navegador-000000000000000000000000000000"]) {
+      const { r: volta } = await regressar(env, estado, "pessoa@gmail.com", nonce, cookie);
+      expect(volta.headers.get("location")).toBe("/admin/entrar/?erro=1");
+      expect(volta.headers.get("set-cookie") ?? "").not.toMatch(/__Host-sessao=[A-Za-z0-9_-]{43}/);
+    }
+    // O navegador certo ainda consegue (a tentativa noutro navegador não gastou a entrada).
+    const { r: certa } = await regressar(env, estado, "pessoa@gmail.com", nonce);
+    expect(certa.headers.get("location")).toBe("/admin/acessos/");
+  });
+
+  it("limite de tentativas por IP: 429", async () => {
+    const { env } = await ambiente();
+    const limite = { limit: async () => ({ success: false }) } as unknown as RateLimit;
+    const r = await tratarAuth(
+      new Request(`${ORIGEM}/auth/entrar`),
+      { ...env, LIMITE_ENTRADAS: limite },
+      { agora: AGORA },
+    );
+    expect(r.status).toBe(429);
+  });
+});
+
+describe("voltarSeguro e aud", () => {
+  it.each([
+    ["/admin/acessos/", "/admin/acessos/"],
+    ["/admin/?entidade=x", "/admin/?entidade=x"],
+    ["/admin/..//evil.com/x", "/admin/"],
+    ["/admin/../x", "/admin/"],
+    ["/admin//x", "/admin/"],
+    ["/admin\\x", "/admin/"],
+    ["https://evil.com/admin/", "/admin/"],
+    [null, "/admin/"],
+  ])("%s → %s", (valor, esperado) => {
+    expect(voltarSeguro(valor)).toBe(esperado);
+  });
+
+  it("recusa aud em lista, mesmo que inclua o nosso cliente", async () => {
+    const t = await google.idToken({
+      ...google.cargaValida("a@gmail.com", "n1", AGORA),
+      aud: [CLIENT, "outro"],
+    });
+    expect(await verificar(t)).toBeNull();
   });
 });
