@@ -17,7 +17,7 @@
     // "homologacao" até ao E8 (§9.9); em produção passa a "producao".
     "AMBIENTE": "homologacao",
     // Cliente OAuth do Google (público; o segredo é GOOGLE_CLIENT_SECRET).
-    "GOOGLE_CLIENT_ID": "",
+    "GOOGLE_CLIENT_ID": "849372592917-1j2asi2agq4d886k9gmgc16b2pa3ki90.apps.googleusercontent.com",
   },
   "d1_databases": [
     {
