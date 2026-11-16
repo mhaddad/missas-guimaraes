@@ -2,7 +2,7 @@
 /**
  * Um local na lista (vista por igreja, §6.5). Leve: só o cabeçalho. O detalhe (horário semanal,
  * exceções, contactos) é pedido ao servidor quando se abre o cartão (`data-fragmento`); sem
- * JavaScript, a ligação leva à página da igreja.
+ * JavaScript, a ligação leva à página da paróquia.
  */
 import type { Entidade, Local } from "@missas/horarios";
 import { TEXTOS, type Idioma } from "../i18n/index.ts";
@@ -55,7 +55,10 @@ const t = TEXTOS[idioma];
       class="detalhe-alvo border-t border-borda px-4 pb-5 md:px-5"
       data-fragmento={`/fragmentos/${idioma}/${local.id}/`}
     >
-      <a class="ligacao inline-flex min-h-12 items-center" href={`${t.caminho}igreja/${local.id}/`}>
+      <a
+        class="ligacao inline-flex min-h-12 items-center"
+        href={`${t.caminho}paroquia/${entidade.id}/#${local.id}`}
+      >
         {t.verDetalhe}
       </a>
     </div>

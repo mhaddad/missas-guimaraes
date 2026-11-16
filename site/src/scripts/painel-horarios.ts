@@ -496,7 +496,7 @@ function seccaoLocal(
         "a",
         {
           class: "ligacao inline-flex min-h-12 items-center",
-          href: `/#${local.id}`,
+          href: `/paroquia/${local.entidade}/#${local.id}`,
           target: "_blank",
           rel: "noopener",
         },

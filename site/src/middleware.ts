@@ -22,10 +22,14 @@ interface Contexto {
 
 const LIVRES = new Set(["/admin/entrar/", "/admin/sem-acesso/"]);
 const SO_ADMIN = ["/admin/acessos/"];
-const COM_DADOS = new Set(["/", "/en/", "/es/", "/dados/horarios.json"]);
-/** Página de uma igreja (`/igreja/<id>/`, também em /en/ e /es/) e o fragmento do detalhe. */
-const IGREJA =
-  /^\/(?:(?:en|es)\/)?igreja\/([a-z0-9]+(?:-[a-z0-9]+)*)\/$|^\/fragmentos\/(?:pt-PT|en|es)\/([a-z0-9]+(?:-[a-z0-9]+)*)\/$/;
+const COM_DADOS = new Set(["/", "/en/", "/es/", "/dados/horarios.json", "/sitemap.xml"]);
+const ID = "([a-z0-9]+(?:-[a-z0-9]+)*)";
+/** Página de uma paróquia (`/paroquia/<id>/`, também em /en/ e /es/). */
+const PAROQUIA = new RegExp(`^/((?:en|es)/)?paroquia/${ID}/$`);
+/** Endereço antigo de uma igreja: passa a ser uma secção da página da paróquia. */
+const IGREJA = new RegExp(`^/((?:en|es)/)?igreja/${ID}/$`);
+/** Fragmento com o detalhe de uma igreja (pedido ao abrir um cartão). */
+const FRAGMENTO = new RegExp(`^/fragmentos/(?:pt-PT|en|es)/${ID}/$`);
 
 let calendario: Calendario | undefined;
 
@@ -50,13 +54,32 @@ export async function onRequest(
     return resposta;
   }
 
-  const igreja = IGREJA.exec(pathname);
-  if (igreja && bd) {
-    // Só este local e a sua entidade: página leve, sem ler os outros.
-    const id = igreja[1] ?? igreja[2] ?? "";
+  const paroquia = PAROQUIA.exec(pathname);
+  if (paroquia && bd) {
+    // Só esta entidade e os seus locais publicados: página leve.
+    const entidade = (await lerEntidade(bd, paroquia[2] ?? ""))?.dados;
+    if (entidade) {
+      const locais = [...(await lerLocais(bd, entidade.locais)).values()]
+        .map((r) => r.dados)
+        .filter((l) => l.publicar);
+      if (locais.length > 0) contexto.locals.paroquia = { entidade, locais };
+    }
+    return seguinte();
+  }
+
+  const antiga = IGREJA.exec(pathname);
+  const fragmento = FRAGMENTO.exec(pathname);
+  if ((antiga || fragmento) && bd) {
+    const id = antiga?.[2] ?? fragmento?.[1] ?? "";
     const local = (await lerLocais(bd, [id])).get(id)?.dados;
     const entidade = local?.publicar ? (await lerEntidade(bd, local.entidade))?.dados : undefined;
-    if (local && entidade) contexto.locals.igreja = { local, entidade };
+    if (local && entidade) {
+      // Endereços antigos /igreja/<id>/ → secção da página da paróquia.
+      if (antiga)
+        return contexto.redirect(`/${antiga[1] ?? ""}paroquia/${entidade.id}/#${local.id}`, 301);
+      contexto.locals.igreja = { local, entidade };
+    }
+    if (antiga) return new Response("Não encontrado.", { status: 404 });
     return seguinte();
   }
 
