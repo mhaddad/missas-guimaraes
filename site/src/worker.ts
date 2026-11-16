@@ -14,7 +14,11 @@ import {
   type Env as EnvServidor,
 } from "@missas/worker";
 
-type Env = EnvServidor & { ASSETS: Fetcher };
+type Env = EnvServidor & {
+  ASSETS: Fetcher;
+  /** Versão do código publicada (para a chave da cache das páginas). */
+  VERSAO_CODIGO?: { id: string };
+};
 
 const CABECALHOS_PAGINA = {
   "content-type": "text/html; charset=utf-8",
@@ -28,7 +32,7 @@ async function pagina(pedido: Request, env: Env, ctx: ExecutionContext): Promise
   if (pedido.method !== "GET" || !bd || !PAGINAS_PUBLICAS.has(pathname))
     return handle(pedido, env as never, ctx);
 
-  const chave = await chavePagina(bd, pathname);
+  const chave = await chavePagina(bd, pathname, env.VERSAO_CODIGO?.id ?? "local");
   const pronta = await obterPagina(bd, chave);
   if (pronta !== null) return new Response(pronta, { headers: CABECALHOS_PAGINA });
 

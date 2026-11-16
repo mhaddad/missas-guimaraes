@@ -35,6 +35,8 @@
     // Gravações do painel por contacto: 10 por minuto.
     { "name": "LIMITE_PAINEL", "namespace_id": "1002", "simple": { "limit": 10, "period": 60 } },
   ],
+  // Versão do código publicada: entra na chave da cache das páginas (cada deploy tem a sua).
+  "version_metadata": { "binding": "VERSAO_CODIGO" },
   "preview_urls": false,
   "observability": { "enabled": true },
 }
