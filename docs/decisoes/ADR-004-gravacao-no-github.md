@@ -1,6 +1,6 @@
 # ADR-004 — Gravação no GitHub: pedidos assinados e `aplicar-pedido`
 
-- **Estado:** aceite (E4, partes 1 e 2)
+- **Estado:** substituído pelo ADR-005 (os dados passaram do GitHub para o D1; a gravação é imediata). As guardas de âmbito e de campos mantêm-se em `gravacao.ts`.
 - **Data:** 2026-11-11
 
 ## Contexto

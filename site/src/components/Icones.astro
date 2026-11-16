@@ -1,38 +1,49 @@
 ---
 /**
  * Sprite com os ícones usados no site (Material Symbols, Apache 2.0), embutido uma vez na página.
- * Uso: <svg class="icone"><use href="#i-search" /></svg>. Só os desenhos listados vão para o HTML.
+ * Uso: <svg class="icone"><use href="#i-search" /></svg>. Os SVG entram no build (`?raw`):
+ * a página é gerada no Worker, sem acesso a arquivos.
  */
-import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
+import search from "@material-symbols/svg-400/outlined/search.svg?raw";
+import close from "@material-symbols/svg-400/outlined/close.svg?raw";
+import schedule from "@material-symbols/svg-400/outlined/schedule.svg?raw";
+import navigation from "@material-symbols/svg-400/outlined/navigation.svg?raw";
+import share from "@material-symbols/svg-400/outlined/share.svg?raw";
+import history from "@material-symbols/svg-400/outlined/history.svg?raw";
+import keyboardarrowdown from "@material-symbols/svg-400/outlined/keyboard_arrow_down.svg?raw";
+import locationon from "@material-symbols/svg-400/outlined/location_on.svg?raw";
+import call from "@material-symbols/svg-400/outlined/call.svg?raw";
+import church from "@material-symbols/svg-400/outlined/church.svg?raw";
+import event from "@material-symbols/svg-400/outlined/event.svg?raw";
+import info from "@material-symbols/svg-400/outlined/info.svg?raw";
+import flag from "@material-symbols/svg-400/outlined/flag.svg?raw";
+import checkcircle from "@material-symbols/svg-400/outlined/check_circle.svg?raw";
+import error from "@material-symbols/svg-400/outlined/error.svg?raw";
 
-const ICONES = [
-  "search",
-  "close",
-  "schedule",
-  "navigation",
-  "share",
-  "history",
-  "keyboard_arrow_down",
-  "location_on",
-  "call",
-  "church",
-  "event",
-  "info",
-  "flag",
-  "check_circle",
-  "error",
-] as const;
+const ICONES: Record<string, string> = {
+  search: search,
+  close: close,
+  schedule: schedule,
+  navigation: navigation,
+  share: share,
+  history: history,
+  keyboard_arrow_down: keyboardarrowdown,
+  location_on: locationon,
+  call: call,
+  church: church,
+  event: event,
+  info: info,
+  flag: flag,
+  check_circle: checkcircle,
+  error: error,
+};
 
-const require = createRequire(import.meta.url);
-const simbolos = ICONES.map((nome) => {
-  const svg = readFileSync(
-    require.resolve(`@material-symbols/svg-400/outlined/${nome}.svg`),
-    "utf8",
-  );
-  const interior = svg.replace(/^<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "");
-  return `<symbol id="i-${nome}" viewBox="0 -960 960 960">${interior}</symbol>`;
-}).join("");
+const simbolos = Object.entries(ICONES)
+  .map(([nome, svg]) => {
+    const interior = svg.replace(/^<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "");
+    return `<symbol id="i-${nome}" viewBox="0 -960 960 960">${interior}</symbol>`;
+  })
+  .join("");
 ---
 
 <svg

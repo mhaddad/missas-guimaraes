@@ -63,9 +63,11 @@ const { titulo, ativo, simples = false } = Astro.props;
             </nav>
             <div class="ml-auto flex items-center gap-3 text-base">
               <span id="nome-pessoa" class="font-semibold" />
-              <a class="ligacao inline-flex min-h-12 items-center" href="/cdn-cgi/access/logout">
-                Sair
-              </a>
+              <form method="post" action="/auth/sair">
+                <button type="submit" class="ligacao inline-flex min-h-12 items-center">
+                  Sair
+                </button>
+              </form>
             </div>
           </>
         )}

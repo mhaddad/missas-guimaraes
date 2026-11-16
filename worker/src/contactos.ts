@@ -1,11 +1,11 @@
 /**
- * Contactos do painel no Workers KV (§9.3, D25). REVISÃO DE SEGURANÇA OBRIGATÓRIA (âmbito).
+ * Contactos do painel no D1 (§9.3, D25, ADR-005). REVISÃO DE SEGURANÇA OBRIGATÓRIA (âmbito).
  *
- *   contacto:<id>         o contacto (nome, e-mail, função, perfil, entidades, estado, consentimento)
- *   email:<email>         → <id>   (índice para o login)
- *   auditoria:<ts>:<id>   ações de administradores (2 anos)
+ *   contactos            nome, e-mail (único), função, perfil, estado, consentimento
+ *   contacto_entidades   as entidades de cada contacto
+ *   auditoria            ações de administradores sobre contactos
  *
- * Os dados pessoais vivem só aqui, nunca no Git. Os commits e o histórico usam o id opaco.
+ * Os dados pessoais vivem só aqui, nunca no Git. O histórico das gravações usa o id opaco.
  */
 
 export type Perfil = "admin" | "entidade";
@@ -40,7 +40,6 @@ const FUNCOES: readonly Funcao[] = ["paroco", "secretaria", "colaborador", "equi
 const PADRAO_ID_ENTIDADE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const PADRAO_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PADRAO_DATA = /^\d{4}-\d{2}-\d{2}$/;
-const AUDITORIA_SEGUNDOS = 2 * 365 * 24 * 60 * 60;
 
 export function normalizarEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -57,30 +56,53 @@ export function podeVer(c: Contacto, entidade: string): boolean {
   return c.perfil === "admin" || c.entidades.includes(entidade);
 }
 
-export async function obterContacto(kv: KVNamespace, id: string): Promise<Contacto | null> {
-  return kv.get<Contacto>(`contacto:${id}`, "json");
+interface LinhaContacto {
+  id: string;
+  nome: string;
+  email: string;
+  funcao: Funcao;
+  perfil: Perfil;
+  estado: EstadoContacto;
+  consentimento: string;
+  criado_em: string;
+  atualizado_em: string;
+  entidades: string | null;
 }
 
-export async function obterPorEmail(kv: KVNamespace, email: string): Promise<Contacto | null> {
-  const id = await kv.get(`email:${normalizarEmail(email)}`);
-  if (!id) return null;
-  const contacto = await obterContacto(kv, id);
-  // O índice só vale se o contacto ainda tiver esse e-mail.
-  return contacto && contacto.email === normalizarEmail(email) ? contacto : null;
+const SELECAO = `SELECT c.*, (SELECT group_concat(entidade_id, ',') FROM contacto_entidades e
+  WHERE e.contacto_id = c.id) AS entidades FROM contactos c`;
+
+function deLinha(l: LinhaContacto): Contacto {
+  return {
+    id: l.id,
+    nome: l.nome,
+    email: l.email,
+    funcao: l.funcao,
+    perfil: l.perfil,
+    entidades: l.entidades ? l.entidades.split(",").sort() : [],
+    estado: l.estado,
+    consentimento: JSON.parse(l.consentimento) as Consentimento,
+    criado_em: l.criado_em,
+    atualizado_em: l.atualizado_em,
+  };
 }
 
-export async function listarContactos(kv: KVNamespace): Promise<Contacto[]> {
-  const contactos: Contacto[] = [];
-  let cursor: string | undefined;
-  do {
-    const pagina = await kv.list({ prefix: "contacto:", ...(cursor && { cursor }) });
-    for (const chave of pagina.keys) {
-      const c = await kv.get<Contacto>(chave.name, "json");
-      if (c) contactos.push(c);
-    }
-    cursor = pagina.list_complete ? undefined : pagina.cursor;
-  } while (cursor);
-  return contactos.sort((a, b) => a.nome.localeCompare(b.nome, "pt"));
+export async function obterContacto(bd: D1Database, id: string): Promise<Contacto | null> {
+  const l = await bd.prepare(`${SELECAO} WHERE c.id = ?`).bind(id).first<LinhaContacto>();
+  return l ? deLinha(l) : null;
+}
+
+export async function obterPorEmail(bd: D1Database, email: string): Promise<Contacto | null> {
+  const l = await bd
+    .prepare(`${SELECAO} WHERE c.email = ?`)
+    .bind(normalizarEmail(email))
+    .first<LinhaContacto>();
+  return l ? deLinha(l) : null;
+}
+
+export async function listarContactos(bd: D1Database): Promise<Contacto[]> {
+  const { results } = await bd.prepare(SELECAO).all<LinhaContacto>();
+  return results.map(deLinha).sort((a, b) => a.nome.localeCompare(b.nome, "pt"));
 }
 
 /** Dados que um administrador pode escrever num contacto. */
@@ -152,38 +174,63 @@ export function novoId(): string {
 }
 
 /**
- * Grava o contacto e mantém o índice por e-mail. Recusa (devolve "email_em_uso") se o e-mail já
- * pertencer a outro contacto.
+ * Grava o contacto e as suas entidades numa transação. Recusa ("email_em_uso") se o e-mail já
+ * pertencer a outro contacto. Suspender ou remover termina as sessões abertas.
  */
 export async function gravarContacto(
-  kv: KVNamespace,
+  bd: D1Database,
   contacto: Contacto,
   anterior: Contacto | null,
 ): Promise<"ok" | "email_em_uso"> {
-  const dono = await kv.get(`email:${contacto.email}`);
-  if (dono && dono !== contacto.id) {
-    const outro = await obterContacto(kv, dono);
-    if (outro && outro.email === contacto.email) return "email_em_uso";
-  }
-  await kv.put(`contacto:${contacto.id}`, JSON.stringify(contacto));
-  await kv.put(`email:${contacto.email}`, contacto.id);
-  if (anterior && anterior.email !== contacto.email) await kv.delete(`email:${anterior.email}`);
+  const dono = await bd
+    .prepare("SELECT id FROM contactos WHERE email = ?")
+    .bind(contacto.email)
+    .first<string>("id");
+  if (dono && dono !== contacto.id) return "email_em_uso";
+  const valores = [
+    contacto.nome,
+    contacto.email,
+    contacto.funcao,
+    contacto.perfil,
+    contacto.estado,
+    JSON.stringify(contacto.consentimento),
+    contacto.atualizado_em,
+  ];
+  await bd.batch([
+    anterior
+      ? bd
+          .prepare(
+            "UPDATE contactos SET nome = ?, email = ?, funcao = ?, perfil = ?, estado = ?, consentimento = ?, atualizado_em = ? WHERE id = ?",
+          )
+          .bind(...valores, contacto.id)
+      : bd
+          .prepare(
+            "INSERT INTO contactos (nome, email, funcao, perfil, estado, consentimento, atualizado_em, id, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          )
+          .bind(...valores, contacto.id, contacto.criado_em),
+    bd.prepare("DELETE FROM contacto_entidades WHERE contacto_id = ?").bind(contacto.id),
+    ...contacto.entidades.map((e) =>
+      bd
+        .prepare("INSERT INTO contacto_entidades (contacto_id, entidade_id) VALUES (?, ?)")
+        .bind(contacto.id, e),
+    ),
+    // Suspender, remover ou mudar o e-mail (outra pessoa) termina as sessões abertas.
+    ...(podeEntrar(contacto) && (!anterior || anterior.email === contacto.email)
+      ? []
+      : [bd.prepare("DELETE FROM sessoes WHERE contacto_id = ?").bind(contacto.id)]),
+  ]);
   return "ok";
 }
 
 export async function auditar(
-  kv: KVNamespace,
+  bd: D1Database,
   quem: string,
   acao: string,
   detalhe: Record<string, unknown>,
   agora = new Date(),
 ): Promise<void> {
-  const id = crypto.randomUUID().slice(0, 8);
-  await kv.put(
-    `auditoria:${agora.toISOString()}:${id}`,
-    JSON.stringify({ quem, acao, detalhe, em: agora.toISOString() }),
-    {
-      expirationTtl: AUDITORIA_SEGUNDOS,
-    },
-  );
+  await bd
+    .prepare("INSERT INTO auditoria (contacto_id, acao, detalhe, criado_em) VALUES (?, ?, ?, ?)")
+    .bind(quem, acao, JSON.stringify(detalhe), agora.toISOString())
+    .run();
 }

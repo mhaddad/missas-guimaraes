@@ -9,7 +9,8 @@ import { h } from "./painel-comum.ts";
 
 export interface LocalComSha {
   local: Local;
-  sha: string | null;
+  /** Versão no D1 (para o conflito: o servidor recusa se alguém gravou entretanto). */
+  versao: number;
 }
 
 /** O que um modal devolve para enviar: o local alterado. */

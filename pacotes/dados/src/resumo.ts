@@ -10,7 +10,13 @@ import {
   resumirAlteracoes,
   type Local,
 } from "@missas/horarios";
-import type { ResumoLocal } from "./pedido.ts";
+
+export interface ResumoLocal {
+  /** Id do local. */
+  local: string;
+  /** Linhas de `resumirAlteracoes` do motor, pela ordem do diff. */
+  linhas: string[];
+}
 
 const HORA_MINIMA = "06:00";
 const HORA_MAXIMA = "22:30";

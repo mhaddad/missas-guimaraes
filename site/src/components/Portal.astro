@@ -7,7 +7,7 @@
 import { momentoEmLisboa } from "@missas/horarios";
 import Base from "../layouts/Base.astro";
 import { formatar, TEXTOS, type Idioma } from "../i18n/index.ts";
-import { dadosPortal, locaisPublicados } from "../lib/dados-build.ts";
+import { dadosPortal, locaisPublicados } from "../lib/dados.ts";
 import { formatarDataLonga, formatarDiaEMes } from "../lib/formatos.ts";
 import { jsonLd } from "../lib/jsonld.ts";
 import { proximasSolenidades } from "../lib/portal.ts";
@@ -25,8 +25,10 @@ const siteKey: string | undefined = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ||
 const t = TEXTOS[idioma];
 const agora = new Date();
 const { data: hoje, hora } = momentoEmLisboa(agora);
-const locais = locaisPublicados();
-const dados = dadosPortal(agora, hoje);
+const doD1 = Astro.locals.dados;
+if (!doD1) throw new Error("Sem dados: o middleware não leu o D1.");
+const locais = locaisPublicados(doD1);
+const dados = dadosPortal(doD1, agora, hoje);
 const solenidades = proximasSolenidades(dados.calendario, hoje);
 const urlPagina = new URL(t.caminho, Astro.site).toString();
 const estruturados = JSON.stringify(jsonLd(locais, idioma, urlPagina, hoje)).replace(

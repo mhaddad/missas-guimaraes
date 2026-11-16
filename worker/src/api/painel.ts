@@ -1,69 +1,70 @@
 /**
- * API do painel (§9.4): `/api/eu`, `/api/entidades`, `/api/entidades/:id(/historico)`,
- * `/api/pedidos` (E4, em `../pedidos.ts`) e `/api/acessos`.
- * REVISÃO DE SEGURANÇA OBRIGATÓRIA: identidade, âmbito por perfil e escrita de contactos.
+ * API do painel (§9.4, ADR-005). REVISÃO DE SEGURANÇA OBRIGATÓRIA: sessão, âmbito por perfil,
+ * gravação e escrita de contactos.
  *
- * Em todos os pedidos: JWT do Access verificado (`identidade`), contacto ativo no KV e âmbito
- * (`podeVer`). Nas escritas: mesma origem e `application/json` (contra CSRF), corpo pequeno e
- * perfil `admin`. Respostas nunca guardadas em cache.
+ *   GET  /api/eu
+ *   GET  /api/entidades                      as que a pessoa pode ver
+ *   GET  /api/entidades/:id                  estado atual, com a versão de cada registo
+ *   GET  /api/entidades/:id/historico        gravações (data, quem, resumo)
+ *   GET  /api/entidades/:id/gravacoes/:g     estado da entidade depois dessa gravação
+ *   POST /api/gravacoes                      confirmação, alteração, novo local ou restauro
+ *   GET/POST /api/acessos · PUT /api/acessos/:id   só administradores
+ *
+ * Em todos os pedidos: sessão válida (cookie) e contacto ativo; âmbito (`podeVer`). Nas
+ * escritas: mesma origem e `application/json` (contra CSRF), corpo limitado. Sem cache.
  */
-import { lerEntidade, lerLocal } from "@missas/dados";
+import { lerCalendario, lerPedidoGravacao, prepararGravacao, PADRAO_ID } from "@missas/dados";
+import type { Calendario, Entidade, Local } from "@missas/horarios";
+import CALENDARIO_YAML from "../../../dados/calendario.yml?raw";
+import {
+  ConflitoDeVersao,
+  estadoNaGravacao,
+  gravar,
+  historicoDaEntidade,
+  lerEstado,
+  lerTudo,
+} from "../bd.ts";
 import {
   auditar,
   gravarContacto,
   listarContactos,
   novoId,
   obterContacto,
-  obterPorEmail,
   podeEntrar,
   podeVer,
   validarDadosContacto,
   type Contacto,
 } from "../contactos.ts";
-import { ErroGithub, lerArquivo, type Buscar, type EnvGithub } from "../github.ts";
-import { identidade, type EnvIdentidade, type ObterChaves } from "../identidade.ts";
-import {
-  criarPedido,
-  historico,
-  listarPedidos,
-  obterPedido,
-  versaoDaEntidade,
-  TAMANHO_MAXIMO_PEDIDO,
-  type EnvPedidos,
-} from "../pedidos.ts";
+import { lerSessao } from "../sessao.ts";
 
-export interface EnvPainel extends EnvIdentidade, EnvGithub, EnvPedidos {
-  ASSETS: { fetch(pedido: Request): Promise<Response> };
-  KV?: KVNamespace;
+export interface EnvPainel {
+  BD?: D1Database;
+  /** Limite de gravações por contacto (Workers Rate Limiting). */
+  LIMITE_PAINEL?: RateLimit;
 }
 
 export interface Dependencias {
   agora?: Date;
-  obterChaves?: ObterChaves;
-  buscar?: Buscar;
-}
-
-/** Catálogo publicado no build do site (`/dados/catalogo.json`). */
-export interface Catalogo {
-  entidades: { id: string; nome: string; tipo: string; locais: string[] }[];
-  locais: Record<string, unknown>;
 }
 
 const TAMANHO_MAXIMO = 8192;
-const PADRAO_ID = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+const TAMANHO_MAXIMO_GRAVACAO = 60_000;
 const PADRAO_ID_CONTACTO = /^c_[0-9a-f]{8}$/;
+const ROTULOS_FUNCAO: Record<string, string> = {
+  paroco: "pároco",
+  secretaria: "secretaria",
+  colaborador: "colaborador",
+  equipa: "equipa",
+};
+
+let calendario: Calendario | undefined;
+const regrasDosDiasSantos = () => (calendario ??= lerCalendario(CALENDARIO_YAML));
 
 function json(corpo: unknown, estado = 200): Response {
   return Response.json(corpo, { status: estado, headers: { "cache-control": "no-store" } });
 }
-
-const erro = (estado: number, codigo: string) => json({ ok: false, erro: codigo }, estado);
-
-async function catalogo(env: EnvPainel, origem: string): Promise<Catalogo> {
-  const resposta = await env.ASSETS.fetch(new Request(`${origem}/dados/catalogo.json`));
-  if (!resposta.ok) throw new Error(`catálogo ${resposta.status}`);
-  return resposta.json();
-}
+const erro = (estado: number, codigo: string, extra: Record<string, unknown> = {}) =>
+  json({ ok: false, erro: codigo, ...extra }, estado);
 
 function publico(c: Contacto) {
   return {
@@ -86,37 +87,205 @@ async function lerCorpo(pedido: Request, maximo = TAMANHO_MAXIMO): Promise<unkno
   return JSON.parse(texto);
 }
 
-/** Estado atual de uma entidade e dos seus locais, lido do `main` (ou do último build). */
-async function entidadeAtual(env: EnvPainel, id: string, cat: Catalogo, deps: Dependencias) {
-  const doCatalogo = cat.entidades.find((e) => e.id === id);
-  if (!doCatalogo) return null;
-  try {
-    const opcoes = {
-      ...(deps.buscar && { buscar: deps.buscar }),
-      ...(deps.agora && { agora: deps.agora }),
-    };
-    const arquivoEntidade = await lerArquivo(env, `dados/entidades/${id}.yml`, opcoes);
-    if (!arquivoEntidade) return null;
-    const entidade = lerEntidade(arquivoEntidade.conteudo);
-    const locais = await Promise.all(
-      entidade.locais.map(async (localId) => {
-        const arquivo = await lerArquivo(env, `dados/locais/${localId}.yml`, opcoes);
-        return arquivo ? { local: lerLocal(arquivo.conteudo), sha: arquivo.sha } : null;
-      }),
-    );
-    return { origem: "main", entidade, sha: arquivoEntidade.sha, locais: locais.filter(Boolean) };
-  } catch (e) {
-    // Sem GitHub App configurada: dados do último build (só leitura, sem SHA).
-    if (!(e instanceof ErroGithub && e.estado === 503)) throw e;
-    return {
-      origem: "site",
-      entidade: doCatalogo,
-      sha: null,
-      locais: doCatalogo.locais
-        .map((l) => ({ local: cat.locais[l], sha: null }))
-        .filter((l) => l.local),
-    };
+const resumoEntidade = (e: Entidade) => ({
+  id: e.id,
+  nome: e.nome,
+  tipo: e.tipo,
+  locais: e.locais,
+});
+
+/** Histórico: o nome de quem gravou só para `admin` ou para a própria pessoa. */
+async function historico(bd: D1Database, eu: Contacto, entidade: string) {
+  const gravacoes = await historicoDaEntidade(bd, entidade);
+  const contactos = new Map<string, Contacto | null>();
+  for (const g of gravacoes) {
+    const ref = g.contacto_id;
+    if (ref && !contactos.has(ref)) contactos.set(ref, await obterContacto(bd, ref));
   }
+  return gravacoes.map((g) => {
+    const c = g.contacto_id ? contactos.get(g.contacto_id) : null;
+    const verNome = c && (eu.perfil === "admin" || c.id === eu.id);
+    return {
+      id: g.id,
+      data: g.criado_em,
+      acao: g.acao,
+      resumo: g.resumo,
+      alertas: g.alertas,
+      restaura: g.restaura,
+      canal: g.canal,
+      contacto: g.contacto_id
+        ? {
+            ref: g.contacto_id,
+            funcao: c ? (ROTULOS_FUNCAO[c.funcao] ?? c.funcao) : null,
+            ...(verNome && { nome: c.nome }),
+          }
+        : null,
+    };
+  });
+}
+
+async function gravacao(
+  bd: D1Database,
+  eu: Contacto,
+  corpo: unknown,
+  env: EnvPainel,
+  agora: Date,
+): Promise<Response> {
+  const lido = lerPedidoGravacao(corpo);
+  if (typeof lido === "string") return erro(400, "pedido", { motivo: lido });
+  if (!podeVer(eu, lido.entidade)) return erro(403, "ambito");
+  if (lido.tipo === "restauro" && eu.perfil !== "admin") return erro(403, "perfil");
+  if (env.LIMITE_PAINEL && !(await env.LIMITE_PAINEL.limit({ key: eu.id })).success)
+    return erro(429, "limite");
+
+  let alvo: { entidade: Entidade; locais: Map<string, Local> } | null = null;
+  if (lido.tipo === "restauro") {
+    alvo = await estadoNaGravacao(bd, lido.entidade, lido.restaura);
+    if (!alvo) return erro(404, "gravacao");
+  }
+  const outros = [
+    ...(lido.tipo === "alteracao" ? Object.keys(lido.locais) : []),
+    ...(lido.tipo === "confirmacao" ? Object.keys(lido.base) : []),
+    ...(lido.tipo === "novo-local" &&
+    typeof lido.local.id === "string" &&
+    PADRAO_ID.test(lido.local.id)
+      ? [lido.local.id]
+      : []),
+    ...(alvo ? alvo.entidade.locais : []),
+  ];
+  const estado = await lerEstado(bd, lido.entidade, outros);
+  if (!estado) return erro(404, "entidade");
+
+  const resultado = prepararGravacao(lido, estado, {
+    agora,
+    contacto: { ref: eu.id, canal: "painel" },
+    calendario: regrasDosDiasSantos(),
+    ...(alvo && { alvo }),
+  });
+  if (resultado.estado === "CONFLITO") return erro(409, "conflito", { motivo: resultado.motivo });
+  if (resultado.estado === "ERRO")
+    return erro(422, "invalido", {
+      motivo: resultado.motivo,
+      ...(resultado.problemas && { problemas: resultado.problemas }),
+    });
+  if (resultado.estado === "sem_alteracoes") return json({ ok: true, estado: "sem_alteracoes" });
+  // Alertas de anomalia (§8.3, 6-A): só com a confirmação reforçada do painel.
+  if (
+    resultado.alertas.length > 0 &&
+    (corpo as { confirmar_alertas?: unknown }).confirmar_alertas !== true
+  )
+    return erro(428, "confirmar_alertas", { alertas: resultado.alertas });
+
+  try {
+    const id = await gravar(
+      bd,
+      {
+        entidadeId: lido.entidade,
+        acao: lido.tipo,
+        contactoId: eu.id,
+        canal: "painel",
+        resumo: resultado.resumo,
+        alertas: resultado.alertas,
+        ...(lido.tipo === "restauro" && { restaura: lido.restaura }),
+        ...(resultado.entidade && {
+          entidade: { dados: resultado.entidade, versaoAnterior: estado.entidade.versao },
+        }),
+        locais: [...resultado.locais.values()].map((dados) => ({
+          dados,
+          versaoAnterior: estado.locais.get(dados.id)?.versao ?? null,
+        })),
+      },
+      agora,
+    );
+    return json({ ok: true, estado: "GRAVADO", gravacao: id, alertas: resultado.alertas });
+  } catch (e) {
+    if (e instanceof ConflitoDeVersao) return erro(409, "conflito", { motivo: e.message });
+    throw e;
+  }
+}
+
+async function acessos(
+  pedido: Request,
+  bd: D1Database,
+  eu: Contacto,
+  caminho: string,
+  agora: Date,
+): Promise<Response> {
+  if (eu.perfil !== "admin") return erro(403, "perfil");
+  const metodo = pedido.method;
+  const hoje = agora.toISOString().slice(0, 10);
+  const existentes = new Set((await lerTudo(bd)).entidades.map((e) => e.id));
+
+  if (caminho === "/api/acessos" && metodo === "GET")
+    return json((await listarContactos(bd)).map(publico));
+
+  if (caminho === "/api/acessos" && metodo === "POST") {
+    let corpo: unknown;
+    try {
+      corpo = await lerCorpo(pedido);
+    } catch {
+      return erro(400, "corpo");
+    }
+    const dados = validarDadosContacto(corpo, existentes, hoje);
+    if (typeof dados === "string") return erro(400, dados);
+    const contacto: Contacto = {
+      id: novoId(),
+      ...dados,
+      criado_em: agora.toISOString(),
+      atualizado_em: agora.toISOString(),
+    };
+    if ((await gravarContacto(bd, contacto, null)) === "email_em_uso")
+      return erro(409, "email_em_uso");
+    await auditar(
+      bd,
+      eu.id,
+      "contacto.criar",
+      { id: contacto.id, perfil: contacto.perfil, entidades: contacto.entidades },
+      agora,
+    );
+    return json(publico(contacto), 201);
+  }
+
+  const mContacto = /^\/api\/acessos\/([^/]+)$/.exec(caminho);
+  if (mContacto && metodo === "PUT") {
+    const id = mContacto[1] ?? "";
+    if (!PADRAO_ID_CONTACTO.test(id)) return erro(400, "id");
+    const anterior = await obterContacto(bd, id);
+    if (!anterior) return erro(404, "contacto");
+    let corpo: unknown;
+    try {
+      corpo = await lerCorpo(pedido);
+    } catch {
+      return erro(400, "corpo");
+    }
+    const dados = validarDadosContacto(corpo, existentes, hoje);
+    if (typeof dados === "string") return erro(400, dados);
+    const novo: Contacto = { ...anterior, ...dados, atualizado_em: agora.toISOString() };
+    // Ninguém se tira a si próprio de administrador nem se suspende (evita ficar sem acesso).
+    if (id === eu.id && (novo.perfil !== "admin" || !podeEntrar(novo))) return erro(400, "proprio");
+    // Tem de ficar sempre pelo menos um administrador ativo.
+    if (
+      anterior.perfil === "admin" &&
+      podeEntrar(anterior) &&
+      !(novo.perfil === "admin" && podeEntrar(novo))
+    ) {
+      const admins = (await listarContactos(bd)).filter(
+        (c) => c.perfil === "admin" && podeEntrar(c) && c.id !== id,
+      );
+      if (admins.length === 0) return erro(400, "ultimo_admin");
+    }
+    if ((await gravarContacto(bd, novo, anterior)) === "email_em_uso")
+      return erro(409, "email_em_uso");
+    await auditar(
+      bd,
+      eu.id,
+      novo.estado !== anterior.estado ? `contacto.${novo.estado}` : "contacto.editar",
+      { id, perfil: novo.perfil, entidades: novo.entidades },
+      agora,
+    );
+    return json(publico(novo));
+  }
+  return erro(405, "metodo");
 }
 
 export async function tratarApiPainel(
@@ -126,175 +295,78 @@ export async function tratarApiPainel(
 ): Promise<Response> {
   const url = new URL(pedido.url);
   const metodo = pedido.method;
-  const escrita = metodo !== "GET" && metodo !== "HEAD";
-
-  if (escrita) {
+  if (metodo !== "GET" && metodo !== "HEAD") {
     if (pedido.headers.get("origin") !== url.origin) return erro(403, "origem");
     if (!(pedido.headers.get("content-type") ?? "").startsWith("application/json"))
       return erro(415, "tipo");
   }
-
-  const quem = await identidade(pedido, env, {
-    ...(deps.agora && { agora: deps.agora }),
-    ...(deps.obterChaves && { obterChaves: deps.obterChaves }),
-  });
-  if (!quem) return erro(401, "sem_identidade");
-  if (!env.KV) return erro(503, "indisponivel");
-  const kv = env.KV;
-
-  const eu = await obterPorEmail(kv, quem.email);
-  if (!eu) return erro(403, "sem_acesso");
-  if (!podeEntrar(eu)) return erro(403, "suspenso");
-
+  if (!env.BD) return erro(503, "indisponivel");
+  const bd = env.BD;
   const agora = deps.agora ?? new Date();
-  const hoje = agora.toISOString().slice(0, 10);
+  const eu = await lerSessao(bd, pedido, agora);
+  if (!eu) return erro(401, "sem_sessao");
   const caminho = url.pathname.replace(/\/+$/, "");
-  const cat = await catalogo(env, url.origin);
-  const nomeDe = (id: string) => cat.entidades.find((e) => e.id === id)?.nome ?? id;
 
-  // GET /api/eu
-  if (caminho === "/api/eu" && metodo === "GET") {
+  if (metodo === "GET" && (caminho === "/api/eu" || caminho === "/api/entidades")) {
+    const { entidades } = await lerTudo(bd);
+    const visiveis = entidades
+      .filter((e) => podeVer(eu, e.id))
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt"));
+    if (caminho === "/api/entidades") return json(visiveis.map(resumoEntidade));
+    const nomes = new Map(entidades.map((e) => [e.id, e.nome]));
     return json({
       id: eu.id,
       nome: eu.nome,
       email: eu.email,
       funcao: eu.funcao,
       perfil: eu.perfil,
-      entidades: eu.entidades.map((id) => ({ id, nome: nomeDe(id) })),
+      entidades: eu.entidades.map((id) => ({ id, nome: nomes.get(id) ?? id })),
     });
   }
 
-  // GET /api/entidades — as que a pessoa pode ver
-  if (caminho === "/api/entidades" && metodo === "GET") {
-    const visiveis = cat.entidades.filter((e) => podeVer(eu, e.id));
-    return json(visiveis.map(({ id, nome, tipo, locais }) => ({ id, nome, tipo, locais })));
-  }
-
-  // GET /api/entidades/:id
-  const mEntidade = /^\/api\/entidades\/([^/]+)$/.exec(caminho);
+  const mEntidade = /^\/api\/entidades\/([^/]+)(?:\/(historico)|\/gravacoes\/(\d{1,12}))?$/.exec(
+    caminho,
+  );
   if (mEntidade && metodo === "GET") {
-    // Os ids válidos não precisam de descodificação: qualquer "%" é recusado pelo padrão.
     const id = mEntidade[1] ?? "";
+    // Sem descodificação: qualquer "%" falha o padrão.
     if (!PADRAO_ID.test(id)) return erro(400, "id");
     if (!podeVer(eu, id)) return erro(403, "ambito");
-    try {
-      const atual = await entidadeAtual(env, id, cat, deps);
-      return atual ? json(atual) : erro(404, "entidade");
-    } catch {
-      return erro(502, "github");
+    if (mEntidade[2]) return json(await historico(bd, eu, id));
+    if (mEntidade[3]) {
+      const g = Number(mEntidade[3]);
+      const estado = await estadoNaGravacao(bd, id, g);
+      if (!estado) return erro(404, "gravacao");
+      return json({
+        gravacao: g,
+        entidade: estado.entidade,
+        locais: [...estado.locais.values()].map((local) => ({ local })),
+      });
     }
+    const estado = await lerEstado(bd, id);
+    if (!estado) return erro(404, "entidade");
+    return json({
+      entidade: estado.entidade.dados,
+      versao: estado.entidade.versao,
+      locais: estado.entidade.dados.locais
+        .map((l) => estado.locais.get(l))
+        .filter((r) => r !== undefined)
+        .map((r) => ({ local: r.dados, versao: r.versao })),
+    });
   }
 
-  // GET /api/entidades/:id/historico (§8.8)
-  const mHistorico = /^\/api\/entidades\/([^/]+)\/historico$/.exec(caminho);
-  if (mHistorico && metodo === "GET") {
-    const id = mHistorico[1] ?? "";
-    if (!PADRAO_ID.test(id)) return erro(400, "id");
-    if (!podeVer(eu, id)) return erro(403, "ambito");
-    return historico(env, kv, eu, id, deps);
-  }
-
-  // GET /api/entidades/:id/versao/:sha (restauro, §8.8)
-  const mVersao = /^\/api\/entidades\/([^/]+)\/versao\/([^/]+)$/.exec(caminho);
-  if (mVersao && metodo === "GET") {
-    const id = mVersao[1] ?? "";
-    if (!PADRAO_ID.test(id)) return erro(400, "id");
-    if (!podeVer(eu, id)) return erro(403, "ambito");
-    return versaoDaEntidade(env, id, mVersao[2] ?? "", deps);
-  }
-
-  // /api/pedidos (E4)
-  if (caminho === "/api/pedidos" && metodo === "POST") {
+  if (caminho === "/api/gravacoes" && metodo === "POST") {
     let corpo: unknown;
     try {
-      corpo = await lerCorpo(pedido, TAMANHO_MAXIMO_PEDIDO);
+      corpo = await lerCorpo(pedido, TAMANHO_MAXIMO_GRAVACAO);
     } catch (e) {
       return e instanceof RangeError ? erro(413, "tamanho") : erro(400, "corpo");
     }
-    return criarPedido(corpo, eu, env, kv, deps);
+    return gravacao(bd, eu, corpo, env, agora);
   }
-  if (caminho === "/api/pedidos" && metodo === "GET") return listarPedidos(eu, kv);
-  const mPedido = /^\/api\/pedidos\/([^/]+)$/.exec(caminho);
-  if (mPedido && metodo === "GET") return obterPedido(eu, kv, mPedido[1] ?? "");
 
-  // /api/acessos — só administradores (P8)
-  if (caminho === "/api/acessos" || caminho.startsWith("/api/acessos/")) {
-    if (eu.perfil !== "admin") return erro(403, "perfil");
-    const existentes = new Set(cat.entidades.map((e) => e.id));
-
-    if (caminho === "/api/acessos" && metodo === "GET") {
-      return json((await listarContactos(kv)).map(publico));
-    }
-
-    if (caminho === "/api/acessos" && metodo === "POST") {
-      let corpo: unknown;
-      try {
-        corpo = await lerCorpo(pedido);
-      } catch {
-        return erro(400, "corpo");
-      }
-      const dados = validarDadosContacto(corpo, existentes, hoje);
-      if (typeof dados === "string") return erro(400, dados);
-      const contacto: Contacto = {
-        id: novoId(),
-        ...dados,
-        criado_em: agora.toISOString(),
-        atualizado_em: agora.toISOString(),
-      };
-      if ((await gravarContacto(kv, contacto, null)) === "email_em_uso")
-        return erro(409, "email_em_uso");
-      await auditar(
-        kv,
-        eu.id,
-        "contacto.criar",
-        { id: contacto.id, perfil: contacto.perfil, entidades: contacto.entidades },
-        agora,
-      );
-      return json(publico(contacto), 201);
-    }
-
-    const mContacto = /^\/api\/acessos\/([^/]+)$/.exec(caminho);
-    if (mContacto && metodo === "PUT") {
-      const id = mContacto[1] ?? "";
-      if (!PADRAO_ID_CONTACTO.test(id)) return erro(400, "id");
-      const anterior = await obterContacto(kv, id);
-      if (!anterior) return erro(404, "contacto");
-      let corpo: unknown;
-      try {
-        corpo = await lerCorpo(pedido);
-      } catch {
-        return erro(400, "corpo");
-      }
-      const dados = validarDadosContacto(corpo, existentes, hoje);
-      if (typeof dados === "string") return erro(400, dados);
-      const novo: Contacto = { ...anterior, ...dados, atualizado_em: agora.toISOString() };
-      // Ninguém se tira a si próprio de administrador nem se suspende (evita ficar sem acesso).
-      if (id === eu.id && (novo.perfil !== "admin" || !podeEntrar(novo)))
-        return erro(400, "proprio");
-      // Tem de ficar sempre pelo menos um administrador ativo.
-      if (
-        anterior.perfil === "admin" &&
-        podeEntrar(anterior) &&
-        !(novo.perfil === "admin" && podeEntrar(novo))
-      ) {
-        const admins = (await listarContactos(kv)).filter(
-          (c) => c.perfil === "admin" && podeEntrar(c) && c.id !== id,
-        );
-        if (admins.length === 0) return erro(400, "ultimo_admin");
-      }
-      if ((await gravarContacto(kv, novo, anterior)) === "email_em_uso")
-        return erro(409, "email_em_uso");
-      await auditar(
-        kv,
-        eu.id,
-        novo.estado !== anterior.estado ? `contacto.${novo.estado}` : "contacto.editar",
-        { id, perfil: novo.perfil, entidades: novo.entidades },
-        agora,
-      );
-      return json(publico(novo));
-    }
-    return erro(405, "metodo");
-  }
+  if (caminho === "/api/acessos" || caminho.startsWith("/api/acessos/"))
+    return acessos(pedido, bd, eu, caminho, agora);
 
   return erro(404, "rota");
 }

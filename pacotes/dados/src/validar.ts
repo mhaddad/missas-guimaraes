@@ -24,7 +24,10 @@ import {
 export interface ArquivoDados {
   /** Caminho relativo à raiz do repositório, ex.: `dados/locais/aldao.yml`. */
   caminho: string;
-  conteudo: string;
+  /** Texto YAML (arquivos do repositório)… */
+  conteudo?: string;
+  /** …ou o objeto já lido (registos do D1): sem leitura de YAML nem verificação do formato. */
+  dados?: unknown;
 }
 
 export interface ProblemaDados {
@@ -97,13 +100,15 @@ export function validarDados(arquivos: ArquivoDados[], opcoes: OpcoesValidacao =
       continue;
     }
 
-    let dados: unknown;
-    try {
-      dados = parse(arquivo.conteudo);
-    } catch (e) {
-      erro(arquivo.caminho, `YAML inválido: ${(e as Error).message}`);
-      comErro.add(idPeloCaminho(arquivo.caminho));
-      continue;
+    let dados: unknown = arquivo.dados;
+    if (dados === undefined) {
+      try {
+        dados = parse(arquivo.conteudo ?? "");
+      } catch (e) {
+        erro(arquivo.caminho, `YAML inválido: ${(e as Error).message}`);
+        comErro.add(idPeloCaminho(arquivo.caminho));
+        continue;
+      }
     }
 
     const validador: FuncaoValidacao =
@@ -114,7 +119,7 @@ export function validarDados(arquivos: ArquivoDados[], opcoes: OpcoesValidacao =
       continue;
     }
 
-    if (formatoCanonico && formatar(arquivo.conteudo, tipo) !== arquivo.conteudo) {
+    if (formatoCanonico && arquivo.conteudo !== undefined && formatar(arquivo.conteudo, tipo) !== arquivo.conteudo) {
       erro(arquivo.caminho, "formato: não está no formato canónico (corra `npm run formatar:dados`)");
     }
 

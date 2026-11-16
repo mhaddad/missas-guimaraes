@@ -1,14 +1,14 @@
 /**
  * `POST /relato` (§6.7, E2.9): o público reporta um erro nos horários de um local. Fica fora de
  * `/api/` para não passar pelo Access; `/api/relato` continua a responder.
- * Turnstile contra spam, limite por IP e corpo pequeno. O relato fica no Workers KV
- * (`relato:<data>:<id>`), privado: o repositório é público, por isso não vira Issue
- * (decisão de 09/11/2026). Não se guarda o IP nem nenhum dado de quem relata.
+ * Turnstile contra spam, limite por IP e corpo pequeno. O relato fica na tabela `relatos` do
+ * D1 (ADR-005), privado: o repositório é público, por isso não vira Issue (decisão de
+ * 09/11/2026). Não se guarda o IP nem nenhum dado de quem relata.
  * Um relato nunca altera dados: os administradores confirmam com a entidade.
  */
 
 export interface EnvRelato {
-  KV?: KVNamespace;
+  BD?: D1Database;
   TURNSTILE_SECRET?: string;
   LIMITE_RELATOS?: RateLimit;
 }
@@ -25,7 +25,6 @@ export interface Relato {
 const TAMANHO_MAXIMO = 4096;
 const MENSAGEM_MINIMA = 10;
 const MENSAGEM_MAXIMA = 1000;
-const DURACAO_SEGUNDOS = 365 * 24 * 60 * 60;
 const PADRAO_ID = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const IDIOMAS = new Set(["pt-PT", "en", "es"]);
 const VERIFICAR_TURNSTILE = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
@@ -76,7 +75,7 @@ export async function tratarRelato(
   agora = new Date(),
 ): Promise<Response> {
   if (pedido.method !== "POST") return erro(405, "metodo");
-  if (!env.KV || !env.TURNSTILE_SECRET) return erro(503, "indisponivel");
+  if (!env.BD || !env.TURNSTILE_SECRET) return erro(503, "indisponivel");
   if (!(pedido.headers.get("content-type") ?? "").startsWith("application/json"))
     return erro(415, "tipo");
 
@@ -108,8 +107,10 @@ export async function tratarRelato(
     criado_em: agora.toISOString(),
     estado: "aberto",
   };
-  await env.KV.put(`relato:${relato.criado_em}:${relato.id}`, JSON.stringify(relato), {
-    expirationTtl: DURACAO_SEGUNDOS,
-  });
+  await env.BD.prepare(
+    "INSERT INTO relatos (id, local_id, mensagem, idioma, estado, criado_em) VALUES (?, ?, ?, ?, ?, ?)",
+  )
+    .bind(relato.id, relato.local, relato.mensagem, relato.idioma, relato.estado, relato.criado_em)
+    .run();
   return Response.json({ ok: true, id: relato.id }, { status: 201 });
 }
