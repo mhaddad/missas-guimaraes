@@ -60,16 +60,25 @@ As guardas de âmbito e de campos do `aplicar.ts` (ADR-004) mantêm-se: a confir
   - usa-se o cliente OAuth atual, com o endereço de retorno `https://<domínio>/auth/retorno`;
   - publica-se o ecrã de consentimento, que deixa de estar "em teste". Com só `openid email`, *scopes* não sensíveis, o Google não exige verificação, e deixa de haver lista de utilizadores de teste.
 
-### 3. Site gerado pelo Worker a partir do D1
+### 3. Todo o site dinâmico, gerado pelo Worker
 
-O Astro passa a correr no Worker (adaptador `@astrojs/cloudflare`, modo *server*):
+O Astro passa a correr no Worker (adaptador `@astrojs/cloudflare`, modo *server*) e gera **todas** as páginas no servidor. Deixa de haver páginas estáticas com dados embutidos no deploy; ficam como arquivos estáticos só os recursos (CSS, JS, fontes, imagens).
 
-- As páginas públicas são geradas a cada pedido a partir do D1, com o HTML completo como hoje: funcionam sem JavaScript, com JSON-LD e nos três idiomas.
-- O painel continua estático.
-- As páginas públicas ficam na **cache** da Cloudflare com a chave `idioma + data de Lisboa + versao_dados`. Depois de uma gravação, a página seguinte já sai atualizada, sem esperar por um deploy. Sem gravações, gera-se no máximo uma página por idioma e por dia.
-- A API (`/api/*`, `/relato`, `/auth/*`) e os *crons* do E6 ficam no ponto de entrada do Worker, que delega as páginas no Astro.
+- **Páginas públicas:** geradas a partir do D1 com o HTML completo, como hoje: funcionam sem JavaScript, com JSON-LD e nos três idiomas.
+  - Ficam na **cache** da Cloudflare com a chave `idioma + data de Lisboa + versao_dados`.
+  - Depois de uma gravação, a página seguinte já sai atualizada, sem esperar por um deploy.
+  - Sem gravações, gera-se no máximo uma página por idioma e por dia.
+- **Páginas do painel:**
+  - **A sessão é verificada antes de gerar qualquer página** (um *middleware* do Astro). Quem não está ligado vai para o login; quem não está registado ou ativo vê "sem acesso"; um contacto `entidade` só recebe as suas entidades. Hoje esta decisão é tomada pelo JavaScript depois de a página abrir.
+  - A página já chega com os dados da entidade escolhida: sem "A carregar…" e sem a primeira chamada à API.
+  - Nunca vai para a cache (`Cache-Control: private, no-store`).
+- **Interatividade:** os modais (horário, exceção, dias santos), o resumo ao vivo do motor, o histórico e o restauro continuam a correr no navegador, com os scripts atuais, e gravam por `POST /api/…`. A página seguinte mostra o estado novo.
+- **Um só lugar:** as páginas, a API (`/api/*`, `/relato`) e o login (`/auth/*`) ficam na mesma aplicação, com as rotas, a sessão e o âmbito num só sítio. Os *crons* do E6 ficam no ponto de entrada do Worker, ao lado do Astro.
 
-**Risco: tempo de CPU.** O plano gratuito dos Workers dá 10 ms de CPU por pedido, e gerar a página com 80 locais pode passar disso quando não está em cache. Mede-se no passo 5 (§Migração).
+**Risco: tempo de CPU.** O plano gratuito dos Workers dá 10 ms de CPU por pedido.
+
+- **Painel:** cada página mostra uma entidade com poucos locais; é leve.
+- **Página pública:** com os 80 locais, pode passar do limite quando não está em cache. Mede-se no passo 5 (§Migração).
 
 - Se passar, a primeira opção é pré-calcular no momento da gravação o que a página precisa (próximas celebrações e textos dos horários) e guardá-lo no D1.
 - A segunda é o plano pago dos Workers (5 US$/mês), com 30 s de CPU. Esta mudança é só de faturação, sem configuração.
@@ -112,9 +121,9 @@ A cópia de segurança é feita pela tabela `versoes` (histórico completo), pel
    - Criar a base (`wrangler d1 create`) e as tabelas (migrações em `worker/migracoes/`).
    - Correr `scripts/importar-d1.ts`, que lê os YAML do `main` e cria as entidades, os locais e uma versão `importacao` de cada um. Os contactos são migrados do KV.
    - Nos testes, um adaptador com `node:sqlite` (Node 26) faz de D1.
-3. **Login Google no Worker** (`/auth/entrar`, `/auth/retorno`, `/auth/sair`) e contactos no D1. No fim, desliga-se o Access.
+3. **Astro no Worker e login Google** (`/auth/entrar`, `/auth/retorno`, `/auth/sair`), com o *middleware* de sessão e os contactos no D1. No fim, desliga-se o Access.
 4. **Painel a gravar no D1:** P1 a P4, histórico e restauro, mais o *diff* entre versões (E5.7).
-5. **Site a ler do D1** (Astro no Worker, cache por `versao_dados`).
+5. **Todo o site no Worker** (Astro em modo *server*): páginas públicas a partir do D1, com cache por `versao_dados`; páginas do painel com a sessão verificada no servidor.
    - Medir o CPU com os 80 locais.
    - Confirmar o Lighthouse e o axe.
    - Correr os 64 e2e contra o D1 local.
