@@ -11,7 +11,12 @@ declare namespace App {
   interface Locals {
     /** Páginas públicas: entidades, locais e calendário lidos do D1 pelo middleware. */
     dados?: import("./lib/dados.ts").DadosPublicos;
-    /** Página de uma igreja e fragmento do detalhe: só esse local e a sua entidade. */
+    /** Página de uma paróquia: a entidade e os seus locais publicados. */
+    paroquia?: {
+      entidade: import("@missas/horarios").Entidade;
+      locais: import("@missas/horarios").Local[];
+    };
+    /** Fragmento do detalhe de uma igreja: só esse local e a sua entidade. */
     igreja?: {
       local: import("@missas/horarios").Local;
       entidade: import("@missas/horarios").Entidade;

@@ -1,0 +1,86 @@
+---
+/**
+ * Página de uma paróquia (`/paroquia/<id>/`): todas as suas igrejas e capelas publicadas, cada
+ * uma com o detalhe completo (âncora `#<id-do-local>`), e as celebrações nos dados estruturados.
+ * É também a versão sem JavaScript dos cartões e o link que a paróquia pode divulgar. Lê do D1
+ * só esta entidade e os seus locais (middleware).
+ */
+import { momentoEmLisboa } from "@missas/horarios";
+import Base from "../layouts/Base.astro";
+import { TEXTOS, type Idioma } from "../i18n/index.ts";
+import { jsonLd } from "../lib/jsonld.ts";
+import DetalheLocal from "./DetalheLocal.astro";
+import Icone from "./Icone.astro";
+import Icones from "./Icones.astro";
+import Selo from "./Selo.astro";
+
+interface Props {
+  idioma: Idioma;
+}
+
+const { idioma } = Astro.props;
+const t = TEXTOS[idioma];
+const paroquia = Astro.locals.paroquia;
+const { data: hoje } = momentoEmLisboa(new Date());
+if (!paroquia) Astro.response.status = 404;
+const url = new URL(Astro.url.pathname, Astro.site).toString();
+const estruturados =
+  paroquia &&
+  JSON.stringify(
+    jsonLd(
+      paroquia.locais.map((local) => ({ local, entidade: paroquia.entidade })),
+      idioma,
+      url,
+      hoje,
+      { urlLocal: (id) => `${url}#${id}` },
+    ),
+  ).replace(/</g, "\\u003c");
+const lugar = (l: Pick<import("@missas/horarios").Local, "localidade" | "concelho">) =>
+  [l.localidade, l.concelho].filter(Boolean).join(" · ");
+---
+
+<Base
+  titulo={paroquia ? `${paroquia.entidade.nome} — ${t.titulo}` : t.titulo}
+  descricao={paroquia ? paroquia.locais.map((l) => l.nome).join(" · ") : t.descricao}
+  idioma={idioma}
+  publico
+>
+  <Icones />
+  <p class="mb-4">
+    <a class="ligacao inline-flex min-h-12 items-center" href={t.caminho}>
+      ← {t.todosOsHorarios}
+    </a>
+  </p>
+  {paroquia ? (
+    <div class="grid gap-6">
+      <h1 class="text-2xl font-bold md:text-3xl">{paroquia.entidade.nome}</h1>
+      {paroquia.locais.map((local) => (
+        <article
+          id={local.id}
+          class="scroll-mt-4 rounded-cartao border border-borda bg-cartao p-4 md:p-6"
+        >
+          <h2 class="text-xl font-semibold">{local.nome}</h2>
+          <p class="mt-1 flex items-center gap-1 text-base text-texto-secundario">
+            <Icone nome="location_on" class="size-4" />
+            {lugar(local)}
+          </p>
+          <p class="mt-2">
+            <Selo
+              idioma={idioma}
+              confirmadoEm={local.confirmado_em}
+              tipoEntidade={paroquia.entidade.tipo}
+              hoje={hoje}
+              forma="longo"
+            />
+          </p>
+          <DetalheLocal idioma={idioma} local={local} entidade={paroquia.entidade} hoje={hoje} />
+        </article>
+      ))}
+    </div>
+  ) : (
+    <p class="rounded-cartao border border-borda bg-cartao p-6 text-base">
+      {t.igrejaNaoEncontrada}
+    </p>
+  )}
+  {estruturados && <script type="application/ld+json" set:html={estruturados} />}
+</Base>

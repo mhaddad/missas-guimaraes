@@ -31,11 +31,14 @@ const locais = locaisPublicados(doD1);
 const dados = dadosPortal(doD1, agora, hoje);
 const solenidades = proximasSolenidades(dados.calendario, hoje);
 const urlPagina = new URL(t.caminho, Astro.site).toString();
-// Leve: só as igrejas e a ligação para a página de cada uma (lá estão as celebrações).
+// Leve: só as igrejas e a ligação para a página da paróquia (lá estão as celebrações).
 const estruturados = JSON.stringify(
   jsonLd(locais, idioma, urlPagina, hoje, {
     eventos: false,
-    urlLocal: (id) => new URL(`${t.caminho}igreja/${id}/`, Astro.site).toString(),
+    urlLocal: (id) => {
+      const entidade = locais.find((l) => l.local.id === id)?.entidade.id ?? id;
+      return new URL(`${t.caminho}paroquia/${entidade}/#${id}`, Astro.site).toString();
+    },
   }),
 ).replace(/</g, "\\u003c");
 const nomeSolenidade = (s: (typeof solenidades)[number]) =>
