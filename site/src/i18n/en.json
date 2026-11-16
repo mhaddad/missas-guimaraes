@@ -175,5 +175,8 @@
   "relatoLimite": "Too many reports in a row. Please try again in a minute.",
   "relatoVerificacao": "Please wait for the anti-spam check and try again.",
   "relatoCurto": "Please write at least 10 characters.",
-  "relatoEnviando": "Sending…"
+  "relatoEnviando": "Sending…",
+  "verDetalhe": "See weekly times and contacts",
+  "todosOsHorarios": "All mass times",
+  "igrejaNaoEncontrada": "This church is not on the site."
 }

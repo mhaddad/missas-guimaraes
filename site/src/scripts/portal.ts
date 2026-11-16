@@ -190,7 +190,39 @@ function botaoComoChegar(local: LocalPortal, classe = "botao-secundario"): HTMLA
   );
 }
 
-/** Copia o detalhe estático do local para baixo da linha (sem ids duplicados). */
+/** Detalhes já pedidos ao servidor (um pedido por local, mesmo com várias linhas abertas). */
+const fragmentos = new Map<string, Promise<string | null>>();
+
+function pedirDetalhe(id: string): Promise<string | null> {
+  let pedido = fragmentos.get(id);
+  if (!pedido) {
+    pedido = fetch(`/fragmentos/${idioma}/${encodeURIComponent(id)}/`)
+      .then((r) => (r.ok ? r.text() : null))
+      .catch(() => null);
+    fragmentos.set(id, pedido);
+  }
+  return pedido;
+}
+
+/** Põe o detalhe do local dentro de `alvo` (só uma vez); se falhar, fica a ligação. */
+async function carregarDetalhe(alvo: HTMLElement, id: string, hoje: string): Promise<void> {
+  if (alvo.dataset.carregado) return;
+  alvo.dataset.carregado = "1";
+  const html = await pedirDetalhe(id);
+  if (html === null) {
+    delete alvo.dataset.carregado;
+    fragmentos.delete(id);
+    return;
+  }
+  // HTML do próprio servidor (mesma origem), gerado pelo Astro com os dados já escapados.
+  const modelo = document.createElement("template");
+  modelo.innerHTML = html;
+  atualizarSelos(modelo.content, hoje);
+  prepararAcoes(modelo.content);
+  alvo.replaceChildren(modelo.content);
+}
+
+/** Abre (ou fecha) o detalhe do local por baixo de uma linha da vista por hora. */
 function abrirDetalhe(
   alvo: HTMLElement,
   local: LocalPortal,
@@ -200,15 +232,7 @@ function abrirDetalhe(
   const aberto = botao.getAttribute("aria-expanded") === "true";
   botao.setAttribute("aria-expanded", String(!aberto));
   alvo.hidden = aberto;
-  if (!aberto && !alvo.firstChild) {
-    const original = document.querySelector(`#${CSS.escape(local.id)} .detalhe`);
-    if (original) {
-      const copia = original.cloneNode(true) as HTMLElement;
-      atualizarSelos(copia, hoje);
-      prepararAcoes(copia);
-      alvo.append(copia);
-    }
-  }
+  if (!aberto) void carregarDetalhe(alvo, local.id, hoje);
 }
 
 function linhaCelebracao(o: CelebracaoPortal, hoje: string, passada = false): HTMLLIElement {
@@ -576,10 +600,13 @@ function iniciar(): void {
   elControlos.hidden = false;
   porId("barra-inferior").hidden = false;
 
-  // Sem JavaScript os detalhes ficam todos abertos; com ele, fecham-se.
+  // O detalhe de cada cartão só é pedido ao servidor quando se abre.
   artigos.forEach((a) => {
     const d = a.querySelector("details");
-    if (d) d.open = false;
+    const alvo = a.querySelector<HTMLElement>(".detalhe-alvo");
+    d?.addEventListener("toggle", () => {
+      if (d.open && alvo) void carregarDetalhe(alvo, a.id, hoje);
+    });
   });
   atualizarSelos(document, hoje);
   prepararAcoes(document);

@@ -175,5 +175,8 @@
   "relatoLimite": "Demasiados envios seguidos. Tente daqui a um minuto.",
   "relatoVerificacao": "Aguarde a verificação anti-spam e tente outra vez.",
   "relatoCurto": "Escreva pelo menos 10 caracteres.",
-  "relatoEnviando": "A enviar…"
+  "relatoEnviando": "A enviar…",
+  "verDetalhe": "Ver horário semanal e contactos",
+  "todosOsHorarios": "Todos os horários",
+  "igrejaNaoEncontrada": "Esta igreja não está no site."
 }

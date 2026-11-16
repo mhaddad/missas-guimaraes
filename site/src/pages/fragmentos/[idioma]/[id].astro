@@ -1,0 +1,19 @@
+---
+/**
+ * Fragmento com o detalhe de uma igreja, pedido pelo navegador ao abrir um cartão ou uma linha
+ * da vista por hora. Sem `<html>`: entra dentro da página principal (que já tem os ícones).
+ */
+import { momentoEmLisboa } from "@missas/horarios";
+import DetalheLocal from "../../../components/DetalheLocal.astro";
+import { IDIOMAS, type Idioma } from "../../../i18n/index.ts";
+
+export const partial = true;
+
+const idioma = Astro.params.idioma as Idioma;
+const igreja = Astro.locals.igreja;
+if (!igreja || !IDIOMAS.includes(idioma)) return new Response(null, { status: 404 });
+const { data: hoje } = momentoEmLisboa(new Date());
+Astro.response.headers.set("cache-control", "no-cache");
+---
+
+<DetalheLocal idioma={idioma} local={igreja.local} entidade={igreja.entidade} hoje={hoje} />

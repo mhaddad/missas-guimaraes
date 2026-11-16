@@ -71,13 +71,19 @@ export function jsonLd(
   idioma: Idioma,
   urlPagina: string,
   hoje: Data,
+  opcoes: {
+    /** As celebrações (pesadas): só na página de cada igreja. Por omissão, sim. */
+    eventos?: boolean;
+    /** Endereço da página de cada local (por omissão, `urlPagina#id`). */
+    urlLocal?: (id: string) => string;
+  } = {},
 ): Record<string, unknown> {
   const t = TEXTOS[idioma];
   return {
     "@context": "https://schema.org",
     "@graph": locais.map(({ local, entidade }) => {
-      const id = `${urlPagina}#${local.id}`;
-      const eventos = local.horarios
+      const id = opcoes.urlLocal?.(local.id) ?? `${urlPagina}#${local.id}`;
+      const eventos = (opcoes.eventos === false ? [] : local.horarios)
         .map((regra) => {
           const agenda = horario(regra, hoje);
           if (!agenda) return null;
