@@ -104,6 +104,38 @@ test.describe("filtros e endereço", () => {
   });
 });
 
+test.describe("página de cada igreja", () => {
+  test("detalhe, dados estruturados com as celebrações e ligação de volta", async ({ page }) => {
+    await page.goto("/en/igreja/nespereira/");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    const ld = JSON.parse(
+      (await page.locator('script[type="application/ld+json"]').textContent()) ?? "{}",
+    ) as { "@graph": { "@type": string; event?: unknown[] }[] };
+    expect(ld["@graph"][0]?.["@type"]).toBe("Church");
+    expect(ld["@graph"][0]?.event?.length).toBeGreaterThan(0);
+    await expect(page.getByRole("link", { name: /All mass times/ })).toHaveAttribute(
+      "href",
+      "/en/#nespereira",
+    );
+  });
+
+  test("locais não publicados ou inexistentes: 404", async ({ page }) => {
+    for (const id of ["serzedelo", "nao-existe"]) {
+      const resposta = await page.goto(`/igreja/${id}/`);
+      expect(resposta?.status()).toBe(404);
+    }
+  });
+
+  test("a página principal tem dados estruturados leves (sem celebrações)", async ({ page }) => {
+    await page.goto("/");
+    const ld = JSON.parse(
+      (await page.locator('script[type="application/ld+json"]').textContent()) ?? "{}",
+    ) as { "@graph": { url: string; event?: unknown }[] };
+    expect(ld["@graph"].every((c) => c.event === undefined)).toBe(true);
+    expect(ld["@graph"][0]?.url).toMatch(/\/igreja\/[a-z0-9-]+\/$/);
+  });
+});
+
 test.describe("dias santos (§6.4)", () => {
   test("faixa e bloco sem informação", async ({ page }) => {
     await abrir(page, "/?dia=2026-12-08", new Date("2026-12-01T10:00:00Z"));
@@ -116,12 +148,19 @@ test.describe("dias santos (§6.4)", () => {
 
 test.describe("sem JavaScript", () => {
   test.use({ javaScriptEnabled: false });
-  test("mostra todos os locais com o horário semanal", async ({ page }) => {
+  test("mostra todos os locais; cada um leva à página da igreja com o horário semanal", async ({
+    page,
+  }) => {
     await page.goto("/");
     await expect(page.locator("#controlos")).toBeHidden();
     await expect(page.locator("article.igreja")).toHaveCount(4);
-    await expect(page.locator("article.igreja details[open]")).toHaveCount(4);
-    await expect(page.locator("#nossa-senhora-da-oliveira")).toContainText("Dias úteis às 19:00");
+    await page.locator("#nossa-senhora-da-oliveira summary").click();
+    await page.getByRole("link", { name: "Ver horário semanal e contactos" }).first().click();
+    await expect(page).toHaveURL(/\/igreja\/nossa-senhora-da-oliveira\/$/);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      "Igreja de Nossa Senhora da Oliveira",
+    );
+    await expect(page.locator("article")).toContainText("Dias úteis às 19:00");
   });
 });
 
@@ -152,6 +191,8 @@ test.describe("acessibilidade (WCAG 2.1 AA)", () => {
     for (const d of await page.locator("article.igreja details").all()) {
       await d.evaluate((el) => ((el as unknown as { open: boolean }).open = true));
     }
+    // O detalhe de cada igreja é pedido ao servidor ao abrir.
+    await expect(page.locator("article.igreja .detalhe")).toHaveCount(4);
     await verificar(page);
   });
 });

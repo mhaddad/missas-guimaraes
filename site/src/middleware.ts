@@ -10,7 +10,7 @@
 import { env } from "cloudflare:workers";
 import { lerCalendario } from "@missas/dados";
 import type { Calendario } from "@missas/horarios";
-import { lerSessao, lerTudo } from "@missas/worker";
+import { lerEntidade, lerLocais, lerSessao, lerTudo } from "@missas/worker";
 import CALENDARIO_YAML from "../../dados/calendario.yml?raw";
 
 interface Contexto {
@@ -23,6 +23,9 @@ interface Contexto {
 const LIVRES = new Set(["/admin/entrar/", "/admin/sem-acesso/"]);
 const SO_ADMIN = ["/admin/acessos/"];
 const COM_DADOS = new Set(["/", "/en/", "/es/", "/dados/horarios.json"]);
+/** Página de uma igreja (`/igreja/<id>/`, também em /en/ e /es/) e o fragmento do detalhe. */
+const IGREJA =
+  /^\/(?:(?:en|es)\/)?igreja\/([a-z0-9]+(?:-[a-z0-9]+)*)\/$|^\/fragmentos\/(?:pt-PT|en|es)\/([a-z0-9]+(?:-[a-z0-9]+)*)\/$/;
 
 let calendario: Calendario | undefined;
 
@@ -45,6 +48,16 @@ export async function onRequest(
     const resposta = await seguinte();
     resposta.headers.set("cache-control", "private, no-store");
     return resposta;
+  }
+
+  const igreja = IGREJA.exec(pathname);
+  if (igreja && bd) {
+    // Só este local e a sua entidade: página leve, sem ler os outros.
+    const id = igreja[1] ?? igreja[2] ?? "";
+    const local = (await lerLocais(bd, [id])).get(id)?.dados;
+    const entidade = local?.publicar ? (await lerEntidade(bd, local.entidade))?.dados : undefined;
+    if (local && entidade) contexto.locals.igreja = { local, entidade };
+    return seguinte();
   }
 
   if (COM_DADOS.has(pathname) && bd) {
