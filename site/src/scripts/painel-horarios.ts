@@ -24,7 +24,7 @@ import { abrirDiasSantos } from "./painel-dias-santos.ts";
 import { abrirEditor, type OpcoesEditor } from "./painel-editar.ts";
 import { abrirExcecao, type OpcoesExcecao } from "./painel-excecoes.ts";
 import type { Alteracao } from "./painel-modal.ts";
-import { acompanhar, enviarPedido, notificar, textoDoErro } from "./painel-pedidos.ts";
+import { enviarGravacao, notificar, textoDoErro } from "./painel-pedidos.ts";
 
 interface EntidadeLista {
   id: string;
@@ -34,10 +34,9 @@ interface EntidadeLista {
 }
 
 interface EstadoEntidade {
-  origem: "main" | "site";
   entidade: Entidade;
-  sha: string | null;
-  locais: { local: Local; sha: string | null }[];
+  versao: number;
+  locais: { local: Local; versao: number }[];
 }
 
 const t = TEXTOS["pt-PT"];
@@ -49,9 +48,6 @@ const caixaFiltro = document.getElementById("caixa-filtro") as HTMLElement;
 const dialogo = document.getElementById("dialogo-pedido") as HTMLDialogElement;
 const dialogoEditor = document.getElementById("dialogo-editor") as HTMLDialogElement;
 let eu: Eu;
-
-const caminhoLocal = (id: string) => `dados/locais/${id}.yml`;
-const caminhoEntidade = (id: string) => `dados/entidades/${id}.yml`;
 
 /** Pergunta de confirmação num diálogo; `true` se a pessoa confirmar. */
 function perguntar(titulo: string, conteudo: Node[], textoConfirmar: string): Promise<boolean> {
@@ -88,6 +84,7 @@ function listaDoResumo(pares: ParLocal[]): HTMLElement {
   );
 }
 
+/** Grava (imediato, ADR-005) e mostra a entidade com o estado novo. */
 async function enviarEAcompanhar(
   corpo: Record<string, unknown>,
   botao: HTMLButtonElement,
@@ -95,13 +92,13 @@ async function enviarEAcompanhar(
 ): Promise<void> {
   botao.disabled = true;
   try {
-    const { id } = await enviarPedido(corpo);
-    if (!id) {
+    const gravado = await enviarGravacao(corpo);
+    if (!gravado) {
       notificar(semAlteracoes, "ok");
       return;
     }
-    const entidade = String(corpo.entidade);
-    void acompanhar(id, () => void mostrarEntidade(entidade));
+    notificar("Gravado. Já está no site.", "ok");
+    await mostrarEntidade(String(corpo.entidade));
   } catch (e) {
     if (!(e instanceof ErroApi && e.codigo === "confirmar_alertas"))
       notificar(textoDoErro(e), "erro");
@@ -141,9 +138,7 @@ async function confirmarTudo(estado: EstadoEntidade, botao: HTMLButtonElement): 
     depois: { ...local, confirmado_em: hoje },
   }));
   // O `base` garante que se confirma exatamente o que a pessoa viu.
-  const base = Object.fromEntries(
-    estado.locais.filter((l) => l.sha).map((l) => [caminhoLocal(l.local.id), l.sha]),
-  );
+  const base = Object.fromEntries(estado.locais.map((l) => [l.local.id, l.versao]));
   await enviarEAcompanhar(
     { tipo: "confirmacao", entidade: estado.entidade.id, base, resumo: resumirPedido(pares) },
     botao,
@@ -198,13 +193,11 @@ async function gravarAlteracao(
 ): Promise<void> {
   if (!alteracao) return;
   const { local, depois, confirmarAlertas } = alteracao;
-  const caminho = caminhoLocal(local.local.id);
   await enviarEAcompanhar(
     {
       tipo: "alteracao",
       entidade: estado.entidade.id,
-      base: { [caminho]: local.sha },
-      arquivos: { [caminho]: depois },
+      locais: { [local.local.id]: { versao: local.versao, dados: depois } },
       resumo: resumirPedido([{ antes: local.local, depois }]),
       ...(confirmarAlertas && { confirmar_alertas: true }),
     },
@@ -213,14 +206,23 @@ async function gravarAlteracao(
   );
 }
 
-interface Versao {
-  sha: string;
+/** Uma gravação do histórico (ADR-005). */
+interface Gravacao {
+  id: number;
   data: string;
-  titulo: string;
-  linhas: string[];
+  acao: "importacao" | "confirmacao" | "alteracao" | "novo-local" | "restauro";
+  resumo: { local: string; linhas: string[] }[];
+  restaura: number | null;
   contacto: { ref: string; funcao: string | null; nome?: string } | null;
-  canal: string | null;
 }
+
+const TITULOS: Record<Gravacao["acao"], string> = {
+  importacao: "Horários iniciais",
+  confirmacao: "Está tudo certo (confirmação)",
+  alteracao: "Alteração",
+  "novo-local": "Novo local",
+  restauro: "Restauro de uma versão anterior",
+};
 
 const DATA_HORA = new Intl.DateTimeFormat("pt-PT", {
   timeZone: "Europe/Lisbon",
@@ -229,32 +231,25 @@ const DATA_HORA = new Intl.DateTimeFormat("pt-PT", {
 });
 
 /** Restaurar esta versão (só `admin`, §8.8): mostra a diferença e envia um pedido `restauro`. */
-async function restaurar(estado: EstadoEntidade, versao: Versao, botao: HTMLButtonElement) {
+async function restaurar(estado: EstadoEntidade, versao: Gravacao, botao: HTMLButtonElement) {
   let antiga: { entidade: Entidade; locais: { local: Local }[] };
   try {
     antiga = await api(
-      `/api/entidades/${encodeURIComponent(estado.entidade.id)}/versao/${versao.sha}`,
+      `/api/entidades/${encodeURIComponent(estado.entidade.id)}/gravacoes/${versao.id}`,
     );
   } catch {
     notificar("Não foi possível abrir essa versão.", "erro");
     return;
   }
   const atuais = new Map(estado.locais.map((l) => [l.local.id, l]));
-  const arquivos: Record<string, unknown> = {};
-  const base: Record<string, string | null> = {};
+  const entidadeMuda = !iguais(antiga.entidade, estado.entidade);
   const pares: ParLocal[] = [];
-  if (!iguais(antiga.entidade, estado.entidade)) {
-    arquivos[caminhoEntidade(estado.entidade.id)] = antiga.entidade;
-    base[caminhoEntidade(estado.entidade.id)] = estado.sha;
-  }
   for (const { local } of antiga.locais) {
     const atual = atuais.get(local.id);
     if (atual && iguais(atual.local, local)) continue;
-    arquivos[caminhoLocal(local.id)] = local;
-    base[caminhoLocal(local.id)] = atual?.sha ?? null;
     pares.push({ antes: atual?.local ?? null, depois: local });
   }
-  if (Object.keys(arquivos).length === 0) {
+  if (!entidadeMuda && pares.length === 0) {
     notificar("Essa versão é igual à atual.", "ok");
     return;
   }
@@ -281,9 +276,12 @@ async function restaurar(estado: EstadoEntidade, versao: Versao, botao: HTMLButt
     {
       tipo: "restauro",
       entidade: estado.entidade.id,
-      restaura: versao.sha,
-      base,
-      arquivos,
+      restaura: versao.id,
+      // As versões que o painel viu: o servidor recusa se alguém gravou entretanto.
+      base: {
+        entidade: estado.versao,
+        locais: Object.fromEntries(estado.locais.map((l) => [l.local.id, l.versao])),
+      },
       resumo: resumirPedido(pares),
       ...(alertas.length > 0 && { confirmar_alertas: true }),
     },
@@ -301,13 +299,14 @@ const FUNCOES: Record<string, string> = {
 
 async function mostrarHistorico(alvo: HTMLElement, estado: EstadoEntidade): Promise<void> {
   alvo.replaceChildren(h("p", { class: "text-texto-secundario" }, "A carregar…"));
-  let versoes: Versao[];
+  let versoes: Gravacao[];
   try {
     versoes = await api(`/api/entidades/${encodeURIComponent(estado.entidade.id)}/historico`);
   } catch {
     mostrarErro(alvo, "Não foi possível carregar o histórico.");
     return;
   }
+  const nomes = new Map(estado.locais.map((l) => [l.local.id, l.local.nome]));
   if (versoes.length === 0) {
     alvo.replaceChildren(h("p", { class: "text-texto-secundario" }, "Sem alterações registadas."));
     return;
@@ -321,7 +320,7 @@ async function mostrarHistorico(alvo: HTMLElement, estado: EstadoEntidade): Prom
           ? (v.contacto.nome ?? FUNCOES[v.contacto.funcao ?? ""] ?? "Contacto da paróquia")
           : "Equipa técnica";
         const botao =
-          eu.perfil === "admin" && i > 0 && estado.origem === "main"
+          eu.perfil === "admin" && i > 0
             ? h(
                 "button",
                 { type: "button", class: "botao-secundario" },
@@ -338,13 +337,15 @@ async function mostrarHistorico(alvo: HTMLElement, estado: EstadoEntidade): Prom
             { class: "text-sm text-texto-secundario" },
             `${DATA_HORA.format(new Date(v.data))} · ${quem}${i === 0 ? " · versão atual" : ""}`,
           ),
-          h("p", { class: "font-semibold" }, v.titulo),
-          v.linhas.length > 0 &&
+          h("p", { class: "font-semibold" }, TITULOS[v.acao]),
+          ...v.resumo.map((r) =>
             h(
-              "ul",
-              { class: "grid gap-1 text-base text-texto-secundario" },
-              ...v.linhas.map((l) => h("li", {}, l.trim())),
+              "div",
+              { class: "text-base text-texto-secundario" },
+              h("p", { class: "font-semibold" }, nomes.get(r.local) ?? r.local),
+              h("ul", { class: "grid gap-1 pl-4" }, ...r.linhas.map((l) => h("li", {}, l))),
             ),
+          ),
           botao && h("div", {}, botao),
         );
       }),
@@ -664,16 +665,8 @@ async function mostrarEntidade(id: string): Promise<void> {
           "div",
           { class: "rounded-xl border border-borda bg-cartao p-5" },
           h("h1", { class: "text-2xl font-bold" }, estado.entidade.nome),
-          estado.origem === "main" &&
-            h(
-              "div",
-              { class: "mt-4 flex flex-wrap gap-3" },
-              botaoConfirmar,
-              botaoNovo,
-              botaoExcecao,
-            ),
-          estado.origem === "main" &&
-            semRegime.length > 0 &&
+          h("div", { class: "mt-4 flex flex-wrap gap-3" }, botaoConfirmar, botaoNovo, botaoExcecao),
+          semRegime.length > 0 &&
             h(
               "p",
               { class: "mt-3 rounded-cartao bg-aviso-fundo p-3 text-base text-dourado-texto" },
@@ -682,41 +675,28 @@ async function mostrarEntidade(id: string): Promise<void> {
           h(
             "p",
             { class: "mt-3 text-base text-texto-secundario" },
-            "As alterações aparecem no site em poucos minutos.",
+            "Cada alteração aparece no site logo depois de gravar.",
           ),
-          estado.origem === "site" &&
-            h(
-              "p",
-              { class: "mt-2 text-sm text-texto-secundario" },
-              "Dados da última publicação do site (a leitura direta do repositório ainda não está configurada).",
-            ),
         ),
         resumo(estado, hoje),
         ...estado.locais.map(({ local }, indiceLocal) =>
-          seccaoLocal(
-            local,
-            tipo,
-            hoje,
-            estado.origem === "main"
-              ? {
-                  regra: (indiceRegra) => ({
-                    editar: (b) =>
-                      void editarHorario(estado, { modo: "editar", indiceLocal, indiceRegra }, b),
-                    apagar: (b) =>
-                      void editarHorario(estado, { modo: "apagar", indiceLocal, indiceRegra }, b),
-                  }),
-                  excecao: (indiceExcecao) => ({
-                    editar: (b) =>
-                      void editarExcecao(estado, { modo: "editar", indiceLocal, indiceExcecao }, b),
-                    apagar: (b) =>
-                      void editarExcecao(estado, { modo: "apagar", indiceLocal, indiceExcecao }, b),
-                  }),
-                  diasSantos: (b) => void editarDiasSantos(estado, indiceLocal, b),
-                }
-              : undefined,
-          ),
+          seccaoLocal(local, tipo, hoje, {
+            regra: (indiceRegra) => ({
+              editar: (b) =>
+                void editarHorario(estado, { modo: "editar", indiceLocal, indiceRegra }, b),
+              apagar: (b) =>
+                void editarHorario(estado, { modo: "apagar", indiceLocal, indiceRegra }, b),
+            }),
+            excecao: (indiceExcecao) => ({
+              editar: (b) =>
+                void editarExcecao(estado, { modo: "editar", indiceLocal, indiceExcecao }, b),
+              apagar: (b) =>
+                void editarExcecao(estado, { modo: "apagar", indiceLocal, indiceExcecao }, b),
+            }),
+            diasSantos: (b) => void editarDiasSantos(estado, indiceLocal, b),
+          }),
         ),
-        estado.origem === "main" && seccaoHistorico,
+        seccaoHistorico,
       ),
     );
   } catch (e) {

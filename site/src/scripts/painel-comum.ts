@@ -32,7 +32,7 @@ export async function api<T>(caminho: string, init: RequestInit = {}): Promise<T
     unknown
   >;
   if (resposta.status === 401) {
-    location.href = "/admin/entrar/";
+    location.href = `/admin/entrar/?voltar=${encodeURIComponent(location.pathname + location.search)}`;
     throw new ErroApi(401, "sem_identidade");
   }
   if (resposta.status === 403 && (corpo.erro === "sem_acesso" || corpo.erro === "suspenso")) {

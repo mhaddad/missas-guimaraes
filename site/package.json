@@ -11,6 +11,7 @@
     "typecheck": "astro check"
   },
   "dependencies": {
+    "@astrojs/cloudflare": "^14.4.8",
     "@fontsource/plus-jakarta-sans": "5.3.0",
     "@missas/dados": "0.0.0",
     "@missas/horarios": "0.0.0",
@@ -21,6 +22,7 @@
   "devDependencies": {
     "@astrojs/check": "0.9.12",
     "@material-symbols/svg-400": "0.48.3",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "wrangler": "^4.158.0"
   }
 }

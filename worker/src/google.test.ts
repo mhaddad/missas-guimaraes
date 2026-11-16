@@ -194,9 +194,9 @@ describe("fluxo de entrada", () => {
 
   it("sem configuração: 503; estado mal formado: volta à entrada", async () => {
     const { env } = await ambiente();
-    expect((await tratarAuth(new Request(`${ORIGEM}/auth/entrar`), { BD: env.BD as D1Database })).status).toBe(
-      503,
-    );
+    expect(
+      (await tratarAuth(new Request(`${ORIGEM}/auth/entrar`), { BD: env.BD as D1Database })).status,
+    ).toBe(503);
     const r = await tratarAuth(new Request(`${ORIGEM}/auth/retorno?state=x&code=y`), env, {
       agora: AGORA,
     });

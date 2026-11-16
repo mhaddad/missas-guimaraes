@@ -12,6 +12,11 @@ import { tratarApiPainel, type EnvPainel } from "./api/painel.ts";
 import { tratarAuth, type EnvGoogle } from "./google.ts";
 import { tratarRelato, type EnvRelato } from "./relato.ts";
 
+export { lerTudo } from "./bd.ts";
+export { lerSessao } from "./sessao.ts";
+export { chavePagina, guardarPagina, obterPagina, PAGINAS_PUBLICAS } from "./paginas.ts";
+export type { Contacto } from "./contactos.ts";
+
 export interface Env extends EnvRelato, EnvPainel, EnvGoogle {
   AMBIENTE: "homologacao" | "producao";
 }

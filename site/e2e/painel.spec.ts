@@ -4,6 +4,22 @@
  */
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { SESSOES } from "./sessoes.ts";
+
+/** Sessão de teste (criada na base local por `scripts/semear-e2e.ts`). */
+async function entrarComo(page: Page, perfil: "admin" | "entidade") {
+  await page.context().addCookies([
+    {
+      name: "__Host-sessao",
+      value: SESSOES[perfil],
+      domain: "localhost",
+      path: "/",
+      secure: true,
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+  ]);
+}
 
 const local = {
   id: "nespereira",
@@ -31,6 +47,7 @@ const entidades = [
 
 async function simular(page: Page, perfil: "admin" | "entidade", contactos: unknown[] = []) {
   const pedidos: { metodo: string; url: string; corpo: unknown }[] = [];
+  await entrarComo(page, perfil);
   await page.route("**/api/**", async (rota) => {
     const pedido = rota.request();
     const url = new URL(pedido.url());
@@ -51,43 +68,39 @@ async function simular(page: Page, perfil: "admin" | "entidade", contactos: unkn
     if (url.pathname.endsWith("/historico"))
       return responder([
         {
-          sha: "b".repeat(40),
+          id: 2,
           data: "2026-11-20T10:00:00Z",
-          titulo: "Horários: Paróquia de Nespereira (alteração)",
-          linhas: ["Igreja de Santa Eulália", "  ✏️ Missa: domingos às 10:30 → Domingos às 11:15"],
+          acao: "alteracao",
+          resumo: [
+            { local: "nespereira", linhas: ["✏️ Missa: domingos às 10:30 → Domingos às 11:15"] },
+          ],
+          restaura: null,
           contacto: { ref: "c_bbbbbbbb", funcao: "secretaria" },
-          canal: "painel",
         },
         {
-          sha: "a".repeat(40),
+          id: 1,
           data: "2026-11-01T10:00:00Z",
-          titulo: "Importação inicial",
-          linhas: [],
+          acao: "importacao",
+          resumo: [],
+          restaura: null,
           contacto: null,
-          canal: null,
         },
       ]);
-    if (url.pathname.includes("/versao/"))
+    if (url.pathname.includes("/gravacoes/"))
       return responder({
-        sha: "a".repeat(40),
+        gravacao: 1,
         entidade: entidades[0],
         locais: [
           { local: { ...local, horarios: [{ tipo: "missa", dias: ["dom"], hora: "10:30" }] } },
         ],
       });
-    if (url.pathname === "/api/pedidos" && pedido.method() === "POST")
-      return responder(
-        { ok: true, id: "p_0123456789abcdef", estado: "A_GRAVAR", alertas: [] },
-        202,
-      );
-    if (url.pathname === "/api/pedidos/p_0123456789abcdef")
-      return responder({ id: "p_0123456789abcdef", estado: "PUBLICADO" });
+    if (url.pathname === "/api/gravacoes" && pedido.method() === "POST")
+      return responder({ ok: true, estado: "GRAVADO", gravacao: 3, alertas: [] });
     if (url.pathname.startsWith("/api/entidades/"))
       return responder({
-        origem: "main",
         entidade: entidades[0],
-        sha: "s",
-        locais: [{ local, sha: "s1" }],
+        versao: 1,
+        locais: [{ local, versao: 1 }],
       });
     if (url.pathname === "/api/acessos" && pedido.method() === "GET") return responder(contactos);
     if (url.pathname === "/api/acessos" && pedido.method() === "POST")
@@ -137,14 +150,16 @@ test("Está tudo certo (P1): mostra os horários, envia a confirmação e acompa
     .analyze();
   expect(resultado.violations.map((v) => v.id)).toEqual([]);
   await dialogo.getByRole("button", { name: "Confirmo que estes horários estão corretos" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Publicado no site." })).toBeVisible({
+  await expect(
+    page.getByRole("status").filter({ hasText: "Gravado. Já está no site." }),
+  ).toBeVisible({
     timeout: 15_000,
   });
-  const post = pedidos.find((p) => p.metodo === "POST" && p.url === "/api/pedidos");
+  const post = pedidos.find((p) => p.metodo === "POST" && p.url === "/api/gravacoes");
   expect(post?.corpo).toMatchObject({
     tipo: "confirmacao",
     entidade: "nespereira",
-    base: { "dados/locais/nespereira.yml": "s1" },
+    base: { nespereira: 1 },
     resumo: [
       { local: "nespereira", linhas: [expect.stringMatching(/^✅ Horários confirmados em/)] },
     ],
@@ -154,19 +169,22 @@ test("Está tudo certo (P1): mostra os horários, envia a confirmação e acompa
 const hojeLisboa = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Lisbon" }).format(new Date());
 
-/** Clica e devolve o corpo do POST /api/pedidos que o clique envia. */
+/** Clica e devolve o corpo do POST /api/gravacoes que o clique envia. */
 async function clicarEEnviar(page: Page, botao: ReturnType<Page["getByRole"]>) {
   const [pedido] = await Promise.all([
-    page.waitForRequest((r) => r.method() === "POST" && r.url().endsWith("/api/pedidos")),
+    page.waitForRequest((r) => r.method() === "POST" && r.url().endsWith("/api/gravacoes")),
     botao.click(),
   ]);
   return pedido.postDataJSON() as ReturnType<typeof ultimoPost>;
 }
 
 function ultimoPost(pedidos: { metodo: string; url: string; corpo: unknown }[]) {
-  return pedidos.filter((p) => p.metodo === "POST" && p.url === "/api/pedidos").at(-1)?.corpo as {
+  return pedidos.filter((p) => p.metodo === "POST" && p.url === "/api/gravacoes").at(-1)?.corpo as {
     tipo: string;
-    arquivos: Record<string, { horarios: unknown[]; excecoes: unknown[] }>;
+    locais: Record<
+      string,
+      { versao: number; dados: { horarios: unknown[]; excecoes: unknown[]; dias_santos?: string } }
+    >;
     resumo: { linhas: string[] }[];
     confirmar_alertas?: boolean;
   };
@@ -187,12 +205,14 @@ test("Novo horário (P2): escolhe dias e hora, vê o resumo e grava a partir de 
     .analyze();
   expect(resultado.violations.map((v) => v.id)).toEqual([]);
   await dialogo.getByRole("button", { name: "Gravar" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Publicado no site." })).toBeVisible({
+  await expect(
+    page.getByRole("status").filter({ hasText: "Gravado. Já está no site." }),
+  ).toBeVisible({
     timeout: 15_000,
   });
   const post = ultimoPost(pedidos);
   expect(post.tipo).toBe("alteracao");
-  expect(post.arquivos["dados/locais/nespereira.yml"]?.horarios).toContainEqual({
+  expect(post.locais["nespereira"]?.dados.horarios).toContainEqual({
     tipo: "missa",
     dias: ["sex"],
     hora: "18:30",
@@ -212,7 +232,7 @@ test("Editar horário (P2): a regra antiga termina e a nova começa na data esco
   await dialogo.getByLabel("A partir de", { exact: true }).fill("2099-01-04");
   await expect(dialogo.getByText(/➕.*10:30/)).toBeVisible();
   const enviado = await clicarEEnviar(page, dialogo.getByRole("button", { name: "Gravar" }));
-  const horarios = enviado.arquivos["dados/locais/nespereira.yml"]?.horarios;
+  const horarios = enviado.locais["nespereira"]?.dados.horarios;
   expect(horarios).toContainEqual({
     tipo: "missa",
     dias: ["dom"],
@@ -240,13 +260,13 @@ test("Apagar horário (P2): cancelar só numa data cria uma exceção", async ({
     page,
     dialogo.getByRole("button", { name: "Apagar", exact: true }),
   );
-  expect(post.arquivos["dados/locais/nespereira.yml"]?.excecoes).toContainEqual({
+  expect(post.locais["nespereira"]?.dados.excecoes).toContainEqual({
     data: "2099-03-01",
     acao: "cancelar",
     tipo: "missa",
     hora: "11:15",
   });
-  expect(post.arquivos["dados/locais/nespereira.yml"]?.horarios).toHaveLength(2);
+  expect(post.locais["nespereira"]?.dados.horarios).toHaveLength(2);
 });
 
 test("Alertas de anomalia: só grava depois de 'Tenho a certeza'", async ({ page }) => {
@@ -280,7 +300,7 @@ test("Nova exceção (P3): muda a hora de uma celebração prevista para essa da
     .analyze();
   expect(resultado.violations.map((v) => v.id)).toEqual([]);
   const post = await clicarEEnviar(page, dialogo.getByRole("button", { name: "Gravar" }));
-  expect(post.arquivos["dados/locais/nespereira.yml"]?.excecoes).toContainEqual({
+  expect(post.locais["nespereira"]?.dados.excecoes).toContainEqual({
     data: "2099-03-01",
     acao: "alterar",
     tipo: "missa",
@@ -300,7 +320,7 @@ test("Apagar exceção (P3): volta a valer o horário habitual", async ({ page }
     page,
     dialogo.getByRole("button", { name: "Apagar", exact: true }),
   );
-  expect(post.arquivos["dados/locais/nespereira.yml"]?.excecoes).toEqual([]);
+  expect(post.locais["nespereira"]?.dados.excecoes).toEqual([]);
 });
 
 test("Dias santos (P4): horário próprio cria a missa dos dias santos", async ({ page }) => {
@@ -310,11 +330,8 @@ test("Dias santos (P4): horário próprio cria a missa dos dias santos", async (
   const dialogo = page.getByRole("dialog", { name: "Dias santos de preceito" });
   await dialogo.getByLabel(/Horário próprio/).check();
   await dialogo.getByLabel("Hora da missa").fill("19:00");
-  const post = (await clicarEEnviar(
-    page,
-    dialogo.getByRole("button", { name: "Gravar" }),
-  )) as unknown as { arquivos: Record<string, { dias_santos: string; horarios: unknown[] }> };
-  const local = post.arquivos["dados/locais/nespereira.yml"];
+  const post = await clicarEEnviar(page, dialogo.getByRole("button", { name: "Gravar" }));
+  const local = post.locais["nespereira"]?.dados;
   expect(local?.dias_santos).toBe("horario_proprio");
   expect(local?.horarios).toContainEqual({ tipo: "missa", dias: ["santo"], hora: "19:00" });
 });
@@ -323,7 +340,7 @@ test("Histórico: administrador restaura uma versão anterior", async ({ page })
   const pedidos = await simular(page, "admin");
   await page.goto("/admin/");
   await page.getByRole("button", { name: "Ver alterações" }).click();
-  await expect(page.getByText("Importação inicial")).toBeVisible();
+  await expect(page.getByText("Horários iniciais")).toBeVisible();
   await expect(page.getByText(/versão atual/)).toBeVisible();
   // Só as versões anteriores à atual podem ser restauradas.
   await expect(page.getByRole("button", { name: "Restaurar esta versão" })).toHaveCount(1);
@@ -331,16 +348,17 @@ test("Histórico: administrador restaura uma versão anterior", async ({ page })
   const dialogo = page.getByRole("dialog", { name: "Restaurar esta versão?" });
   await expect(dialogo.getByText(/Domingos às 10:30/)).toBeVisible();
   await dialogo.getByRole("button", { name: "Restaurar", exact: true }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Publicado no site." })).toBeVisible({
+  await expect(
+    page.getByRole("status").filter({ hasText: "Gravado. Já está no site." }),
+  ).toBeVisible({
     timeout: 15_000,
   });
-  const post = pedidos.find((p) => p.metodo === "POST" && p.url === "/api/pedidos");
+  const post = pedidos.find((p) => p.metodo === "POST" && p.url === "/api/gravacoes");
   expect(post?.corpo).toMatchObject({
     tipo: "restauro",
     entidade: "nespereira",
-    restaura: "a".repeat(40),
-    base: { "dados/locais/nespereira.yml": "s1" },
-    arquivos: { "dados/locais/nespereira.yml": { horarios: [{ hora: "10:30" }] } },
+    restaura: 1,
+    base: { entidade: 1, locais: { nespereira: 1 } },
   });
 });
 
@@ -348,7 +366,7 @@ test("Histórico: um contacto vê as alterações mas não restaura", async ({ p
   await simular(page, "entidade");
   await page.goto("/admin/");
   await page.getByRole("button", { name: "Ver alterações" }).click();
-  await expect(page.getByText("Importação inicial")).toBeVisible();
+  await expect(page.getByText("Horários iniciais")).toBeVisible();
   await expect(page.getByText("Secretaria", { exact: false }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Restaurar esta versão" })).toHaveCount(0);
 });
@@ -390,6 +408,7 @@ test("Acessos: lista, formulário e erro do servidor", async ({ page }) => {
 });
 
 test("sem acesso: a API responde 403 e o painel leva à página própria", async ({ page }) => {
+  await entrarComo(page, "entidade");
   await page.route("**/api/eu", (rota) =>
     rota.fulfill({ status: 403, contentType: "application/json", body: '{"erro":"sem_acesso"}' }),
   );
@@ -404,7 +423,7 @@ test("entrada", async ({ page }) => {
   await page.goto("/admin/entrar/");
   await expect(page.getByRole("link", { name: "Continuar com a conta Google" })).toHaveAttribute(
     "href",
-    "/admin/",
+    "/auth/entrar?voltar=%2Fadmin%2F",
   );
   const resultado = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21aa"])

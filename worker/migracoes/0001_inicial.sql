@@ -112,6 +112,13 @@ CREATE TABLE guarda_versoes (
   conflito INTEGER CHECK (conflito = 0)
 );
 
+-- Cache das páginas públicas já geradas (chave: caminho, data de Lisboa e versao_dados).
+CREATE TABLE paginas (
+  chave TEXT PRIMARY KEY,
+  conteudo TEXT NOT NULL,
+  criada_em TEXT NOT NULL
+);
+
 CREATE TABLE config (
   chave TEXT PRIMARY KEY,
   valor TEXT NOT NULL

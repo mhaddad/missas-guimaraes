@@ -13,7 +13,10 @@ describe("tratarRotas", () => {
   });
 
   it("estado, relato (fora de /api/), login e API são do Worker; páginas ficam para o Astro", async () => {
-    expect(await (await pedir("/api/saude"))?.json()).toEqual({ ok: true, ambiente: "homologacao" });
+    expect(await (await pedir("/api/saude"))?.json()).toEqual({
+      ok: true,
+      ambiente: "homologacao",
+    });
     for (const caminho of ["/relato", "/api/relato"])
       expect((await pedir(caminho))?.status).toBe(405); // só POST
     expect((await pedir("/auth/entrar"))?.status).toBe(503); // sem GOOGLE_* nos testes

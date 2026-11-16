@@ -1,6 +1,12 @@
 ---
-/** E-0 — Entrada (§7.2, passo 4), com os textos corrigidos de §6.10. */
+/** E-0 — Entrada (§7.2, passo 4; ADR-005): o login Google é feito pelo próprio Worker. */
 import Painel from "../../layouts/Painel.astro";
+
+const parametros = Astro.url.searchParams;
+const voltar = parametros.get("voltar") ?? "/admin/";
+const destino = `/auth/entrar?voltar=${encodeURIComponent(voltar)}`;
+const erro = parametros.has("erro");
+const saiu = parametros.has("saiu");
 ---
 
 <Painel titulo="Entrar" ativo="nenhum" simples>
@@ -18,8 +24,18 @@ import Painel from "../../layouts/Painel.astro";
         Para as paróquias e outras entidades atualizarem os horários das missas e celebrações. Entre
         com a conta Google do e-mail que registou no Arciprestado.
       </p>
+      {erro && (
+        <p role="alert" class="rounded-cartao bg-red-50 p-4 text-base text-erro">
+          Não foi possível entrar. Tente novamente.
+        </p>
+      )}
+      {saiu && (
+        <p role="status" class="rounded-cartao bg-superficie p-4 text-base">
+          Saiu do painel.
+        </p>
+      )}
       <a
-        href="/admin/"
+        href={destino}
         class="inline-flex min-h-14 items-center justify-center gap-3 rounded-cartao bg-ardosia px-6 text-lg font-semibold text-white"
       >
         Continuar com a conta Google
@@ -28,7 +44,9 @@ import Painel from "../../layouts/Painel.astro";
         Não tem uma conta Google? Pode criar uma com o e-mail que já usa, sem criar um Gmail: na
         página de criação de conta da Google, escolha "Usar o meu endereço de e-mail atual".
       </p>
-      <p class="text-sm text-texto-secundario">As alterações aparecem no site em poucos minutos.</p>
+      <p class="text-sm text-texto-secundario">
+        As alterações aparecem no site logo depois de gravar.
+      </p>
     </div>
   </section>
 </Painel>
