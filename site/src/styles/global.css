@@ -46,8 +46,15 @@
   .atalho {
     @apply inline-flex min-h-12 items-center rounded-cartao px-3 text-base font-semibold text-texto-secundario hover:bg-superficie hover:text-ardosia;
   }
-  .atalho[aria-current="true"] {
+  .atalho[aria-current="page"] {
     @apply text-ardosia underline decoration-dourado decoration-2 underline-offset-8;
+  }
+  /* Barra inferior do telemóvel. */
+  .barra {
+    @apply text-texto-secundario hover:text-ardosia;
+  }
+  .barra[aria-current="page"] {
+    @apply text-ardosia underline decoration-dourado decoration-2 underline-offset-4;
   }
   .idioma {
     @apply inline-flex min-h-12 min-w-10 items-center justify-center rounded px-1 text-texto-secundario hover:text-ardosia;

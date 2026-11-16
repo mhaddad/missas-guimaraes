@@ -1,8 +1,8 @@
 ---
 /**
- * Página pública (§6.2): aviso, controlos, "A seguir", vista por hora, vista por igreja,
- * solenidades e rodapé. O HTML estático mostra todos os locais com o horário semanal; a ilha
- * `scripts/portal.ts` acrescenta os atalhos de dia, a pesquisa e os filtros.
+ * Página principal (§6.2): controlos, "A seguir", celebrações do dia por hora, solenidades e
+ * rodapé. As celebrações são desenhadas pela ilha `scripts/portal.ts`; sem JavaScript, a página
+ * leva à lista das paróquias, onde cada uma tem o horário semanal.
  */
 import { momentoEmLisboa } from "@missas/horarios";
 import Base from "../layouts/Base.astro";
@@ -11,9 +11,9 @@ import { dadosPortal, locaisPublicados } from "../lib/dados.ts";
 import { formatarDataLonga, formatarDiaEMes } from "../lib/formatos.ts";
 import { jsonLd } from "../lib/jsonld.ts";
 import { proximasSolenidades } from "../lib/portal.ts";
-import CartaoIgreja from "./CartaoIgreja.astro";
 import Icone from "./Icone.astro";
 import Icones from "./Icones.astro";
+import Relato from "./Relato.astro";
 
 interface Props {
   idioma: Idioma;
@@ -21,7 +21,7 @@ interface Props {
 
 const { idioma } = Astro.props;
 /** Chave pública do Turnstile; sem ela, o "Reportar erro" não aparece (E2.9). */
-const siteKey: string | undefined = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || undefined;
+const siteKey = Boolean(import.meta.env.PUBLIC_TURNSTILE_SITE_KEY);
 const t = TEXTOS[idioma];
 const agora = new Date();
 const { data: hoje, hora } = momentoEmLisboa(agora);
@@ -45,19 +45,26 @@ const nomeSolenidade = (s: (typeof solenidades)[number]) =>
   s.preceito ? (s.nome ?? s.id) : ((t.moveis as Record<string, string>)[s.id] ?? s.id);
 ---
 
-<Base titulo={t.titulo} descricao={t.descricao} idioma={idioma} publico>
+<Base titulo={t.titulo} descricao={t.descricao} idioma={idioma} publico atual="inicio">
   <Icones />
 
   <noscript>
-    <p class="mb-6 rounded-cartao bg-slate-100 px-4 py-3 text-base">{t.semJavaScript}</p>
+    <style>
+      #controlos,
+      #celebracoes-do-dia {
+        display: none;
+      }
+    </style>
+    <p class="mb-6 rounded-cartao bg-slate-100 px-4 py-3 text-base">
+      {t.semJavaScript}
+      <a class="ligacao" href={`${t.caminho}paroquias/`}>
+        {t.semJavaScriptLigacao}
+      </a>
+    </p>
   </noscript>
 
   <!-- Controlos: só com JavaScript -->
-  <section
-    id="controlos"
-    class="mb-4 rounded-cartao border border-borda bg-cartao p-3 md:p-5"
-    hidden
-  >
+  <section id="controlos" class="mb-4 rounded-cartao border border-borda bg-cartao p-3 md:p-5">
     <div class="relative">
       <label for="pesquisa" class="sr-only">
         {t.pesquisaRotulo}
@@ -113,15 +120,6 @@ const nomeSolenidade = (s: (typeof solenidades)[number]) =>
           Vizela
         </button>
       </div>
-      <!-- No telemóvel, a vista muda-se na barra inferior (Hoje · Paróquias). -->
-      <div role="group" aria-label={t.vista} class="segmentos hidden md:ml-auto md:flex">
-        <button type="button" class="segmento" data-vista="hora" aria-pressed="true">
-          {t.porHora}
-        </button>
-        <button type="button" class="segmento" data-vista="igreja" aria-pressed="false">
-          {t.porIgreja}
-        </button>
-      </div>
       <button
         type="button"
         id="filtro-tipo"
@@ -144,58 +142,42 @@ const nomeSolenidade = (s: (typeof solenidades)[number]) =>
     <span></span>
   </p>
 
-  <section id="a-seguir" class="mb-8" aria-live="polite" hidden></section>
+  <!-- Espaço reservado: as celebrações chegam com o JavaScript sem empurrar o resto. -->
+  <div id="celebracoes-do-dia" class="min-h-[100svh]">
+    <section id="a-seguir" class="mb-8" aria-live="polite" hidden></section>
 
-  <section id="por-hora" class="mb-10" hidden>
-    <div class="mb-3 flex items-center justify-between gap-3 md:mb-4">
-      <h2 class="text-base font-semibold md:text-xl">
-        <span id="titulo-dia"></span>
-      </h2>
+    <section id="por-hora" class="mb-10">
+      <div class="mb-3 flex items-center justify-between gap-3 md:mb-4">
+        <h2 class="text-base font-semibold md:text-xl">
+          <span id="titulo-dia"></span>
+        </h2>
+        <p
+          id="ainda-hoje"
+          class="shrink-0 rounded-full bg-aviso-fundo px-3 py-1 text-xs font-semibold text-dourado-texto md:text-sm"
+          hidden
+        ></p>
+      </div>
+      <ol id="lista-hora" class="grid grid-cols-1 gap-3"></ol>
       <p
-        id="ainda-hoje"
-        class="shrink-0 rounded-full bg-aviso-fundo px-3 py-1 text-xs font-semibold text-dourado-texto md:text-sm"
+        id="vazio-hora"
+        class="rounded-cartao border border-dashed border-borda p-6 text-center text-texto-secundario"
         hidden
       ></p>
-    </div>
-    <ol id="lista-hora" class="grid grid-cols-1 gap-3"></ol>
-    <p
-      id="vazio-hora"
-      class="rounded-cartao border border-dashed border-borda p-6 text-center text-texto-secundario"
-      hidden
-    ></p>
-    <details id="anteriores" class="mt-4 rounded-cartao border border-borda bg-cartao" hidden>
-      <summary class="flex min-h-12 cursor-pointer list-none items-center gap-3 px-4 text-base text-texto-secundario [&::-webkit-details-marker]:hidden">
-        <Icone nome="history" />
-        <span id="anteriores-texto"></span>
-        <Icone nome="keyboard_arrow_down" class="ml-auto size-6" />
-      </summary>
-      <ol id="lista-anteriores" class="grid gap-2 px-4 pb-4"></ol>
-    </details>
-    <section id="sem-informacao" class="mt-8" hidden>
-      <h3 class="text-lg font-semibold">{t.semInformacaoDiaSanto}</h3>
-      <p class="mt-1 text-base text-texto-secundario">{t.semInformacaoDiaSantoTexto}</p>
-      <ol id="lista-sem-informacao" class="mt-3 grid gap-3"></ol>
+      <details id="anteriores" class="mt-4 rounded-cartao border border-borda bg-cartao" hidden>
+        <summary class="flex min-h-12 cursor-pointer list-none items-center gap-3 px-4 text-base text-texto-secundario [&::-webkit-details-marker]:hidden">
+          <Icone nome="history" />
+          <span id="anteriores-texto"></span>
+          <Icone nome="keyboard_arrow_down" class="ml-auto size-6" />
+        </summary>
+        <ol id="lista-anteriores" class="grid gap-2 px-4 pb-4"></ol>
+      </details>
+      <section id="sem-informacao" class="mt-8" hidden>
+        <h3 class="text-lg font-semibold">{t.semInformacaoDiaSanto}</h3>
+        <p class="mt-1 text-base text-texto-secundario">{t.semInformacaoDiaSantoTexto}</p>
+        <ol id="lista-sem-informacao" class="mt-3 grid gap-3"></ol>
+      </section>
     </section>
-  </section>
-
-  <section id="igrejas" class="mb-10 scroll-mt-4">
-    <div class="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-      <h2 class="text-xl font-semibold">{t.igrejasTitulo}</h2>
-      <p id="contagem-igrejas" class="text-base text-texto-secundario"></p>
-    </div>
-    <div id="lista-igrejas" class="grid gap-3">
-      {locais.map(({ local, entidade }) => (
-        <CartaoIgreja idioma={idioma} local={local} entidade={entidade} hoje={hoje} />
-      ))}
-    </div>
-    <p
-      id="vazio-igrejas"
-      class="rounded-cartao border border-dashed border-borda p-6 text-center text-texto-secundario"
-      hidden
-    >
-      {t.nenhumaIgreja}
-    </p>
-  </section>
+  </div>
 
   <section
     id="solenidades"
@@ -248,110 +230,7 @@ const nomeSolenidade = (s: (typeof solenidades)[number]) =>
     <p class="w-full">{t.semCookies}</p>
   </footer>
 
-  {siteKey && (
-    <dialog
-      id="relato"
-      data-site-key={siteKey}
-      aria-labelledby="relato-titulo"
-      class="m-auto w-[min(36rem,calc(100%-2rem))] rounded-xl border border-borda bg-cartao p-0 text-ardosia shadow-xl backdrop:bg-ardosia/50"
-    >
-      <form id="form-relato" class="grid gap-4 p-5 md:p-6" novalidate>
-        <h2 id="relato-titulo" class="text-xl font-semibold">
-          {t.reportarTitulo}
-        </h2>
-        <div class="grid gap-1">
-          <label for="relato-local" class="font-semibold">
-            {t.reportarIgreja}
-          </label>
-          <select
-            id="relato-local"
-            name="local"
-            class="min-h-12 rounded-cartao border border-borda bg-cartao px-3 text-base"
-          >
-            <option value="">{t.reportarSemIgreja}</option>
-            {locais.map(({ local }) => (
-              <option value={local.id}>
-                {[local.nome, local.localidade].filter(Boolean).join(" · ")}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div class="grid gap-1">
-          <label for="relato-mensagem" class="font-semibold">
-            {t.reportarMensagem}
-          </label>
-          <textarea
-            id="relato-mensagem"
-            name="mensagem"
-            rows="5"
-            minlength="10"
-            maxlength="1000"
-            required
-            aria-describedby="relato-ajuda"
-            class="rounded-cartao border border-borda bg-cartao p-3 text-base"
-          />
-          <p id="relato-ajuda" class="text-base text-texto-secundario">
-            {t.reportarAjuda}
-          </p>
-        </div>
-        <div id="relato-turnstile" class="min-h-16" />
-        <p id="relato-estado" role="status" class="text-base font-semibold empty:hidden" />
-        <div class="flex flex-wrap justify-end gap-3">
-          <button type="button" class="botao-secundario" data-fechar-relato>
-            {t.reportarCancelar}
-          </button>
-          <button
-            type="submit"
-            id="relato-enviar"
-            class="inline-flex min-h-12 items-center gap-2 rounded-cartao bg-ardosia px-5 text-base font-semibold text-white"
-          >
-            {t.reportarEnviar}
-          </button>
-        </div>
-      </form>
-    </dialog>
-  )}
-
-  <nav
-    slot="fim"
-    id="barra-inferior"
-    aria-label={t.navegacao}
-    class="fixed inset-x-0 bottom-0 z-10 border-t border-borda bg-cartao md:hidden"
-    hidden
-  >
-    <ul class="grid grid-cols-3">
-      <li>
-        <button
-          type="button"
-          class="flex min-h-16 w-full flex-col items-center justify-center gap-0.5 text-sm font-semibold"
-          data-barra="hoje"
-        >
-          <Icone nome="schedule" class="size-6" />
-          {t.barraHoje}
-        </button>
-      </li>
-      <li>
-        <button
-          type="button"
-          class="flex min-h-16 w-full flex-col items-center justify-center gap-0.5 text-sm font-semibold"
-          data-barra="paroquias"
-        >
-          <Icone nome="church" class="size-6" />
-          {t.barraParoquias}
-        </button>
-      </li>
-      <li>
-        <button
-          type="button"
-          class="flex min-h-16 w-full flex-col items-center justify-center gap-0.5 text-sm font-semibold"
-          data-barra="procurar"
-        >
-          <Icone nome="search" class="size-6" />
-          {t.barraProcurar}
-        </button>
-      </li>
-    </ul>
-  </nav>
+  <Relato idioma={idioma} locais={locais.map(({ local }) => local)} />
 
   <script
     type="application/json"

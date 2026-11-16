@@ -10,7 +10,14 @@ import { momentoEmLisboa } from "@missas/horarios";
 import { versaoDados } from "./bd.ts";
 
 /** As páginas que vão para a cache. */
-export const PAGINAS_PUBLICAS = new Set(["/", "/en/", "/es/"]);
+export const PAGINAS_PUBLICAS = new Set([
+  "/",
+  "/en/",
+  "/es/",
+  "/paroquias/",
+  "/en/paroquias/",
+  "/es/paroquias/",
+]);
 const MAXIMO_EM_MEMORIA = 12;
 const memoria = new Map<string, string>();
 

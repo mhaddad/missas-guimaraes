@@ -28,6 +28,40 @@ export function locaisPublicados(dados: DadosPublicos): { local: Local; entidade
     );
 }
 
+/** Paróquia na lista `/paroquias/`: a entidade, a localização resumida e o concelho. */
+export interface ParoquiaResumo {
+  entidade: Entidade;
+  /** Localidade (freguesia) e concelho da igreja principal: "Nespereira · Guimarães". */
+  lugar: string;
+  concelho: string;
+}
+
+/**
+ * Entidades com pelo menos um local publicado, por ordem da localidade (é por aí que as pessoas
+ * procuram), com o nome a desempatar. A igreja principal é o primeiro local da entidade.
+ */
+export function paroquiasPublicadas(dados: DadosPublicos): ParoquiaResumo[] {
+  const publicados = new Map(dados.locais.filter((l) => l.publicar).map((l) => [l.id, l]));
+  const lista: (ParoquiaResumo & { localidade: string })[] = [];
+  for (const entidade of dados.entidades) {
+    const principal = entidade.locais.map((id) => publicados.get(id)).find(Boolean);
+    if (!principal) continue;
+    lista.push({
+      entidade,
+      lugar: [principal.localidade, principal.concelho].filter(Boolean).join(" · "),
+      concelho: principal.concelho,
+      localidade: principal.localidade ?? entidade.nome,
+    });
+  }
+  return lista
+    .sort(
+      (a, b) =>
+        a.localidade.localeCompare(b.localidade, "pt") ||
+        a.entidade.nome.localeCompare(b.entidade.nome, "pt"),
+    )
+    .map(({ localidade: _l, ...p }) => p);
+}
+
 /** Dados enviados ao navegador. Exceções passadas ficam de fora. */
 export function dadosPortal(dados: DadosPublicos, agora: Date, hoje: string): DadosPortal {
   const locais: LocalPortal[] = locaisPublicados(dados).map(({ local, entidade }) => ({

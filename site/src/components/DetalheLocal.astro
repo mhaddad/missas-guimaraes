@@ -1,13 +1,13 @@
 ---
 /**
- * Detalhe de um local (§6.5): morada, entidade, telefone, horário semanal, dias santos,
- * próximas alterações, notas e selo. Sem ids: o navegador copia-o para baixo das linhas da
- * vista por hora.
+ * Detalhe de um local (§6.5), aberto por baixo de uma linha da página principal: ações, morada,
+ * contactos, horário semanal e a ligação para a página da paróquia. Sem ids: o navegador
+ * copia-o para baixo de várias linhas.
  */
 import type { Entidade, Local } from "@missas/horarios";
 import { TEXTOS, type Idioma } from "../i18n/index.ts";
-import { blocosHorario, descreverExcecao, notasDoLocal } from "../lib/detalhe.ts";
 import { ligacaoMapa } from "../lib/portal.ts";
+import HorarioSemanal from "./HorarioSemanal.astro";
 import Icone from "./Icone.astro";
 import Selo from "./Selo.astro";
 
@@ -20,30 +20,25 @@ interface Props {
 
 const { idioma, local, entidade, hoje } = Astro.props;
 const t = TEXTOS[idioma];
-const blocos = blocosHorario(local, idioma, hoje);
-const excecoes = local.excecoes.filter((e) => e.data >= hoje).slice(0, 6);
-const notas = notasDoLocal(local, idioma);
 const telefones = entidade.telefones_publicos ?? [];
-const caminho = `${t.caminho}#${local.id}`;
+const pagina = `${t.caminho}paroquia/${entidade.id}/`;
 ---
 
 <div class="detalhe grid gap-5 pt-4 md:grid-cols-[1fr_1fr]">
   <div class="flex flex-wrap gap-3 md:col-span-2">
-    <a
-      class="botao-secundario"
-      href={ligacaoMapa(local.geo)}
-      data-mapa={`${local.geo.lat},${local.geo.lon}`}
-      target="_blank"
-      rel="noopener"
-    >
+    <a class="botao-secundario" href={ligacaoMapa(local.geo)} target="_blank" rel="noopener">
       <Icone nome="navigation" />
       {t.comoChegar}
+    </a>
+    <a class="botao-secundario" href={pagina}>
+      <Icone nome="church" />
+      {t.paginaDaParoquia}
     </a>
     <button
       type="button"
       class="botao-secundario"
-      data-partilhar={caminho}
-      data-titulo={local.nome}
+      data-partilhar={pagina}
+      data-titulo={entidade.nome}
       hidden
     >
       <Icone nome="share" />
@@ -96,64 +91,6 @@ const caminho = `${t.caminho}#${local.id}`;
   </div>
 
   <div class="grid content-start gap-4 text-base">
-    <section>
-      <h4 class="font-semibold">{t.horarioSemanal}</h4>
-      {blocos.length === 0 && <p class="text-texto-secundario">{t.semHorarios}</p>}
-      {blocos.map((bloco) => (
-        <div class:list={["mt-2", !bloco.atual && "text-texto-secundario"]}>
-          {bloco.titulo && (
-            <p class="text-sm font-semibold">
-              {bloco.titulo}
-              {bloco.atual && (
-                <span class="ml-1 rounded bg-confirmado-fundo px-1.5 text-xs text-confirmado">
-                  {t.epocaAtual}
-                </span>
-              )}
-            </p>
-          )}
-          <ul class="mt-1 list-disc space-y-0.5 pl-5">
-            {bloco.linhas.map((l) => (
-              <li>
-                {l.texto}
-                {l.nota && (
-                  <span class="text-texto-secundario">
-                    {" "}
-                    — {l.nota}
-                    {l.notaEmPortugues && ` ${t.emPortugues}`}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </section>
-    <section>
-      <h4 class="font-semibold">{t.diasSantosTitulo}</h4>
-      <p class="text-texto-secundario">{t.regimes[local.dias_santos ?? "null"]}</p>
-    </section>
-    {excecoes.length > 0 && (
-      <section>
-        <h4 class="font-semibold">{t.proximasAlteracoes}</h4>
-        <ul class="mt-1 list-disc pl-5">
-          {excecoes.map((e) => (
-            <li>{descreverExcecao(e, idioma)}</li>
-          ))}
-        </ul>
-      </section>
-    )}
-    {notas.length > 0 && (
-      <section>
-        <h4 class="font-semibold">{t.notas}</h4>
-        <ul class="mt-1 list-disc pl-5">
-          {notas.map((n) => (
-            <li>
-              {n.texto}
-              {n.emPortugues && <span class="text-texto-secundario"> {t.emPortugues}</span>}
-            </li>
-          ))}
-        </ul>
-      </section>
-    )}
+    <HorarioSemanal idioma={idioma} local={local} hoje={hoje} />
   </div>
 </div>

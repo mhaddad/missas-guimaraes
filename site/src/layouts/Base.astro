@@ -1,17 +1,23 @@
 ---
 import "../styles/global.css";
 import Cabecalho from "../components/Cabecalho.astro";
+import Icone from "../components/Icone.astro";
 import { IDIOMAS, TEXTOS, type Idioma } from "../i18n/index.ts";
 
 interface Props {
   titulo: string;
   descricao: string;
   idioma?: Idioma;
-  /** Site público: atalhos, idiomas e `hreflang`. */
+  /** Site público: atalhos, idiomas, `hreflang` e a barra inferior no telemóvel. */
   publico?: boolean;
+  /** Caminho da página sem o prefixo do idioma (`paroquias/`, `paroquia/<id>/`); "" é o início. */
+  caminho?: string;
+  /** Atalho da página atual (cabeçalho e barra inferior). */
+  atual?: "inicio" | "paroquias";
 }
 
-const { titulo, descricao, idioma = "pt-PT", publico = false } = Astro.props;
+const { titulo, descricao, idioma = "pt-PT", publico = false, caminho = "", atual } = Astro.props;
+const t = TEXTOS[idioma];
 const absoluto = (caminho: string) => new URL(caminho, Astro.site).toString();
 const LOCALES = { "pt-PT": "pt_PT", en: "en_GB", es: "es_ES" } as const;
 ---
@@ -29,16 +35,20 @@ const LOCALES = { "pt-PT": "pt_PT", en: "en_GB", es: "es_ES" } as const;
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     {publico && (
       <>
-        <link rel="canonical" href={absoluto(TEXTOS[idioma].caminho)} />
+        <link rel="canonical" href={absoluto(t.caminho + caminho)} />
         {IDIOMAS.map((i) => (
-          <link rel="alternate" hreflang={TEXTOS[i].idioma} href={absoluto(TEXTOS[i].caminho)} />
+          <link
+            rel="alternate"
+            hreflang={TEXTOS[i].idioma}
+            href={absoluto(TEXTOS[i].caminho + caminho)}
+          />
         ))}
-        <link rel="alternate" hreflang="x-default" href={absoluto("/")} />
+        <link rel="alternate" hreflang="x-default" href={absoluto(`/${caminho}`)} />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content={TEXTOS[idioma].arciprestado} />
         <meta property="og:title" content={titulo} />
         <meta property="og:description" content={descricao} />
-        <meta property="og:url" content={absoluto(TEXTOS[idioma].caminho)} />
+        <meta property="og:url" content={absoluto(t.caminho + caminho)} />
         <meta property="og:locale" content={LOCALES[idioma]} />
         <meta property="og:image" content={absoluto("/partilha.png")} />
         <meta property="og:image:width" content="1200" />
@@ -60,10 +70,40 @@ const LOCALES = { "pt-PT": "pt_PT", en: "en_GB", es: "es_ES" } as const;
           ? "Saltar al contenido"
           : "Saltar para o conteúdo"}
     </a>
-    <Cabecalho idioma={idioma} navegacao={publico} />
+    <Cabecalho idioma={idioma} navegacao={publico} caminho={caminho} atual={atual} />
     <main id="conteudo" class="mx-auto max-w-[56rem] px-4 py-6 md:py-8">
       <slot />
     </main>
     <slot name="fim" />
+    {publico && (
+      <nav
+        aria-label={t.navegacao}
+        class="fixed inset-x-0 bottom-0 z-10 border-t border-borda bg-cartao md:hidden"
+      >
+        <ul class="grid grid-cols-3">
+          {[
+            { href: t.caminho, icone: "schedule", texto: t.barraHoje, chave: "inicio" },
+            {
+              href: `${t.caminho}paroquias/`,
+              icone: "church",
+              texto: t.barraParoquias,
+              chave: "paroquias",
+            },
+            { href: `${t.caminho}#solenidades`, icone: "event", texto: t.solenidades, chave: "" },
+          ].map((item) => (
+            <li>
+              <a
+                class="barra flex min-h-16 w-full flex-col items-center justify-center gap-0.5 text-sm font-semibold"
+                href={item.href}
+                aria-current={item.chave === atual ? "page" : undefined}
+              >
+                <Icone nome={item.icone} class="size-6" />
+                {item.texto}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    )}
   </body>
 </html>

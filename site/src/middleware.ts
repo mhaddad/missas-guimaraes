@@ -22,7 +22,16 @@ interface Contexto {
 
 const LIVRES = new Set(["/admin/entrar/", "/admin/sem-acesso/"]);
 const SO_ADMIN = ["/admin/acessos/"];
-const COM_DADOS = new Set(["/", "/en/", "/es/", "/dados/horarios.json", "/sitemap.xml"]);
+const COM_DADOS = new Set([
+  "/",
+  "/en/",
+  "/es/",
+  "/paroquias/",
+  "/en/paroquias/",
+  "/es/paroquias/",
+  "/dados/horarios.json",
+  "/sitemap.xml",
+]);
 const ID = "([a-z0-9]+(?:-[a-z0-9]+)*)";
 /** Página de uma paróquia (`/paroquia/<id>/`, também em /en/ e /es/). */
 const PAROQUIA = new RegExp(`^/((?:en|es)/)?paroquia/${ID}/$`);
@@ -54,15 +63,16 @@ export async function onRequest(
     return resposta;
   }
 
+  calendario ??= lerCalendario(CALENDARIO_YAML);
   const paroquia = PAROQUIA.exec(pathname);
   if (paroquia && bd) {
-    // Só esta entidade e os seus locais publicados: página leve.
+    // Só esta entidade e os seus locais publicados (e o calendário, para as celebrações).
     const entidade = (await lerEntidade(bd, paroquia[2] ?? ""))?.dados;
     if (entidade) {
       const locais = [...(await lerLocais(bd, entidade.locais)).values()]
         .map((r) => r.dados)
         .filter((l) => l.publicar);
-      if (locais.length > 0) contexto.locals.paroquia = { entidade, locais };
+      if (locais.length > 0) contexto.locals.paroquia = { entidade, locais, calendario };
     }
     return seguinte();
   }
@@ -84,7 +94,6 @@ export async function onRequest(
   }
 
   if (COM_DADOS.has(pathname) && bd) {
-    calendario ??= lerCalendario(CALENDARIO_YAML);
     contexto.locals.dados = { ...(await lerTudo(bd)), calendario };
   }
   return seguinte();

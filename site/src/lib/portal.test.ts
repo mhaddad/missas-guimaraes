@@ -99,14 +99,15 @@ describe("estado na query string", () => {
       dia: "2026-12-08",
       concelho: "vizela",
       q: "penha",
-      vista: "igreja",
       tipo: "confissoes",
     } as const;
     const texto = escreverEstado(estado);
-    expect(texto).toBe("?dia=2026-12-08&concelho=vizela&q=penha&vista=igreja&tipo=confissoes");
+    expect(texto).toBe("?dia=2026-12-08&concelho=vizela&q=penha&tipo=confissoes");
     expect(lerEstado(texto)).toEqual(estado);
     expect(escreverEstado(ESTADO_INICIAL)).toBe("");
-    expect(lerEstado("?dia=ontem&concelho=braga&vista=mapa&tipo=x")).toEqual(ESTADO_INICIAL);
+    expect(lerEstado("?dia=ontem&concelho=braga&tipo=x")).toEqual(ESTADO_INICIAL);
+    // Endereços antigos com a vista por igreja: o parâmetro é ignorado.
+    expect(lerEstado("?vista=igreja")).toEqual(ESTADO_INICIAL);
   });
 
   it("datas da escolha", () => {
@@ -274,12 +275,9 @@ describe("detalhe e outros", () => {
     ]);
   });
 
-  it("mapas, dias curtos e solenidades", () => {
+  it("mapas (sempre o Google Maps), dias curtos e solenidades", () => {
     expect(ligacaoMapa({ lat: 41.4, lon: -8.3 })).toBe(
       "https://www.google.com/maps/dir/?api=1&destination=41.4,-8.3",
-    );
-    expect(ligacaoMapa({ lat: 41.4, lon: -8.3 }, true)).toBe(
-      "https://maps.apple.com/?daddr=41.4,-8.3",
     );
     expect(formatarDiaCurto("2026-11-08", "pt-PT")).toBe("Dom");
     expect(formatarDiaCurto("2026-11-14", "es")).toBe("Sáb");

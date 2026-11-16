@@ -38,6 +38,7 @@ export const ORDEM_LOCAL = [
   "publicar",
   "dias_santos",
   "acessibilidade",
+  "foto",
   "horarios",
   "excecoes",
   "notas",

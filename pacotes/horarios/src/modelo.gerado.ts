@@ -56,6 +56,23 @@ export interface Local {
    */
   dias_santos: "horario_domingo" | "horario_proprio" | "horario_habitual" | null;
   acessibilidade?: string | null;
+  /**
+   * Fotografia da igreja (exterior ou interior) na página da paróquia. Só imagens com autorização ou licença livre, com o crédito.
+   */
+  foto?: {
+    /**
+     * Endereço https da imagem, ou caminho no próprio site.
+     */
+    url: string;
+    /**
+     * Descrição da imagem para leitores de ecrã (por omissão, o nome da igreja).
+     */
+    alt?: string;
+    /**
+     * Autor e licença, mostrados por baixo da imagem.
+     */
+    credito?: string;
+  } | null;
   horarios: Regra[];
   excecoes: Excecao[];
   notas?: string[];

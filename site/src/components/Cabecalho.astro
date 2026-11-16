@@ -9,9 +9,13 @@ interface Props {
   idioma?: Idioma;
   /** Mostra os atalhos e os idiomas (site público). */
   navegacao?: boolean;
+  /** Caminho da página sem o prefixo do idioma: a escolha de idioma fica na mesma página. */
+  caminho?: string;
+  /** Atalho da página atual. */
+  atual?: "inicio" | "paroquias" | undefined;
 }
 
-const { idioma = "pt-PT", navegacao = false } = Astro.props;
+const { idioma = "pt-PT", navegacao = false, caminho = "", atual } = Astro.props;
 const t = TEXTOS[idioma];
 ---
 
@@ -31,12 +35,16 @@ const t = TEXTOS[idioma];
         <nav aria-label={t.navegacao} class="ml-auto hidden md:block">
           <ul class="flex gap-1">
             <li>
-              <a class="atalho" href="#igrejas" data-atalho="paroquias">
+              <a
+                class="atalho"
+                href={`${t.caminho}paroquias/`}
+                aria-current={atual === "paroquias" ? "page" : undefined}
+              >
                 {t.paroquias}
               </a>
             </li>
             <li>
-              <a class="atalho" href="#solenidades" data-atalho="solenidades">
+              <a class="atalho" href={`${t.caminho}#solenidades`}>
                 {t.solenidades}
               </a>
             </li>
@@ -48,11 +56,11 @@ const t = TEXTOS[idioma];
               <li>
                 <a
                   class:list={["idioma", i === idioma && "idioma-atual"]}
-                  href={TEXTOS[i].caminho}
+                  href={TEXTOS[i].caminho + caminho}
                   hreflang={TEXTOS[i].idioma}
                   lang={TEXTOS[i].idioma}
                   aria-current={i === idioma ? "page" : undefined}
-                  data-idioma={TEXTOS[i].caminho}
+                  data-idioma={TEXTOS[i].caminho + caminho}
                 >
                   <span aria-hidden="true">{TEXTOS[i].codigo.toUpperCase()}</span>
                   <span class="sr-only">{TEXTOS[i].nomeIdioma}</span>

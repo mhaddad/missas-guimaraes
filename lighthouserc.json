@@ -1,7 +1,12 @@
 {
   "ci": {
     "collect": {
-      "url": ["http://localhost:4322/", "http://localhost:4322/en/"],
+      "url": [
+        "http://localhost:4322/",
+        "http://localhost:4322/en/",
+        "http://localhost:4322/paroquias/",
+        "http://localhost:4322/paroquia/nossa-senhora-da-oliveira/"
+      ],
       "numberOfRuns": 3,
       "settings": {
         "chromeFlags": "--headless=new --no-sandbox"
