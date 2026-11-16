@@ -1,371 +1,314 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { limparCacheChaves } from "../identidade.ts";
-import { limparCacheToken } from "../github.ts";
-import type { Contacto } from "../contactos.ts";
-import { criarAccessFalso, KVMemoria } from "../teste-util.ts";
-import { tratarApiPainel, type Catalogo, type EnvPainel } from "./painel.ts";
+import { resumirPedido } from "@missas/dados";
+import type { Local } from "@missas/horarios";
+import { lerSessao } from "../sessao.ts";
+import { comSessao, contacto, importar, novaBase, type D1Memoria } from "../teste-util.ts";
+import { tratarApiPainel } from "./painel.ts";
 
-const EQUIPA = "equipa.cloudflareaccess.com";
-const AUD = "aud-teste";
-const AGORA = new Date("2026-11-10T12:00:00Z");
+const AGORA = new Date("2026-11-16T12:00:00Z");
 const ORIGEM = "https://missas.exemplo.workers.dev";
-const access = await criarAccessFalso(EQUIPA, AUD);
 
-const localNespereira = {
-  id: "nespereira",
-  tipo: "igreja",
-  entidade: "nespereira",
-  concelho: "Guimarães",
-  nome: "Igreja de Santa Eulália",
-  geo: { lat: 41.4, lon: -8.3 },
-  publicar: true,
-  dias_santos: null,
-  horarios: [{ tipo: "missa", dias: ["dom"], hora: "11:15" }],
-  excecoes: [],
-  confirmado_em: null,
-  revisao: { pendente: false, motivos: [] },
-};
-
-const catalogo: Catalogo = {
-  entidades: [
-    { id: "nespereira", nome: "Paróquia de Nespereira", tipo: "paroquia", locais: ["nespereira"] },
-    { id: "polvoreira", nome: "Paróquia de Polvoreira", tipo: "paroquia", locais: ["polvoreira"] },
-  ],
-  locais: {
-    nespereira: localNespereira,
-    polvoreira: { ...localNespereira, id: "polvoreira", entidade: "polvoreira" },
-  },
-};
-
-function contacto(id: string, email: string, extra: Partial<Contacto> = {}): Contacto {
-  return {
+const local = (id: string, entidade: string): Local =>
+  ({
     id,
-    nome: `Pessoa ${id}`,
-    email,
-    funcao: "secretaria",
-    perfil: "entidade",
-    entidades: ["nespereira"],
-    estado: "ativo",
-    consentimento: { em: "2026-11-01", versao: "v1", meio: "papel" },
-    criado_em: "2026-11-01T00:00:00.000Z",
-    atualizado_em: "2026-11-01T00:00:00.000Z",
-    ...extra,
-  };
-}
+    tipo: "igreja",
+    entidade,
+    concelho: "Guimarães",
+    nome: `Igreja ${id}`,
+    geo: { lat: 41.4, lon: -8.3 },
+    publicar: true,
+    dias_santos: null,
+    horarios: [
+      { tipo: "missa", dias: ["dom"], hora: "11:15" },
+      { tipo: "missa", dias: ["sab"], hora: "19:00" },
+    ],
+    excecoes: [],
+    confirmado_em: null,
+    revisao: { pendente: false, motivos: [] },
+  }) as Local;
 
-let kv: KVMemoria;
-let env: EnvPainel;
-
-async function registar(c: Contacto) {
-  await kv.put(`contacto:${c.id}`, JSON.stringify(c));
-  await kv.put(`email:${c.email}`, c.id);
-}
+let mem: D1Memoria;
+let bd: D1Database;
+const cookies: Record<string, string> = {};
 
 beforeEach(async () => {
-  limparCacheChaves();
-  limparCacheToken();
-  kv = new KVMemoria();
-  env = {
-    ACCESS_TEAM_DOMAIN: EQUIPA,
-    ACCESS_AUD: AUD,
-    KV: kv.comoKV(),
-    ASSETS: { fetch: async () => Response.json(catalogo) },
-  };
-  await registar(
-    contacto("c_aaaaaaaa", "admin@exemplo.pt", {
-      perfil: "admin",
-      entidades: [],
-      funcao: "equipa",
-    }),
+  mem = novaBase();
+  bd = mem.comoD1();
+  for (const id of ["nespereira", "polvoreira"]) {
+    await importar(
+      bd,
+      { id, tipo: "paroquia", nome: `Paróquia de ${id}`, diocese: "Braga", locais: [id] },
+      [local(id, id) as never],
+    );
+  }
+  cookies.admin = await comSessao(
+    bd,
+    contacto("c_aaaaaaaa", "admin@gmail.com", { perfil: "admin", entidades: [], funcao: "equipa" }),
+    AGORA,
   );
-  await registar(contacto("c_bbbbbbbb", "nespereira@exemplo.pt"));
-  await registar(contacto("c_cccccccc", "suspenso@exemplo.pt", { estado: "suspenso" }));
+  cookies.nespereira = await comSessao(bd, contacto("c_bbbbbbbb", "nespereira@gmail.com"), AGORA);
 });
 
 async function pedir(
   caminho: string,
   opcoes: {
-    email?: string | null;
+    quem?: keyof typeof cookies | null;
     metodo?: string;
     corpo?: unknown;
-    origem?: string | null;
+    origem?: string;
     tipo?: string;
   } = {},
 ) {
   const cabecalhos: Record<string, string> = {};
-  if (opcoes.email !== null)
-    cabecalhos["cf-access-jwt-assertion"] = await access.token(
-      opcoes.email ?? "admin@exemplo.pt",
-      AGORA,
-    );
+  const quem = opcoes.quem === undefined ? "nespereira" : opcoes.quem;
+  if (quem) cabecalhos.cookie = cookies[quem] ?? "";
   if (opcoes.metodo && opcoes.metodo !== "GET") {
-    if (opcoes.origem !== null) cabecalhos.origin = opcoes.origem ?? ORIGEM;
+    cabecalhos.origin = opcoes.origem ?? ORIGEM;
     cabecalhos["content-type"] = opcoes.tipo ?? "application/json";
   }
-  const pedido = new Request(`${ORIGEM}${caminho}`, {
-    method: opcoes.metodo ?? "GET",
-    headers: cabecalhos,
-    ...(opcoes.corpo !== undefined && { body: JSON.stringify(opcoes.corpo) }),
-  });
-  const resposta = await tratarApiPainel(pedido, env, {
-    agora: AGORA,
-    obterChaves: access.obterChaves,
-  });
+  const resposta = await tratarApiPainel(
+    new Request(`${ORIGEM}${caminho}`, {
+      method: opcoes.metodo ?? "GET",
+      headers: cabecalhos,
+      ...(opcoes.corpo !== undefined && { body: JSON.stringify(opcoes.corpo) }),
+    }),
+    { BD: bd },
+    { agora: AGORA },
+  );
   return {
     estado: resposta.status,
     corpo: (await resposta.json()) as Record<string, unknown> & unknown[],
-    resposta,
   };
 }
 
-const novoContacto = {
-  nome: "Secretaria da Oliveira",
-  email: "Oliveira@Exemplo.PT",
-  funcao: "secretaria",
-  perfil: "entidade",
-  entidades: ["polvoreira"],
-  estado: "ativo",
-  consentimento: { em: "2026-11-09", versao: "v1", meio: "papel" },
-};
+const gravarCorpo = (corpo: unknown, quem: keyof typeof cookies = "nespereira") =>
+  pedir("/api/gravacoes", { metodo: "POST", corpo, quem });
 
-describe("identidade e acesso (E3.9)", () => {
-  it("sem JWT: 401, mesmo que o Access esteja mal configurado", async () => {
-    expect((await pedir("/api/eu", { email: null })).estado).toBe(401);
-  });
+function alteracao(id: string, mudar: (l: Local) => Local, versao = 1) {
+  const antes = local(id, id);
+  const depois = mudar(structuredClone(antes));
+  return {
+    tipo: "alteracao",
+    entidade: id,
+    locais: { [id]: { versao, dados: depois } },
+    resumo: resumirPedido([{ antes, depois }]),
+  };
+}
 
-  it("JWT inválido: 401", async () => {
-    const r = await tratarApiPainel(
-      new Request(`${ORIGEM}/api/eu`, { headers: { "cf-access-jwt-assertion": "a.b.c" } }),
-      env,
-      { agora: AGORA, obterChaves: access.obterChaves },
-    );
-    expect(r.status).toBe(401);
-  });
-
-  it("e-mail não registado: 403 sem_acesso; suspenso: 403", async () => {
-    expect((await pedir("/api/eu", { email: "desconhecido@exemplo.pt" })).corpo).toMatchObject({
-      erro: "sem_acesso",
-    });
-    expect((await pedir("/api/eu", { email: "suspenso@exemplo.pt" })).corpo).toMatchObject({
-      erro: "suspenso",
-    });
-  });
-
-  it("sem KV: 503", async () => {
-    delete env.KV;
-    expect((await pedir("/api/eu")).estado).toBe(503);
-  });
-
-  it("GET /api/eu", async () => {
-    const r = await pedir("/api/eu", { email: "NESPEREIRA@exemplo.pt" });
-    expect(r.estado).toBe(200);
-    expect(r.corpo).toEqual({
-      id: "c_bbbbbbbb",
-      nome: "Pessoa c_bbbbbbbb",
-      email: "nespereira@exemplo.pt",
-      funcao: "secretaria",
-      perfil: "entidade",
-      entidades: [{ id: "nespereira", nome: "Paróquia de Nespereira" }],
-    });
-    expect(r.resposta.headers.get("cache-control")).toBe("no-store");
-  });
-
-  it("rota desconhecida: 404", async () => {
-    expect((await pedir("/api/nada")).estado).toBe(404);
-  });
-});
-
-describe("âmbito por perfil (D25)", () => {
-  it("admin vê todas as entidades; entidade só as suas", async () => {
-    expect(((await pedir("/api/entidades")).corpo as unknown[]).length).toBe(2);
-    const deles = (await pedir("/api/entidades", { email: "nespereira@exemplo.pt" })).corpo as {
-      id: string;
-    }[];
-    expect(deles.map((e) => e.id)).toEqual(["nespereira"]);
-  });
-
-  it("contacto de Nespereira não lê Polvoreira (C20)", async () => {
-    const r = await pedir("/api/entidades/polvoreira", { email: "nespereira@exemplo.pt" });
-    expect(r.estado).toBe(403);
-    expect(r.corpo).toMatchObject({ erro: "ambito" });
-  });
-
-  it("sem GitHub App: lê do último build, sem SHA", async () => {
-    const r = await pedir("/api/entidades/nespereira", { email: "nespereira@exemplo.pt" });
-    expect(r.estado).toBe(200);
-    expect(r.corpo).toMatchObject({ origem: "site", sha: null, entidade: { id: "nespereira" } });
+describe("sessão e CSRF", () => {
+  it("sem sessão: 401; escrita de outra origem ou sem JSON: recusada", async () => {
+    expect((await pedir("/api/eu", { quem: null })).estado).toBe(401);
     expect(
-      (r.corpo as unknown as { locais: { local: { id: string } }[] }).locais[0]?.local.id,
-    ).toBe("nespereira");
-  });
-
-  it("id inválido: 400; entidade inexistente: 404", async () => {
-    expect((await pedir("/api/entidades/..%2Fsegredo")).estado).toBe(400);
-    expect((await pedir("/api/entidades/%E0%A4%A")).estado).toBe(400);
-    expect((await pedir("/api/entidades/nao-existe")).estado).toBe(404);
-  });
-});
-
-describe("acessos (P8)", () => {
-  it("só administradores", async () => {
-    expect((await pedir("/api/acessos", { email: "nespereira@exemplo.pt" })).estado).toBe(403);
-    expect(
-      (
-        await pedir("/api/acessos", {
-          email: "nespereira@exemplo.pt",
-          metodo: "POST",
-          corpo: novoContacto,
-        })
-      ).estado,
-    ).toBe(403);
-  });
-
-  it("escritas exigem a mesma origem e JSON (CSRF)", async () => {
-    expect(
-      (
-        await pedir("/api/acessos", {
-          metodo: "POST",
-          corpo: novoContacto,
-          origem: "https://mau.exemplo",
-        })
-      ).estado,
-    ).toBe(403);
-    expect(
-      (await pedir("/api/acessos", { metodo: "POST", corpo: novoContacto, origem: null })).estado,
-    ).toBe(403);
-    expect(
-      (await pedir("/api/acessos", { metodo: "POST", corpo: novoContacto, tipo: "text/plain" }))
+      (await pedir("/api/gravacoes", { metodo: "POST", corpo: {}, origem: "https://evil.example" }))
         .estado,
+    ).toBe(403);
+    expect(
+      (await pedir("/api/gravacoes", { metodo: "POST", corpo: {}, tipo: "text/plain" })).estado,
     ).toBe(415);
   });
 
-  it("cria um contacto, com índice por e-mail e auditoria sem dados pessoais", async () => {
-    const r = await pedir("/api/acessos", { metodo: "POST", corpo: novoContacto });
-    expect(r.estado).toBe(201);
-    const id = r.corpo.id as string;
-    expect(id).toMatch(/^c_[0-9a-f]{8}$/);
-    expect(await kv.get("email:oliveira@exemplo.pt")).toBe(id);
-    const auditoria = [...kv.dados.entries()].filter(([k]) => k.startsWith("auditoria:"));
-    expect(auditoria).toHaveLength(1);
-    expect(auditoria[0]?.[1]).toContain('"acao":"contacto.criar"');
-    expect(auditoria[0]?.[1]).not.toContain("oliveira@exemplo.pt");
-    // O novo contacto entra e só vê a sua entidade.
-    const deles = (await pedir("/api/entidades", { email: "oliveira@exemplo.pt" })).corpo as {
-      id: string;
-    }[];
-    expect(deles.map((e) => e.id)).toEqual(["polvoreira"]);
+  it("contacto suspenso deixa de ter sessão", async () => {
+    mem.base.prepare("UPDATE contactos SET estado = 'suspenso' WHERE id = 'c_bbbbbbbb'").run();
+    expect((await pedir("/api/eu")).estado).toBe(401);
   });
+});
 
-  it.each([
-    ["sem consentimento", { consentimento: undefined }, "consentimento"],
-    [
-      "consentimento no futuro",
-      { consentimento: { em: "2026-12-01", versao: "v1", meio: "papel" } },
-      "consentimento",
-    ],
-    ["entidade inexistente", { entidades: ["inventada"] }, "entidades"],
-    ["perfil entidade sem entidades", { entidades: [] }, "entidades"],
-    ["e-mail inválido", { email: "x" }, "email"],
-    ["perfil desconhecido", { perfil: "dono" }, "perfil"],
-  ])("recusa: %s", async (_caso, mudanca, codigo) => {
-    const r = await pedir("/api/acessos", {
-      metodo: "POST",
-      corpo: { ...novoContacto, ...mudanca },
+describe("leitura e âmbito", () => {
+  it("/api/eu e /api/entidades: um contacto vê só as suas; o admin vê todas", async () => {
+    expect((await pedir("/api/eu")).corpo).toMatchObject({
+      id: "c_bbbbbbbb",
+      perfil: "entidade",
+      entidades: [{ id: "nespereira", nome: "Paróquia de nespereira" }],
     });
-    expect(r.estado).toBe(400);
-    expect(r.corpo).toMatchObject({ erro: codigo });
+    expect(((await pedir("/api/entidades")).corpo as { id: string }[]).map((e) => e.id)).toEqual([
+      "nespereira",
+    ]);
+    expect(
+      ((await pedir("/api/entidades", { quem: "admin" })).corpo as { id: string }[]).map(
+        (e) => e.id,
+      ),
+    ).toEqual(["nespereira", "polvoreira"]);
   });
 
-  it("e-mail já usado por outro contacto: 409", async () => {
-    const r = await pedir("/api/acessos", {
-      metodo: "POST",
-      corpo: { ...novoContacto, email: "nespereira@exemplo.pt" },
+  it("/api/entidades/:id: estado com versões; fora do âmbito 403; id inválido 400", async () => {
+    expect((await pedir("/api/entidades/nespereira")).corpo).toMatchObject({
+      entidade: { id: "nespereira" },
+      versao: 1,
+      locais: [{ local: { id: "nespereira" }, versao: 1 }],
     });
-    expect(r.estado).toBe(409);
+    expect((await pedir("/api/entidades/polvoreira")).estado).toBe(403);
+    expect((await pedir("/api/entidades/Nesp%2e")).estado).toBe(400);
+    expect((await pedir("/api/entidades/nao-existe", { quem: "admin" })).estado).toBe(404);
+  });
+});
+
+describe("gravações", () => {
+  it("alteração grava logo, com versão nova e histórico", async () => {
+    const r = await gravarCorpo(
+      alteracao("nespereira", (l) => ({ ...l, dias_santos: "horario_domingo" })),
+    );
+    expect(r).toMatchObject({ estado: 200, corpo: { ok: true, estado: "GRAVADO", gravacao: 3 } });
+    expect((await pedir("/api/entidades/nespereira")).corpo).toMatchObject({
+      locais: [{ versao: 2, local: { dias_santos: "horario_domingo" } }],
+    });
+    const historico = (await pedir("/api/entidades/nespereira/historico")).corpo as Record<
+      string,
+      unknown
+    >[];
+    expect(historico[0]).toMatchObject({
+      id: 3,
+      acao: "alteracao",
+      contacto: { ref: "c_bbbbbbbb", funcao: "secretaria", nome: "Pessoa c_bbbbbbbb" },
+    });
+    expect(historico[1]).toMatchObject({ acao: "importacao", contacto: null });
   });
 
-  it("lista, edita e suspende; mudar o e-mail move o índice", async () => {
-    const lista = (await pedir("/api/acessos")).corpo as { id: string }[];
-    expect(lista.map((c) => c.id).sort()).toEqual(["c_aaaaaaaa", "c_bbbbbbbb", "c_cccccccc"]);
-    const r = await pedir("/api/acessos/c_bbbbbbbb", {
-      metodo: "PUT",
-      corpo: {
-        ...novoContacto,
-        email: "novo@exemplo.pt",
-        estado: "suspenso",
-        entidades: ["nespereira"],
-      },
+  it("CONFLITO (409) com versão desatualizada; nada é gravado", async () => {
+    await gravarCorpo(alteracao("nespereira", (l) => ({ ...l, dias_santos: "horario_domingo" })));
+    const r = await gravarCorpo(
+      alteracao("nespereira", (l) => ({ ...l, dias_santos: "horario_proprio" })),
+    );
+    expect(r).toMatchObject({ estado: 409, corpo: { erro: "conflito" } });
+    expect((await pedir("/api/entidades/nespereira/historico")).corpo).toHaveLength(2);
+  });
+
+  it("fora do âmbito (403), campos proibidos e dados inválidos (422), alertas (428)", async () => {
+    expect((await gravarCorpo(alteracao("polvoreira", (l) => l))).estado).toBe(403);
+    expect(
+      (await gravarCorpo(alteracao("nespereira", (l) => ({ ...l, nome: "Outro" })))).corpo,
+    ).toMatchObject({ erro: "invalido", motivo: expect.stringMatching(/campos não permitidos/) });
+    const semHorarios = alteracao("nespereira", (l) => ({ ...l, horarios: [] }));
+    expect(await gravarCorpo(semHorarios)).toMatchObject({
+      estado: 428,
+      corpo: { erro: "confirmar_alertas" },
+    });
+    expect((await gravarCorpo({ ...semHorarios, confirmar_alertas: true })).estado).toBe(200);
+  });
+
+  it("confirmação: confirmado_em de Lisboa e confirmado_por com o id opaco", async () => {
+    const antes = local("nespereira", "nespereira");
+    const r = await gravarCorpo({
+      tipo: "confirmacao",
+      entidade: "nespereira",
+      base: { nespereira: 1 },
+      resumo: resumirPedido([{ antes, depois: { ...antes, confirmado_em: "2026-11-16" } }]),
     });
     expect(r.estado).toBe(200);
-    expect(await kv.get("email:nespereira@exemplo.pt")).toBeNull();
-    expect(await kv.get("email:novo@exemplo.pt")).toBe("c_bbbbbbbb");
-    expect((await pedir("/api/eu", { email: "novo@exemplo.pt" })).corpo).toMatchObject({
-      erro: "suspenso",
-    });
-    expect([...kv.dados.values()].some((v) => v.includes('"acao":"contacto.suspenso"'))).toBe(true);
-  });
-
-  it("ninguém se tira de admin a si próprio; fica sempre um admin", async () => {
-    const proprio = await pedir("/api/acessos/c_aaaaaaaa", {
-      metodo: "PUT",
-      corpo: {
-        ...novoContacto,
-        email: "admin@exemplo.pt",
-        perfil: "entidade",
-        entidades: ["nespereira"],
-      },
-    });
-    expect(proprio.corpo).toMatchObject({ erro: "proprio" });
-    // Um segundo admin tenta suspender o primeiro, que é o único além dele: permitido; e depois o inverso, não.
-    await registar(contacto("c_dddddddd", "admin2@exemplo.pt", { perfil: "admin", entidades: [] }));
-    const suspender = await pedir("/api/acessos/c_aaaaaaaa", {
-      email: "admin2@exemplo.pt",
-      metodo: "PUT",
-      corpo: {
-        ...novoContacto,
-        email: "admin@exemplo.pt",
-        perfil: "admin",
-        entidades: [],
-        estado: "suspenso",
-      },
-    });
-    expect(suspender.estado).toBe(200);
-  });
-
-  it("um admin suspenso não entra", async () => {
-    await registar(
-      contacto("c_eeeeeeee", "velho@exemplo.pt", {
-        perfil: "admin",
-        estado: "suspenso",
-        entidades: [],
-      }),
-    );
-    expect((await pedir("/api/eu", { email: "velho@exemplo.pt" })).estado).toBe(403);
-  });
-
-  it("contacto inexistente, id inválido, corpo inválido e método", async () => {
-    expect(
-      (await pedir("/api/acessos/c_00000000", { metodo: "PUT", corpo: novoContacto })).estado,
-    ).toBe(404);
-    expect((await pedir("/api/acessos/xyz", { metodo: "PUT", corpo: novoContacto })).estado).toBe(
-      400,
-    );
-    expect((await pedir("/api/acessos/c_bbbbbbbb", { metodo: "DELETE", corpo: {} })).estado).toBe(
-      405,
-    );
-    const r = await tratarApiPainel(
-      new Request(`${ORIGEM}/api/acessos`, {
-        method: "POST",
-        headers: {
-          "cf-access-jwt-assertion": await access.token("admin@exemplo.pt", AGORA),
-          origin: ORIGEM,
-          "content-type": "application/json",
+    expect((await pedir("/api/entidades/nespereira")).corpo).toMatchObject({
+      locais: [
+        {
+          local: {
+            confirmado_em: "2026-11-16",
+            confirmado_por: { canal: "painel", ref: "c_bbbbbbbb" },
+          },
         },
-        body: "{nao json",
-      }),
-      env,
-      { agora: AGORA, obterChaves: access.obterChaves },
+      ],
+    });
+    expect(
+      (await gravarCorpo({ tipo: "confirmacao", entidade: "nespereira", base: {}, resumo: [] }))
+        .corpo,
+    ).toMatchObject({
+      estado: "sem_alteracoes",
+    });
+  });
+
+  it("restauro: só admin; repõe o estado de uma gravação anterior como gravação nova", async () => {
+    await gravarCorpo(alteracao("nespereira", (l) => ({ ...l, dias_santos: "horario_domingo" })));
+    const versao = (await pedir("/api/entidades/nespereira/gravacoes/1", { quem: "admin" }))
+      .corpo as unknown as {
+      locais: { local: Local }[];
+    };
+    expect(versao.locais[0]?.local.dias_santos).toBeNull();
+    const atual = local("nespereira", "nespereira");
+    const corpo = {
+      tipo: "restauro",
+      entidade: "nespereira",
+      restaura: 1,
+      base: { entidade: 1, locais: { nespereira: 2 } },
+      resumo: resumirPedido([
+        { antes: { ...atual, dias_santos: "horario_domingo" }, depois: atual },
+      ]),
+    };
+    expect((await gravarCorpo(corpo)).estado).toBe(403);
+    expect((await gravarCorpo(corpo, "admin")).corpo).toMatchObject({ estado: "GRAVADO" });
+    expect((await pedir("/api/entidades/nespereira")).corpo).toMatchObject({
+      locais: [{ versao: 3, local: { dias_santos: null } }],
+    });
+    expect((await gravarCorpo({ ...corpo, restaura: 2 }, "admin")).estado).toBe(404);
+  });
+
+  it("corpo inválido (400) e grande demais (413)", async () => {
+    expect((await gravarCorpo({ tipo: "apagar", entidade: "nespereira" })).corpo).toMatchObject({
+      erro: "pedido",
+    });
+    expect(
+      (await gravarCorpo({ tipo: "confirmacao", entidade: "nespereira", x: "y".repeat(70_000) }))
+        .estado,
+    ).toBe(413);
+  });
+});
+
+describe("histórico", () => {
+  it("um contacto não vê o nome de outras pessoas; o admin vê", async () => {
+    const antes = local("nespereira", "nespereira");
+    await gravarCorpo(
+      {
+        tipo: "confirmacao",
+        entidade: "nespereira",
+        base: {},
+        resumo: resumirPedido([{ antes, depois: { ...antes, confirmado_em: "2026-11-16" } }]),
+      },
+      "admin",
     );
-    expect(r.status).toBe(400);
+    const doContacto = (await pedir("/api/entidades/nespereira/historico")).corpo as {
+      contacto: Record<string, unknown>;
+    }[];
+    expect(doContacto[0]?.contacto).toEqual({ ref: "c_aaaaaaaa", funcao: "equipa" });
+    const doAdmin = (await pedir("/api/entidades/nespereira/historico", { quem: "admin" }))
+      .corpo as { contacto: Record<string, unknown> }[];
+    expect(doAdmin[0]?.contacto).toMatchObject({ nome: "Pessoa c_aaaaaaaa" });
+  });
+});
+
+describe("acessos", () => {
+  const novo = {
+    nome: "Secretaria da Oliveira",
+    email: "Oliveira@Gmail.com",
+    funcao: "secretaria",
+    perfil: "entidade",
+    entidades: ["nespereira"],
+    estado: "ativo",
+    consentimento: { em: "2026-11-10", versao: "v1", meio: "papel" },
+  };
+
+  it("só admin; cria com e-mail em minúsculas; recusa e-mail repetido", async () => {
+    expect((await pedir("/api/acessos")).estado).toBe(403);
+    const r = await pedir("/api/acessos", { quem: "admin", metodo: "POST", corpo: novo });
+    expect(r).toMatchObject({
+      estado: 201,
+      corpo: { email: "oliveira@gmail.com", entidades: ["nespereira"] },
+    });
+    expect(
+      (await pedir("/api/acessos", { quem: "admin", metodo: "POST", corpo: novo })).estado,
+    ).toBe(409);
+    expect(((await pedir("/api/acessos", { quem: "admin" })).corpo as unknown[]).length).toBe(3);
+  });
+
+  it("suspender termina as sessões; ninguém se tira a si próprio; fica sempre um admin", async () => {
+    const suspenso = { ...novo, email: "nespereira@gmail.com", estado: "suspenso" };
+    expect(
+      (await pedir("/api/acessos/c_bbbbbbbb", { quem: "admin", metodo: "PUT", corpo: suspenso }))
+        .estado,
+    ).toBe(200);
+    const sessao = new Request(ORIGEM, { headers: { cookie: cookies.nespereira ?? "" } });
+    expect(await lerSessao(bd, sessao, AGORA)).toBeNull();
+    const eu = { ...novo, email: "admin@gmail.com", perfil: "entidade" };
+    expect(
+      (await pedir("/api/acessos/c_aaaaaaaa", { quem: "admin", metodo: "PUT", corpo: eu })).corpo,
+    ).toMatchObject({ erro: "proprio" });
+    expect(
+      (await pedir("/api/acessos/c_zzzzzzzz", { quem: "admin", metodo: "PUT", corpo: novo }))
+        .estado,
+    ).toBe(400);
   });
 });

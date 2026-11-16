@@ -2,19 +2,20 @@
   "name": "@missas/worker",
   "version": "0.0.0",
   "private": true,
-  "description": "Cloudflare Worker: serve o site (static assets), a API e os crons",
+  "description": "Lógica do servidor (API, login Google, D1), usada pelo Worker do site (ADR-005)",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20261108.1",
-    "typescript": "6.0.3",
-    "wrangler": "4.158.0"
+    "typescript": "6.0.3"
   },
   "dependencies": {
-    "@missas/dados": "0.0.0"
+    "@missas/dados": "0.0.0",
+    "@missas/horarios": "0.0.0"
+  },
+  "exports": {
+    ".": "./src/index.ts"
   }
 }

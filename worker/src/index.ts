@@ -1,61 +1,38 @@
 /**
- * Worker do projeto (§9.2): serve o site e o painel, protege a homologação da indexação (D26),
- * recebe os relatos do público (E2.9) e responde à API do painel (E3). Os crons entram no E6.
+ * Rotas próprias do Worker (ADR-005). O ponto de entrada (`site/src/worker.ts`) chama
+ * `tratarRotas` e, se devolver `null`, entrega o pedido ao Astro (as páginas).
+ *
+ *   /robots.txt (homologação)   tudo bloqueado (D26)
+ *   /api/saude                  estado
+ *   /relato (e /api/relato)     relatos do público (Turnstile)
+ *   /auth/*                     login Google
+ *   /api/*                      API do painel (sessão)
  */
 import { tratarApiPainel, type EnvPainel } from "./api/painel.ts";
-import { tratarEstadoInterno } from "./pedidos.ts";
+import { tratarAuth, type EnvGoogle } from "./google.ts";
 import { tratarRelato, type EnvRelato } from "./relato.ts";
 
-export interface Env extends EnvRelato, EnvPainel {
-  ASSETS: { fetch(pedido: Request): Promise<Response> };
+export interface Env extends EnvRelato, EnvPainel, EnvGoogle {
   AMBIENTE: "homologacao" | "producao";
 }
 
 const ROBOTS_BLOQUEADO = "User-agent: *\nDisallow: /\n";
 
-export default {
-  async fetch(pedido: Request, env: Env): Promise<Response> {
-    const url = new URL(pedido.url);
-    const homologacao = env.AMBIENTE !== "producao";
+export async function tratarRotas(pedido: Request, env: Env): Promise<Response | null> {
+  const { pathname } = new URL(pedido.url);
+  if (env.AMBIENTE !== "producao" && pathname === "/robots.txt")
+    return new Response(ROBOTS_BLOQUEADO, {
+      headers: { "content-type": "text/plain; charset=utf-8" },
+    });
+  if (pathname === "/api/saude") return Response.json({ ok: true, ambiente: env.AMBIENTE });
+  if (pathname === "/relato" || pathname === "/api/relato") return tratarRelato(pedido, env);
+  if (pathname.startsWith("/auth/")) return tratarAuth(pedido, env);
+  if (pathname.startsWith("/api/")) return tratarApiPainel(pedido, env);
+  return null;
+}
 
-    if (homologacao && url.pathname === "/robots.txt") {
-      return semIndexacao(
-        new Response(ROBOTS_BLOQUEADO, {
-          headers: { "content-type": "text/plain; charset=utf-8" },
-        }),
-      );
-    }
-
-    if (url.pathname === "/api/saude") {
-      const resposta = Response.json({ ok: true, ambiente: env.AMBIENTE });
-      return homologacao ? semIndexacao(resposta) : resposta;
-    }
-
-    // Fora de /api/: a parte pública não passa pelo Access (só /admin/* e /api/* passam).
-    // `/api/relato` fica por compatibilidade com páginas ainda em cache.
-    if (url.pathname === "/relato" || url.pathname === "/api/relato") {
-      const resposta = await tratarRelato(pedido, env);
-      return homologacao ? semIndexacao(resposta) : resposta;
-    }
-
-    // Do GitHub Actions: autenticado só pela assinatura AVISO_HMAC (sem Access nem contacto).
-    if (url.pathname === "/api/interno/estado") {
-      const resposta = await tratarEstadoInterno(pedido, env);
-      return homologacao ? semIndexacao(resposta) : resposta;
-    }
-
-    if (url.pathname.startsWith("/api/")) {
-      const resposta = await tratarApiPainel(pedido, env);
-      return homologacao ? semIndexacao(resposta) : resposta;
-    }
-
-    const resposta = await env.ASSETS.fetch(pedido);
-    return homologacao ? semIndexacao(resposta) : resposta;
-  },
-};
-
-/** Acrescenta `X-Robots-Tag: noindex` sem alterar o resto da resposta. */
-function semIndexacao(resposta: Response): Response {
+/** Na homologação, nada é indexado: `X-Robots-Tag` em todas as respostas (D26). */
+export function semIndexacao(resposta: Response): Response {
   const nova = new Response(resposta.body, resposta);
   nova.headers.set("X-Robots-Tag", "noindex, nofollow");
   return nova;

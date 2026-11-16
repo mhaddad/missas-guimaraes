@@ -189,7 +189,7 @@ export function lerPedidoGravacao(valor: unknown): PedidoGravacao | string {
   const locaisBase = lerVersoes(b.locais ?? {});
   if (!locaisBase) return "base";
   return {
-    tipo,
+    tipo: "restauro",
     entidade,
     restaura: valor.restaura as number,
     base: { entidade: b.entidade, locais: locaisBase },
