@@ -1,6 +1,6 @@
 # ADR-005 — Dados, login e deploy só na Cloudflare
 
-- **Estado:** proposto (a aprovar pelo Matheus)
+- **Estado:** aceite (16/11/2026)
 - **Data:** 2026-11-16
 - **Substitui:** ADR-004 (gravação no GitHub) e parte do ADR-003 (Cloudflare Access)
 
@@ -26,10 +26,12 @@ Os locais e as entidades ficam guardados como **documento JSON com o esquema atu
 |---|---|
 | `entidades` | `id`, `dados` (JSON), `versao`, `atualizado_em` |
 | `locais` | `id`, `entidade_id`, `dados` (JSON), `versao`, `atualizado_em`, `atualizado_por` |
-| `versoes` | Só cresce, nunca se apaga: `id`, `tipo` (`local`/`entidade`), `registo_id`, `versao`, `dados`, `acao` (`importacao`, `confirmacao`, `alteracao`, `novo-local`, `restauro`), `resumo` (linhas do motor), `contacto_id`, `criado_em` |
+| `gravacoes` | Só cresce, nunca se apaga: uma por gravação (o equivalente a um commit). `id`, `entidade_id`, `acao` (`importacao`, `confirmacao`, `alteracao`, `novo-local`, `restauro`), `resumo` (linhas do motor), `alertas`, `contacto_id`, `restaura`, `criado_em` |
+| `versoes` | Só cresce, nunca se apaga: o estado de cada registo depois de cada gravação. `gravacao_id`, `tipo` (`local`/`entidade`), `registo_id`, `versao`, `dados` |
 | `contactos` | `id` opaco, `nome`, `email` (único, minúsculas), `funcao`, `perfil` (`admin`/`entidade`), `estado`, `consentimento` (JSON), datas |
 | `contacto_entidades` | `contacto_id`, `entidade_id` |
 | `sessoes` | `id` (*hash* SHA-256 do valor do cookie), `contacto_id`, `criada_em`, `expira_em` |
+| `entradas` | Login em curso, durante 10 minutos: `estado` (OAuth), verificador PKCE, `nonce`, página de regresso |
 | `auditoria` | Ações dos administradores sobre contactos (2 anos) |
 | `relatos` | Relatos do público (§6.7), sem IP |
 | `config` | `versao_dados`, um contador que muda a cada gravação e serve para a cache do site |
@@ -37,12 +39,12 @@ Os locais e as entidades ficam guardados como **documento JSON com o esquema atu
 **Gravação.** Cada gravação é uma única transação (`batch` do D1):
 
 1. `UPDATE locais … WHERE id = ? AND versao = ?`. Se nenhuma linha mudar, alguém gravou entretanto: é **conflito**, como hoje com o SHA.
-2. `INSERT` em `versoes`.
+2. `INSERT` em `gravacoes` e em `versoes`. *Triggers* do SQLite recusam qualquer `UPDATE` ou `DELETE` nestas duas tabelas.
 3. Incremento de `config.versao_dados`.
 
 As guardas de âmbito e de campos do `aplicar.ts` (ADR-004) mantêm-se: a confirmação só mexe em `confirmado_*`, uma alteração só nos campos permitidos, o restauro é só para `admin` e tem de ser igual a uma versão guardada. O mesmo para a validação completa. Tudo isto corre no Worker antes do `batch`.
 
-**Histórico e restauro.** Passam a vir da tabela `versoes`, com data, quem gravou, resumo e o *diff* entre versões. Restaurar é gravar de novo os `dados` de uma versão anterior, como uma versão nova: nada se apaga. O *Time Travel* do D1 (7 dias) cobre erros que estraguem várias tabelas de uma vez.
+**Histórico e restauro.** Passam a vir das tabelas `gravacoes` e `versoes`, com data, quem gravou, resumo e o *diff* entre versões. Restaurar uma gravação é repor cada registo da entidade no estado que tinha depois dela, como uma gravação nova: nada se apaga. O conteúdo vem do próprio D1; o painel só indica qual gravação. O *Time Travel* do D1 (7 dias) cobre erros que estraguem várias tabelas de uma vez.
 
 ### 2. Login Google feito pelo Worker, sem Cloudflare Access
 
@@ -112,7 +114,9 @@ Os dados públicos dos horários continuam acessíveis em `/dados/horarios.json`
 
 A cópia de segurança é feita pela tabela `versoes` (histórico completo), pelo *Time Travel* do D1 (7 dias) e por uma exportação semanal (`wrangler d1 export`), feita à mão por um administrador enquanto não houver R2 (E7.5).
 
-**Os dados deixam de estar no repositório.** O histórico do Git até agora fica como arquivo.
+**Os dados deixam de estar no repositório.** O histórico do Git até agora fica como arquivo. O `dados/calendario.yml` (regras dos dias santos) e os esquemas ficam no repositório: são configuração do motor, não dados das paróquias.
+
+O Workers KV deixa de ser usado: contactos e relatos passam para o D1.
 
 ## Migração (PRs pequenos, sem parar a homologação)
 
