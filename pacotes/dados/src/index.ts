@@ -11,29 +11,16 @@ export {
 } from "./serializar.ts";
 export { ErroLeitura, lerCalendario, lerEntidade, lerLocal } from "./ler.ts";
 export {
-  assinar,
-  codificarPedido,
-  descodificarPedido,
-  lerPedido,
-  novoIdPedido,
-  pedidoDentroDoPrazo,
-  shaBlob,
-  verificarAssinatura,
-  PADRAO_CAMINHO,
-  PADRAO_ID_PEDIDO,
-  VALIDADE_PEDIDO_MS,
-  type CanalPedido,
-  type FuncaoContacto,
-  type Pedido,
-  type ResumoLocal,
-  type TipoPedido,
-} from "./pedido.ts";
-export {
-  caminhoEntidade,
-  caminhoLocal,
-  prepararPedido,
+  lerPedidoGravacao,
+  prepararGravacao,
   CAMPOS_ALTERACAO,
-  type OpcoesPedido,
-  type ResultadoPedido,
-} from "./aplicar.ts";
-export { alertasDeAnomalia, resumirPedido, type ParLocal } from "./resumo.ts";
+  PADRAO_ID,
+  type CanalGravacao,
+  type EstadoEntidade,
+  type OpcoesGravacao,
+  type PedidoGravacao,
+  type Registo,
+  type ResultadoGravacao,
+  type TipoGravacao,
+} from "./gravacao.ts";
+export { alertasDeAnomalia, resumirPedido, umaLinha, type ParLocal, type ResumoLocal } from "./resumo.ts";
