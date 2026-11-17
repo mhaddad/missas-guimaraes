@@ -182,5 +182,8 @@
   "fotoEmBreve": "Fotografia da igreja em breve",
   "fotoCredito": "Fotografia: {credito}",
   "vazioParoquia": "Não há celebrações registadas para este dia.",
-  "semMaisHojeParoquia": "Já não há mais celebrações hoje nesta paróquia."
+  "semMaisHojeParoquia": "Já não há mais celebrações hoje nesta paróquia.",
+  "pesquisaParoquiasRotulo": "Pesquisar paróquias",
+  "pesquisaParoquiasExemplo": "Nome da paróquia ou localidade",
+  "nenhumaParoquia": "Nenhuma paróquia corresponde à pesquisa."
 }
