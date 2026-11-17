@@ -63,7 +63,7 @@ const schema31 = {
       properties: {
         url: {
           type: "string",
-          pattern: "^(https://[^\\s\"'<>]+|/[^/\\s\"'<>][^\\s\"'<>]*)$",
+          pattern: "^(https://[^\\s\"'<>\\\\]+|/[^/\\\\\\s\"'<>][^\\s\"'<>\\\\]*)$",
           description: "Endereço https da imagem, ou caminho no próprio site.",
         },
         alt: {
@@ -181,7 +181,7 @@ const func1 = Object.prototype.hasOwnProperty;
 const func2 = func2_modulo.default ?? func2_modulo;
 const pattern4 = new RegExp("^[a-z0-9]+(-[a-z0-9]+)*$", "u");
 const pattern6 = new RegExp("^\\d{4}(-\\d{3})?$", "u");
-const pattern7 = new RegExp("^(https://[^\\s\"'<>]+|/[^/\\s\"'<>][^\\s\"'<>]*)$", "u");
+const pattern7 = new RegExp("^(https://[^\\s\"'<>\\\\]+|/[^/\\\\\\s\"'<>][^\\s\"'<>\\\\]*)$", "u");
 const pattern10 = new RegExp("^\\d{4}-\\d{2}-\\d{2}$", "u");
 const pattern18 = new RegExp("^c_[0-9a-f]{4,32}$", "u");
 const schema34 = {
@@ -2130,10 +2130,12 @@ function validate20(
                 instancePath: instancePath + "/foto/url",
                 schemaPath: "#/properties/foto/properties/url/pattern",
                 keyword: "pattern",
-                params: { pattern: "^(https://[^\\s\"'<>]+|/[^/\\s\"'<>][^\\s\"'<>]*)$" },
+                params: {
+                  pattern: "^(https://[^\\s\"'<>\\\\]+|/[^/\\\\\\s\"'<>][^\\s\"'<>\\\\]*)$",
+                },
                 message:
                   'must match pattern "' +
-                  "^(https://[^\\s\"'<>]+|/[^/\\s\"'<>][^\\s\"'<>]*)$" +
+                  "^(https://[^\\s\"'<>\\\\]+|/[^/\\\\\\s\"'<>][^\\s\"'<>\\\\]*)$" +
                   '"',
               };
               if (vErrors === null) {

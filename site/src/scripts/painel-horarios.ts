@@ -1,7 +1,7 @@
 /**
  * E-1 — Página de uma paróquia no painel (§7.3): cabeçalho com *Está tudo certo* (P1), novo
  * horário e nova exceção; indicadores; horários habituais de cada local (editar e apagar, P2);
- * exceções próximas (P3); dias santos (P4); locais; histórico (E-6) com *Restaurar esta versão*
+ * exceções próximas (P3); imagem de capa; dias santos (P4); locais; histórico (E-6) com *Restaurar esta versão*
  * para administradores (§8.8). A entidade vem da página (`data-entidade`), já autorizada.
  */
 import { alertasDeAnomalia, resumirPedido, type ParLocal } from "@missas/dados/resumo";
@@ -21,6 +21,7 @@ import { descreverExcecao } from "../lib/detalhe.ts";
 import { ACOES, formatarData, formatarDataHora, haQuanto } from "../lib/painel.ts";
 import { selo } from "../lib/portal.ts";
 import { classeSelo, textoSelo } from "../lib/selo.ts";
+import { abrirCapa, abrirRetirarCapa } from "./painel-capa.ts";
 import { api, ErroApi, h, icone, mostrarErro } from "./painel-comum.ts";
 import { abrirDiasSantos } from "./painel-dias-santos.ts";
 import { abrirEditor, type OpcoesEditor } from "./painel-editar.ts";
@@ -172,6 +173,24 @@ async function editarDiasSantos(
   await gravarAlteracao(
     estado,
     await abrirDiasSantos({ dialogo: dialogoEditor, locais: estado.locais, indiceLocal }),
+    botao,
+  );
+}
+
+/** Imagem de capa: escolher, trocar ou retirar (na igreja principal). */
+async function editarCapa(
+  estado: EstadoEntidade,
+  indiceLocal: number,
+  retirar: boolean,
+  botao: HTMLButtonElement,
+): Promise<void> {
+  const escolhido = estado.locais[indiceLocal];
+  if (!escolhido) return;
+  await gravarAlteracao(
+    estado,
+    retirar
+      ? await abrirRetirarCapa({ dialogo: dialogoEditor, escolhido })
+      : await abrirCapa({ dialogo: dialogoEditor, entidade: estado.entidade.id, escolhido }),
     botao,
   );
 }
@@ -653,6 +672,68 @@ function cartaoExcecoes(estado: EstadoEntidade, hoje: string): HTMLElement {
   );
 }
 
+/** A imagem do topo da página pública: a da igreja principal (o primeiro local publicado). */
+function cartaoCapa(estado: EstadoEntidade): HTMLElement {
+  const indice = Math.max(
+    0,
+    estado.locais.findIndex(({ local }) => local.publicar),
+  );
+  const local = estado.locais[indice]?.local;
+  const foto = local?.foto ?? null;
+  const alterar = h(
+    "button",
+    { type: "button", class: foto ? "botao-secundario" : "botao-primario" },
+    icone(foto ? "image" : "add_photo_alternate"),
+    foto ? "Alterar imagem" : "Escolher imagem",
+  );
+  alterar.addEventListener("click", () => void editarCapa(estado, indice, false, alterar));
+  const retirar =
+    foto &&
+    botaoIcone(
+      "hide_image",
+      "Retirar a imagem de capa",
+      (b) => void editarCapa(estado, indice, true, b),
+      true,
+    );
+  return cartao("Imagem de capa", [
+    h(
+      "div",
+      { class: "grid gap-3 px-4 py-4 md:px-5" },
+      foto
+        ? h(
+            "figure",
+            { class: "grid gap-1" },
+            h("img", {
+              src: foto.url,
+              alt: foto.alt ?? local?.nome ?? "",
+              class: "aspect-[16/9] w-full rounded-cartao bg-slate-100 object-cover",
+              loading: "lazy",
+            }),
+            foto.credito &&
+              h(
+                "figcaption",
+                { class: "text-sm text-texto-secundario" },
+                `Fotografia: ${foto.credito}`,
+              ),
+          )
+        : h(
+            "div",
+            {
+              class:
+                "flex aspect-[16/9] w-full flex-col items-center justify-center gap-1 rounded-cartao border border-dashed border-slate-300 bg-superficie px-4 text-center text-texto-secundario",
+            },
+            icone("image", "size-8"),
+            h("span", {}, "Ainda sem imagem de capa."),
+            h("span", { class: "text-sm" }, "O site mostra uma imagem provisória."),
+          ),
+      h("div", { class: "flex items-center gap-2" }, alterar, retirar),
+      estado.locais.length > 1 &&
+        local &&
+        h("p", { class: "text-sm text-texto-secundario" }, `Fotografia de: ${local.nome}.`),
+    ),
+  ]);
+}
+
 function cartaoDiasSantos(estado: EstadoEntidade): HTMLElement {
   const varios = estado.locais.length > 1;
   return cartao("Dias santos de preceito", [
@@ -939,6 +1020,7 @@ async function mostrarEntidade(id: string): Promise<void> {
           h(
             "div",
             { class: "grid gap-6" },
+            cartaoCapa(estado),
             cartaoExcecoes(estado, hoje),
             cartaoDiasSantos(estado),
             cartaoLocais(estado),

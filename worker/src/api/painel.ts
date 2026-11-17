@@ -7,11 +7,13 @@
  *   GET  /api/entidades/:id                  estado atual, com a versão de cada registo
  *   GET  /api/entidades/:id/historico        gravações (data, quem, resumo)
  *   GET  /api/entidades/:id/gravacoes/:g     estado da entidade depois dessa gravação
+ *   POST /api/entidades/:id/fotos            envio de uma imagem de capa (R2, `fotos.ts`)
  *   POST /api/gravacoes                      confirmação, alteração, novo local ou restauro
  *   GET/POST /api/acessos · PUT /api/acessos/:id   só administradores
  *
  * Em todos os pedidos: sessão válida (cookie) e contacto ativo; âmbito (`podeVer`). Nas
- * escritas: mesma origem e `application/json` (contra CSRF), corpo limitado. Sem cache.
+ * escritas: mesma origem e `application/json` (contra CSRF; no envio de imagens, `image/webp` ou
+ * `image/jpeg`, que também pedem *preflight*), corpo limitado. Sem cache.
  */
 import { lerCalendario, lerPedidoGravacao, prepararGravacao, PADRAO_ID } from "@missas/dados";
 import type { Calendario, Entidade, Local } from "@missas/horarios";
@@ -35,9 +37,10 @@ import {
   validarDadosContacto,
   type Contacto,
 } from "../contactos.ts";
+import { extensaoDoTipo, guardarFoto, lerFotoEnviada, type EnvFotos } from "../fotos.ts";
 import { lerSessao } from "../sessao.ts";
 
-export interface EnvPainel {
+export interface EnvPainel extends EnvFotos {
   BD?: D1Database;
   /** Limite de gravações por contacto (Workers Rate Limiting). */
   LIMITE_PAINEL?: RateLimit;
@@ -295,17 +298,22 @@ export async function tratarApiPainel(
 ): Promise<Response> {
   const url = new URL(pedido.url);
   const metodo = pedido.method;
+  const caminho = url.pathname.replace(/\/+$/, "");
+  const mFotos = /^\/api\/entidades\/([^/]+)\/fotos$/.exec(caminho);
   if (metodo !== "GET" && metodo !== "HEAD") {
     if (pedido.headers.get("origin") !== url.origin) return erro(403, "origem");
-    if (!(pedido.headers.get("content-type") ?? "").startsWith("application/json"))
-      return erro(415, "tipo");
+    const tipo = pedido.headers.get("content-type");
+    const aceite =
+      mFotos && metodo === "POST"
+        ? extensaoDoTipo(tipo) !== null
+        : (tipo ?? "").startsWith("application/json");
+    if (!aceite) return erro(415, "tipo");
   }
   if (!env.BD) return erro(503, "indisponivel");
   const bd = env.BD;
   const agora = deps.agora ?? new Date();
   const eu = await lerSessao(bd, pedido, agora);
   if (!eu) return erro(401, "sem_sessao");
-  const caminho = url.pathname.replace(/\/+$/, "");
 
   if (metodo === "GET" && (caminho === "/api/eu" || caminho === "/api/entidades")) {
     const { entidades } = await lerTudo(bd);
@@ -353,6 +361,26 @@ export async function tratarApiPainel(
         .filter((r) => r !== undefined)
         .map((r) => ({ local: r.dados, versao: r.versao })),
     });
+  }
+
+  if (mFotos && metodo === "POST") {
+    const id = mFotos[1] ?? "";
+    if (!PADRAO_ID.test(id)) return erro(400, "id");
+    if (!podeVer(eu, id)) return erro(403, "ambito");
+    if (!env.FOTOS) return erro(503, "indisponivel");
+    if (!(await lerEstado(bd, id))) return erro(404, "entidade");
+    if (env.LIMITE_PAINEL && !(await env.LIMITE_PAINEL.limit({ key: eu.id })).success)
+      return erro(429, "limite");
+    const foto = await lerFotoEnviada(pedido);
+    if (foto === "tamanho") return erro(413, "tamanho");
+    if (foto === "tipo") return erro(415, "tipo");
+    if (foto === "corpo") return erro(400, "corpo");
+    const caminhoFoto = await guardarFoto(env.FOTOS, foto, {
+      entidade: id,
+      contacto: eu.id,
+      agora,
+    });
+    return json({ ok: true, url: caminhoFoto }, 201);
   }
 
   if (caminho === "/api/gravacoes" && metodo === "POST") {

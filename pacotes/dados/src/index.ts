@@ -14,6 +14,7 @@ export {
   lerPedidoGravacao,
   prepararGravacao,
   CAMPOS_ALTERACAO,
+  PADRAO_URL_FOTO,
   PADRAO_ID,
   type CanalGravacao,
   type EstadoEntidade,

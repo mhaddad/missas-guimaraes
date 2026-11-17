@@ -129,7 +129,7 @@
       "properties": {
         "url": {
           "type": "string",
-          "pattern": "^(https://[^\\s\"'<>]+|/[^/\\s\"'<>][^\\s\"'<>]*)$",
+          "pattern": "^(https://[^\\s\"'<>\\\\]+|/[^/\\\\\\s\"'<>][^\\s\"'<>\\\\]*)$",
           "description": "Endereço https da imagem, ou caminho no próprio site."
         },
         "alt": {

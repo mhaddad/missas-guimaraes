@@ -172,6 +172,43 @@ describe("alteracao", () => {
     });
   });
 
+  it("muda a imagem de capa enviada pelo painel, com o resumo próprio", () => {
+    const url = `/fotos/${"a".repeat(64)}.webp`;
+    const p = alteracao("igreja-a", (l) => ({ ...l, foto: { url, alt: "Fachada", credito: "Paróquia" } }));
+    const r = pronto(prepararGravacao(p, estado(), OPCOES));
+    expect(r.locais.get("igreja-a")?.foto).toEqual({ url, alt: "Fachada", credito: "Paróquia" });
+    expect(r.resumo).toEqual([{ local: "igreja-a", linhas: ["🖼️ Imagem de capa adicionada"] }]);
+  });
+
+  it.each([
+    ["um endereço de fora", { url: "https://exemplo.pt/igreja.jpg" }],
+    ["outro caminho do site", { url: "/admin/x.webp" }],
+    ["um caminho de fotos sem hash", { url: "/fotos/../x.webp" }],
+    ["campos a mais", { url: `/fotos/${"b".repeat(64)}.jpg`, largura: 10 }],
+    ["textos longos", { url: `/fotos/${"b".repeat(64)}.jpg`, credito: "x".repeat(301) }],
+  ])("recusa uma imagem de capa com %s", (_caso, foto) => {
+    const p = alteracao("igreja-a", (l) => ({ ...l, foto }) as Local);
+    expect(prepararGravacao(p, estado(), OPCOES)).toMatchObject({
+      estado: "ERRO",
+      motivo: expect.stringMatching(/imagem de capa/),
+    });
+  });
+
+  it("retira a imagem de capa", () => {
+    const url = `/fotos/${"c".repeat(64)}.jpg`;
+    const comFoto = local("igreja-a", "exemplo", { foto: { url } });
+    const atual = estado([["igreja-a", { dados: comFoto, versao: 7 }]]);
+    const depois = { ...comFoto, foto: null };
+    const p: PedidoGravacao = {
+      tipo: "alteracao",
+      entidade: "exemplo",
+      locais: { "igreja-a": { versao: 7, dados: depois as unknown as Record<string, unknown> } },
+      resumo: resumirPedido([{ antes: comFoto, depois }]),
+    };
+    const r = pronto(prepararGravacao(p, atual, OPCOES));
+    expect(r.resumo).toEqual([{ local: "igreja-a", linhas: ["🖼️ Imagem de capa retirada"] }]);
+  });
+
   it("a entidade do pedido tem de ser a do estado", () => {
     const p = { ...alteracao("igreja-a", (l) => l), entidade: "outra" };
     expect(prepararGravacao(p, estado(), OPCOES)).toEqual({ estado: "ERRO", motivo: "entidade" });
@@ -233,6 +270,24 @@ describe("novo-local", () => {
     expect(prepararGravacao(pedido(sobre as Partial<Local>), estado(), OPCOES)).toMatchObject({
       estado: "ERRO",
       motivo: expect.stringMatching(motivo),
+    });
+  });
+
+  it("recusa um novo local com uma imagem de capa de fora do painel", () => {
+    const novo = {
+      ...local("capela-nova", "exemplo"),
+      foto: { url: "https://exemplo.pt/igreja.jpg" },
+    };
+    const p: PedidoGravacao = {
+      tipo: "novo-local",
+      entidade: "exemplo",
+      versaoEntidade: 4,
+      local: novo as unknown as Record<string, unknown>,
+      resumo: resumirPedido([{ antes: null, depois: novo as Local }]),
+    };
+    expect(prepararGravacao(p, estado(), OPCOES)).toMatchObject({
+      estado: "ERRO",
+      motivo: expect.stringMatching(/imagem de capa/),
     });
   });
 
