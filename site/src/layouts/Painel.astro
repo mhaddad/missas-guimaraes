@@ -1,19 +1,49 @@
 ---
 /**
- * Layout do painel (§7.3), só em pt-PT. Cabeçalho com o selo, separadores, seletor de entidade,
- * nome da pessoa e *Sair*. O conteúdo é preenchido pelos scripts depois de `/api/eu`.
+ * Layout do painel (§7.3), só em pt-PT. O cabeçalho é gerado no servidor a partir da sessão
+ * (`Astro.locals.eu`, verificada pelo middleware): selo, secções conforme o perfil, pessoa,
+ * *Ver o site* e *Sair*.
  */
 import "../styles/global.css";
+import Icone from "../components/Icone.astro";
 import Icones from "../components/Icones.astro";
 
 interface Props {
   titulo: string;
-  ativo: "horarios" | "acessos" | "nenhum";
-  /** Páginas sem sessão (entrar, sem acesso): sem separadores nem conta. */
+  ativo: "visao" | "paroquias" | "acessos" | "nenhum";
+  /** Páginas sem sessão (entrar, sem acesso): sem secções nem conta. */
   simples?: boolean;
+  /** Largura do conteúdo: `larga` para listas e a página de uma paróquia. */
+  largura?: "normal" | "larga";
 }
 
-const { titulo, ativo, simples = false } = Astro.props;
+const { titulo, ativo, simples = false, largura = "larga" } = Astro.props;
+const eu = simples ? undefined : Astro.locals.eu;
+const admin = eu?.perfil === "admin";
+const [unica, ...outras] = eu?.entidades ?? [];
+const secoes: { chave: Props["ativo"]; href: string; texto: string; icone: string }[] = admin
+  ? [
+      { chave: "visao", href: "/admin/", texto: "Visão geral", icone: "dashboard" },
+      { chave: "paroquias", href: "/admin/paroquias/", texto: "Paróquias", icone: "church" },
+      { chave: "acessos", href: "/admin/acessos/", texto: "Acessos", icone: "group" },
+    ]
+  : unica && outras.length === 0
+    ? [
+        {
+          chave: "paroquias",
+          href: `/admin/paroquia/${unica}/`,
+          texto: "A minha paróquia",
+          icone: "church",
+        },
+      ]
+    : [
+        {
+          chave: "paroquias",
+          href: "/admin/paroquias/",
+          texto: "As minhas paróquias",
+          icone: "church",
+        },
+      ];
 ---
 
 <!doctype html>
@@ -26,14 +56,29 @@ const { titulo, ativo, simples = false } = Astro.props;
     <title>{titulo} — Painel dos horários</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   </head>
-  <body class="min-h-screen bg-superficie text-ardosia">
-    <Icones />
-    <header class="border-b border-borda bg-cartao">
-      <div class="mx-auto flex max-w-pagina flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-        <a href="/admin/" class="flex min-h-12 items-center gap-3">
-          <img src="/marca/selo-compacto.svg" alt="" width="44" height="42" class="h-11 w-auto" />
-          <span>
-            <span class="block text-base leading-tight font-bold">
+  <body class="flex min-h-screen flex-col bg-superficie text-base text-ardosia">
+    <Icones painel />
+    <a
+      href="#conteudo"
+      class="sr-only focus:not-sr-only focus:absolute focus:m-2 focus:rounded focus:bg-cartao focus:p-3"
+    >
+      Saltar para o conteúdo
+    </a>
+    <header class="sticky top-0 z-20 border-b border-borda bg-cartao/95 backdrop-blur">
+      <div class="mx-auto flex max-w-pagina flex-wrap items-center gap-x-6 gap-y-1 px-4 py-2 md:px-6">
+        <a
+          href={eu ? (admin ? "/admin/" : secoes[0]?.href) : "/admin/"}
+          class="flex min-h-12 min-w-0 flex-1 basis-0 items-center gap-3 md:flex-none md:basis-auto"
+        >
+          <img
+            src="/marca/selo-compacto.svg"
+            alt=""
+            width="44"
+            height="42"
+            class="h-9 w-auto shrink-0 md:h-10"
+          />
+          <span class="min-w-0">
+            <span class="block text-sm leading-tight font-bold md:text-base">
               Arciprestado de Guimarães e Vizela
             </span>
             <span class="block text-sm leading-tight font-semibold text-dourado-texto">
@@ -41,40 +86,83 @@ const { titulo, ativo, simples = false } = Astro.props;
             </span>
           </span>
         </a>
-        {!simples && (
+        {eu && (
           <>
-            <nav aria-label="Secções do painel" class="flex gap-1">
+            <div class="flex shrink-0 items-center gap-1 md:order-3">
               <a
-                class="atalho"
-                href="/admin/"
-                aria-current={ativo === "horarios" ? "true" : undefined}
+                class="botao-icone border-transparent md:hidden"
+                href="/"
+                target="_blank"
+                rel="noopener"
+                aria-label="Ver o site (abre noutro separador)"
+                title="Ver o site"
               >
-                Horários
+                <Icone nome="open_in_new" />
               </a>
               <a
-                class="atalho"
-                href="/admin/acessos/"
-                data-so-admin
-                hidden
-                aria-current={ativo === "acessos" ? "true" : undefined}
+                class="hidden min-h-12 items-center gap-1 rounded-cartao px-3 font-semibold text-texto-secundario hover:text-ardosia md:inline-flex"
+                href="/"
+                target="_blank"
+                rel="noopener"
               >
-                Acessos
+                Ver o site
+                <Icone nome="open_in_new" class="size-4" />
+                <span class="sr-only">(abre noutro separador)</span>
               </a>
-            </nav>
-            <div class="ml-auto flex items-center gap-3 text-base">
-              <span id="nome-pessoa" class="font-semibold" />
+              <span class="hidden h-8 w-px bg-borda md:block" aria-hidden="true"></span>
+              <span class="hidden px-3 text-right leading-tight md:block">
+                <span class="block font-semibold">{eu.nome}</span>
+                <span class="block text-sm text-texto-secundario">
+                  {admin ? "Administrador" : "Paróquia"}
+                </span>
+              </span>
               <form method="post" action="/auth/sair">
-                <button type="submit" class="ligacao inline-flex min-h-12 items-center">
-                  Sair
+                <button
+                  type="submit"
+                  class="botao-icone border-transparent"
+                  aria-label={`Sair (${eu.nome})`}
+                  title="Sair"
+                >
+                  <Icone nome="logout" />
                 </button>
               </form>
             </div>
+            <nav
+              aria-label="Secções do painel"
+              class="-mx-4 w-[calc(100%+2rem)] overflow-x-auto px-4 md:order-2 md:mx-0 md:ml-auto md:w-auto md:px-0"
+            >
+              <ul class="flex gap-1">
+                {secoes.map((s) => (
+                  <li>
+                    <a
+                      class="separador"
+                      href={s.href}
+                      aria-current={ativo === s.chave ? "page" : undefined}
+                    >
+                      <Icone nome={s.icone} class="size-5" />
+                      {s.texto}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
           </>
         )}
       </div>
     </header>
-    <main id="conteudo" class="mx-auto max-w-pagina px-4 py-6 md:py-8">
+    <main
+      id="conteudo"
+      class:list={[
+        "mx-auto w-full flex-1 px-4 py-6 md:px-6 md:py-8",
+        largura === "larga" ? "max-w-pagina" : "max-w-3xl",
+      ]}
+    >
       <slot />
     </main>
+    <footer class="border-t border-borda bg-cartao">
+      <p class="mx-auto max-w-pagina px-4 py-4 text-sm text-texto-secundario md:px-6">
+        Arciprestado de Guimarães e Vizela · Cada alteração gravada aparece no site logo a seguir.
+      </p>
+    </footer>
   </body>
 </html>

@@ -50,7 +50,7 @@ export function abrirDiasSantos(opcoes: {
       ),
     h(
       "div",
-      { class: "flex flex-wrap gap-3" },
+      { class: "grid gap-3 sm:grid-cols-3" },
       ...Array.from({ length: MAX_HORAS_NOVAS }, (_, i) =>
         campo(
           i === 0 ? "Hora da missa" : "Outra hora (opcional)",

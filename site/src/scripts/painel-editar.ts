@@ -84,7 +84,7 @@ function camposNatureza(modo: "novo" | "editar" | "apagar", local: Local, indice
             h("input", {
               type: "date",
               name: "dia",
-              class: "campo",
+              class: "campo sm:w-44",
               value: indice === undefined ? dataHoje : proximaData(local, indice),
               min: dataHoje,
               "aria-label": "Data a cancelar",
@@ -95,7 +95,7 @@ function camposNatureza(modo: "novo" | "editar" | "apagar", local: Local, indice
             "Suspender durante um período",
             h(
               "span",
-              { class: "flex flex-wrap items-center gap-2" },
+              { class: "grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:w-80" },
               h("input", {
                 type: "date",
                 name: "periodo_de",
@@ -119,7 +119,7 @@ function camposNatureza(modo: "novo" | "editar" | "apagar", local: Local, indice
             h("input", {
               type: "date",
               name: "habitual_de",
-              class: "campo",
+              class: "campo sm:w-44",
               value: dataHoje,
               "aria-label": "Deixa de haver a partir de",
             }),
@@ -132,7 +132,7 @@ function camposNatureza(modo: "novo" | "editar" | "apagar", local: Local, indice
             h("input", {
               type: "date",
               name: "habitual_de",
-              class: "campo",
+              class: "campo sm:w-44",
               value: dataHoje,
               "aria-label": "A partir de",
             }),
@@ -142,7 +142,7 @@ function camposNatureza(modo: "novo" | "editar" | "apagar", local: Local, indice
             "Só durante um período",
             h(
               "span",
-              { class: "flex flex-wrap items-center gap-2" },
+              { class: "grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:w-80" },
               h("input", {
                 type: "date",
                 name: "periodo_de",
@@ -166,7 +166,7 @@ function camposNatureza(modo: "novo" | "editar" | "apagar", local: Local, indice
             h("input", {
               type: "date",
               name: "dia",
-              class: "campo",
+              class: "campo sm:w-44",
               value: dataHoje,
               "aria-label": "Dia",
             }),
@@ -183,7 +183,10 @@ function camposNatureza(modo: "novo" | "editar" | "apagar", local: Local, indice
     ...opcoesNatureza.map(([valor, texto, entrada], i) =>
       h(
         "div",
-        { class: "flex flex-wrap items-center gap-3 rounded-cartao border border-borda p-3" },
+        {
+          class:
+            "grid items-center gap-2 rounded-cartao border border-borda p-3 has-[:checked]:border-ardosia has-[:checked]:bg-superficie sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-4",
+        },
         h(
           "label",
           { class: "flex min-h-12 items-center gap-3 font-semibold" },
@@ -287,22 +290,23 @@ function formularioHorario(locais: LocalComSha[], indiceLocal: number, regra?: R
     caixaSemanas,
     caixaQuinzenal,
     campos: [
+      seletorLocal(locais, indiceLocal, regra !== undefined),
       h(
         "div",
         { class: "grid gap-4 sm:grid-cols-2" },
-        seletorLocal(locais, indiceLocal, regra !== undefined),
         campo(
           "Hora",
           h("input", {
             type: "time",
             name: "hora",
-            class: "campo text-xl font-semibold",
+            class: "campo text-xl font-semibold tabular-nums",
             step: "300",
             required: true,
             value: r?.hora ?? "",
           }),
           "Hora de Portugal continental.",
         ),
+        campo("Até às (opcional)", horaFim, "Para confissões ou adoração com hora de fim."),
       ),
       grupo(
         "Tipo de celebração",
@@ -311,11 +315,6 @@ function formularioHorario(locais: LocalComSha[], indiceLocal: number, regra?: R
       grupo(
         "Dias",
         ...DIAS.map(([v, t]) => opcao("checkbox", "dias", v, t, r?.dias.includes(v) ?? false)),
-      ),
-      h(
-        "div",
-        { class: "grid gap-4 sm:grid-cols-2" },
-        campo("Até às (opcional)", horaFim, "Para confissões ou adoração com hora de fim."),
       ),
       grupo(
         "Frequência",

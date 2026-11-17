@@ -1,6 +1,6 @@
 /** E-9 — Acessos (P8): lista e formulário de contactos, só para administradores. */
 import { momentoEmLisboa } from "@missas/horarios";
-import { api, carregarEu, ErroApi, h, mostrarErro } from "./painel-comum.ts";
+import { api, carregarEu, ErroApi, h, icone, mostrarErro } from "./painel-comum.ts";
 
 interface ContactoApi {
   id: string;
@@ -68,7 +68,7 @@ function desenharEntidades(escolhidas: Set<string>): void {
       });
       const linha = h(
         "label",
-        { class: "flex min-h-10 items-center gap-2 text-base" },
+        { class: "flex min-h-11 items-center gap-3 rounded px-2 text-base hover:bg-superficie" },
         caixa,
         e.nome,
       );
@@ -118,39 +118,66 @@ async function carregar(): Promise<void> {
     lista.replaceChildren(h("p", {}, "Ainda não há contactos."));
     return;
   }
+  const iniciais = (nome: string) =>
+    nome
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((p) => p[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase();
   lista.replaceChildren(
     h(
       "ul",
-      { class: "grid gap-3" },
+      { class: "cartao divide-y divide-borda" },
       ...contactos.map((c) => {
-        const editar = h("button", { type: "button", class: "botao-secundario" }, "Editar");
+        const ativo = c.estado === "ativo" || c.estado === "sem_lembretes";
+        const editar = h(
+          "button",
+          { type: "button", class: "botao-secundario", "aria-label": `Editar ${c.nome}` },
+          icone("edit"),
+          h("span", { class: "hidden sm:inline" }, "Editar"),
+        );
         editar.addEventListener("click", () => abrir(c));
         return h(
           "li",
           {
-            class: `flex flex-wrap items-start justify-between gap-3 rounded-cartao border border-borda bg-cartao p-4 ${c.estado === "ativo" || c.estado === "sem_lembretes" ? "" : "opacity-60"}`,
+            class: `flex items-start gap-3 px-4 py-4 md:gap-4 md:px-5 ${ativo ? "" : "opacity-70"}`,
           },
           h(
+            "span",
+            {
+              class:
+                "inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-azul-fundo font-bold text-azul-texto",
+              "aria-hidden": "true",
+            },
+            iniciais(c.nome),
+          ),
+          h(
             "div",
-            { class: "min-w-0" },
+            { class: "min-w-0 flex-1" },
             h(
               "p",
-              { class: "flex flex-wrap items-center gap-2 text-lg font-semibold" },
-              c.nome,
+              { class: "flex flex-wrap items-center gap-2" },
+              h("span", { class: "text-lg font-semibold" }, c.nome),
               h(
                 "span",
-                { class: "etiqueta bg-slate-100 text-texto-secundario" },
-                c.perfil === "admin" ? "Administrador" : "Entidade",
+                {
+                  class: `etiqueta text-xs ${c.perfil === "admin" ? "bg-ardosia text-white" : "bg-slate-100 text-texto-secundario"}`,
+                },
+                c.perfil === "admin" ? "Administrador" : "Paróquia",
               ),
               h(
                 "span",
-                { class: "etiqueta bg-slate-100 text-texto-secundario" },
+                {
+                  class: `etiqueta text-xs ${ativo ? "bg-confirmado-fundo text-confirmado" : "bg-red-50 text-erro"}`,
+                },
                 ESTADOS[c.estado] ?? c.estado,
               ),
             ),
-            h("p", { class: "text-base text-texto-secundario" }, c.email),
+            h("p", { class: "break-all text-texto-secundario" }, c.email),
             c.entidades.length > 0 &&
-              h("p", { class: "mt-1 text-base" }, c.entidades.map(nomeEntidade).join(" · ")),
+              h("p", { class: "mt-1" }, c.entidades.map(nomeEntidade).join(" · ")),
             h(
               "p",
               { class: "mt-1 text-sm text-texto-secundario" },
@@ -195,7 +222,9 @@ form.addEventListener("submit", async (e) => {
 });
 
 filtroEntidades.addEventListener("input", () => desenharEntidades(escolhidas()));
-dialogo.querySelector("[data-fechar]")?.addEventListener("click", () => dialogo.close());
+dialogo
+  .querySelectorAll("[data-fechar]")
+  .forEach((b) => b.addEventListener("click", () => dialogo.close()));
 
 async function iniciar(): Promise<void> {
   try {

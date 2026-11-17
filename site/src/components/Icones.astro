@@ -23,6 +23,44 @@ import arrowforward from "@material-symbols/svg-400/outlined/arrow_forward.svg?r
 import mail from "@material-symbols/svg-400/outlined/mail.svg?raw";
 import language from "@material-symbols/svg-400/outlined/language.svg?raw";
 
+import p_dashboard from "@material-symbols/svg-400/outlined/dashboard.svg?raw";
+import p_group from "@material-symbols/svg-400/outlined/group.svg?raw";
+import p_logout from "@material-symbols/svg-400/outlined/logout.svg?raw";
+import p_open_in_new from "@material-symbols/svg-400/outlined/open_in_new.svg?raw";
+import p_edit from "@material-symbols/svg-400/outlined/edit.svg?raw";
+import p_delete from "@material-symbols/svg-400/outlined/delete.svg?raw";
+import p_add from "@material-symbols/svg-400/outlined/add.svg?raw";
+import p_chevron_right from "@material-symbols/svg-400/outlined/chevron_right.svg?raw";
+import p_warning from "@material-symbols/svg-400/outlined/warning.svg?raw";
+import p_update from "@material-symbols/svg-400/outlined/update.svg?raw";
+import p_event_busy from "@material-symbols/svg-400/outlined/event_busy.svg?raw";
+import p_verified from "@material-symbols/svg-400/outlined/verified.svg?raw";
+import p_calendar_month from "@material-symbols/svg-400/outlined/calendar_month.svg?raw";
+
+interface Props {
+  /** Ícones só do painel (não pesam nas páginas públicas). */
+  painel?: boolean;
+}
+
+const { painel = false } = Astro.props;
+
+/** Só no painel. */
+const ICONES_PAINEL: Record<string, string> = {
+  dashboard: p_dashboard,
+  group: p_group,
+  logout: p_logout,
+  open_in_new: p_open_in_new,
+  edit: p_edit,
+  delete: p_delete,
+  add: p_add,
+  chevron_right: p_chevron_right,
+  warning: p_warning,
+  update: p_update,
+  event_busy: p_event_busy,
+  verified: p_verified,
+  calendar_month: p_calendar_month,
+};
+
 const ICONES: Record<string, string> = {
   search: search,
   close: close,
@@ -44,7 +82,7 @@ const ICONES: Record<string, string> = {
   language: language,
 };
 
-const simbolos = Object.entries(ICONES)
+const simbolos = Object.entries(painel ? { ...ICONES, ...ICONES_PAINEL } : ICONES)
   .map(([nome, svg]) => {
     const interior = svg.replace(/^<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "");
     return `<symbol id="i-${nome}" viewBox="0 -960 960 960">${interior}</symbol>`;

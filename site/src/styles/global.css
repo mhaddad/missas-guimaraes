@@ -18,11 +18,68 @@
     outline: 3px solid var(--color-dourado-texto);
     outline-offset: 2px;
   }
+
+  /* O Tailwind 4 deixa os botões com o cursor normal: tudo o que se clica mostra a mão. */
+  button:not(:disabled),
+  [role="button"],
+  summary,
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  label:has(> input[type="checkbox"]:not(:disabled)),
+  label:has(> input[type="radio"]:not(:disabled)) {
+    cursor: pointer;
+  }
+  button:disabled,
+  select:disabled,
+  input:disabled {
+    cursor: not-allowed;
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--color-ardosia);
+  }
 }
 
 @layer components {
+  /* Botões (DESIGN.md): primário escuro, secundário com borda, perigo em vermelho; 48 px. */
+  .botao-primario {
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-cartao bg-ardosia px-5 text-base font-semibold whitespace-nowrap text-white transition-colors hover:bg-slate-700 disabled:opacity-50;
+  }
+  .botao-confirmar {
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-cartao bg-confirmado px-5 text-base font-semibold whitespace-nowrap text-white transition-colors hover:bg-green-800 disabled:opacity-50;
+  }
   .botao-secundario {
-    @apply inline-flex min-h-12 items-center gap-2 rounded-cartao border border-borda bg-cartao px-4 text-base font-semibold text-ardosia hover:bg-superficie;
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-cartao border border-borda bg-cartao px-4 text-base font-semibold whitespace-nowrap text-ardosia transition-colors hover:border-dourado hover:bg-superficie disabled:opacity-50;
+  }
+  .botao-perigo {
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-cartao bg-erro px-5 text-base font-semibold whitespace-nowrap text-white transition-colors hover:bg-red-800 disabled:opacity-50;
+  }
+  /* Botão só com ícone (editar, apagar, fechar): 44 px, com `aria-label` e `title`. */
+  .botao-icone {
+    @apply inline-flex size-11 shrink-0 items-center justify-center rounded-cartao border border-borda bg-cartao text-texto-secundario transition-colors hover:border-dourado hover:text-ardosia disabled:opacity-50;
+  }
+  .botao-icone-perigo {
+    @apply hover:border-red-300 hover:bg-red-50 hover:text-erro;
+  }
+  .cartao {
+    @apply rounded-xl border border-borda bg-cartao;
+  }
+  /* Modais do painel: cabeçalho e rodapé fixos, só o corpo desliza. */
+  .modal {
+    @apply m-auto max-h-[calc(100dvh-2rem)] w-[min(44rem,calc(100%-2rem))] overflow-hidden rounded-xl border border-borda bg-cartao p-0 text-ardosia shadow-xl backdrop:bg-ardosia/50;
+  }
+  .modal-conteudo {
+    @apply flex max-h-[calc(100dvh-2rem)] flex-col;
+  }
+  .modal-cabecalho {
+    @apply flex items-start justify-between gap-4 border-b border-borda px-5 py-4 md:px-6;
+  }
+  .modal-corpo {
+    @apply grid gap-5 overflow-y-auto px-5 py-5 md:px-6;
+  }
+  .modal-rodape {
+    @apply flex flex-wrap items-center justify-end gap-3 border-t border-borda bg-superficie px-5 py-4 md:px-6;
   }
   .botao-claro {
     @apply inline-flex min-h-12 items-center gap-2 rounded-cartao bg-cartao px-4 text-base font-semibold text-ardosia hover:bg-slate-100;
@@ -42,6 +99,13 @@
   }
   .segmento-dia[aria-pressed="true"] {
     @apply text-dourado-texto;
+  }
+  /* Secções do painel (cabeçalho). */
+  .separador {
+    @apply inline-flex min-h-12 items-center gap-2 rounded-cartao px-3 font-semibold whitespace-nowrap text-texto-secundario transition-colors hover:bg-superficie hover:text-ardosia;
+  }
+  .separador[aria-current="page"] {
+    @apply bg-superficie text-ardosia shadow-[inset_0_-2px_0_var(--color-dourado)];
   }
   .atalho {
     @apply inline-flex min-h-12 items-center rounded-cartao px-3 text-base font-semibold text-texto-secundario hover:bg-superficie hover:text-ardosia;
@@ -76,8 +140,9 @@
     outline: 3px solid var(--color-dourado-texto);
     outline-offset: 2px;
   }
+  /* Campos (DESIGN.md): largura total, 48 px, borda de 1,5 px; foco em dourado. */
   .campo {
-    @apply min-h-12 rounded-cartao border border-borda bg-cartao px-3 text-base;
+    @apply min-h-12 w-full min-w-0 rounded-cartao border-[1.5px] border-slate-300 bg-cartao px-3 text-base text-ardosia transition-colors placeholder:text-texto-secundario hover:border-slate-400 focus:border-dourado-texto disabled:bg-superficie disabled:text-texto-secundario;
   }
   .rotulo {
     @apply text-sm font-bold tracking-wide text-texto-secundario uppercase;

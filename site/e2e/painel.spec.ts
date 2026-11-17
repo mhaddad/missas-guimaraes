@@ -1,6 +1,7 @@
 /**
- * Painel (E3) com a API simulada: o ecrã Horários e o ecrã Acessos. A segurança (JWT, âmbito)
- * é testada no Worker; aqui confirma-se o que cada perfil vê e a acessibilidade.
+ * Painel com a API simulada (as páginas são geradas no servidor com a base local dos e2e):
+ * visão geral, lista das paróquias, página de uma paróquia e Acessos. A segurança da API é
+ * testada no Worker; aqui confirma-se o que cada perfil vê e abre, e a acessibilidade.
  */
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
@@ -110,31 +111,105 @@ async function simular(page: Page, perfil: "admin" | "entidade", contactos: unkn
   return pedidos;
 }
 
-test("Horários: contacto de uma entidade vê a sua", async ({ page }) => {
+const axe = async (page: Page) =>
+  (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
+
+test("contacto de uma paróquia vai direto para a sua e só vê essa", async ({ page }) => {
   await simular(page, "entidade");
   await page.goto("/admin/");
-  await expect(page.getByRole("heading", { name: "Paróquia de Nespereira" })).toBeVisible();
-  await expect(page.locator("#nome-pessoa")).toHaveText("Secretaria");
-  await expect(page.getByRole("link", { name: "Acessos" })).toBeHidden();
-  await expect(page.locator("#escolha-entidade")).toBeHidden();
+  await expect(page).toHaveURL(/\/admin\/paroquia\/nespereira\/$/);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Paróquia de Nespereira" }),
+  ).toBeVisible();
+  const seccoes = page.getByRole("navigation", { name: "Secções do painel" });
+  await expect(seccoes.getByRole("link")).toHaveText(["A minha paróquia"]);
+  await expect(page.getByRole("button", { name: "Sair (Secretaria)" })).toBeVisible();
   await expect(page.getByText("Domingos às 11:15")).toBeVisible();
   await expect(page.getByText("2.º e 4.º sábados do mês às 17:00")).toBeVisible();
   await expect(page.getByText("Com coro")).toBeVisible();
   await expect(page.getByText("Horário de domingo.")).toBeVisible();
-  const resultado = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
-    .analyze();
-  expect(resultado.violations.map((v) => v.id)).toEqual([]);
+  expect(await axe(page)).toEqual([]);
+
+  // Outras paróquias, a lista e os acessos: volta à sua.
+  for (const caminho of ["/admin/paroquia/polvoreira/", "/admin/paroquias/", "/admin/acessos/"]) {
+    await page.goto(caminho);
+    await expect(page).toHaveURL(/\/admin\/paroquia\/nespereira\/$/);
+  }
 });
 
-test("Horários: administrador escolhe entre todas as entidades", async ({ page }) => {
-  const pedidos = await simular(page, "admin");
+test("os botões e as opções mostram a mão ao passar o rato", async ({ page }) => {
+  await simular(page, "entidade");
+  await page.goto("/admin/paroquia/nespereira/");
+  const novo = page.getByRole("button", { name: "Novo horário" }).first();
+  await expect(novo).toHaveCSS("cursor", "pointer");
+  await expect(page.getByRole("button", { name: "Adicionar exceção" }).first()).toHaveCSS(
+    "cursor",
+    "pointer",
+  );
+  await novo.click();
+  const dialogo = page.getByRole("dialog", { name: "Novo horário" });
+  await expect(dialogo.getByText("Sex", { exact: true })).toHaveCSS("cursor", "pointer");
+  await dialogo.getByRole("button", { name: "Fechar" }).click();
+  await expect(dialogo).toBeHidden();
+});
+
+test("visão geral do administrador: indicadores, mais antigas e ligação para a lista", async ({
+  page,
+}) => {
+  await simular(page, "admin");
   await page.goto("/admin/");
-  await expect(page.getByRole("link", { name: "Acessos" })).toBeVisible();
-  await expect(page.getByLabel("Procurar")).toBeVisible();
-  await page.getByLabel("Entidade").selectOption("polvoreira");
-  await expect(page).toHaveURL(/entidade=polvoreira/);
-  expect(pedidos.some((p) => p.url === "/api/entidades/polvoreira")).toBe(true);
+  await expect(page.getByRole("heading", { level: 1, name: "Visão geral" })).toBeVisible();
+  const seccoes = page.getByRole("navigation", { name: "Secções do painel" });
+  await expect(seccoes.getByRole("link")).toHaveText(["Visão geral", "Paróquias", "Acessos"]);
+  await expect(page.getByText("Paróquias no site")).toBeVisible();
+  const antigas = page.getByRole("region", { name: "Há mais tempo sem atualização" });
+  await expect(antigas.getByRole("link")).not.toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Últimas atualizações" })).toBeVisible();
+  expect(await axe(page)).toEqual([]);
+  await page.getByRole("link", { name: /Nunca confirmada/ }).click();
+  await expect(page).toHaveURL(/\/admin\/paroquias\/\?estado=nunca$/);
+});
+
+test("lista das paróquias: pesquisa, concelho, estado, ordem e abrir uma", async ({ page }) => {
+  const pedidos = await simular(page, "admin");
+  await page.goto("/admin/paroquias/");
+  await expect(page.locator("html[data-pronto]")).toHaveCount(1);
+  const visiveis = page.locator("#lista > li:visible");
+  await expect(visiveis).toHaveCount(5);
+  expect(await axe(page)).toEqual([]);
+  await page.getByLabel("Pesquisar paróquias").fill("POLVO");
+  await expect(visiveis).toHaveCount(1);
+  await expect(page).toHaveURL(/\?q=POLVO$/);
+  await expect(page.locator("#contagem")).toHaveText("1 de 5 paróquias");
+  await page.getByLabel("Pesquisar paróquias").fill("");
+  await page.getByRole("button", { name: "Vizela", exact: true }).click();
+  await expect(visiveis).toHaveCount(1);
+  await page.getByLabel("Estado").selectOption("confirmada");
+  await expect(visiveis).toHaveCount(0);
+  await expect(page.getByText("Nenhuma paróquia corresponde aos filtros.")).toBeVisible();
+  await page.getByRole("button", { name: "Limpar filtros" }).click();
+  await expect(visiveis).toHaveCount(5);
+  await page.getByLabel("Ordenar").selectOption("antigas");
+  await expect(page).toHaveURL(/ordem=antigas/);
+  await page.getByRole("link", { name: "Paróquia de São Pedro de Polvoreira" }).click();
+  await expect(page).toHaveURL(/\/admin\/paroquia\/polvoreira\/$/);
+  await expect(page.getByRole("navigation", { name: "Caminho" })).toContainText("Paróquias");
+  await expect.poll(() => pedidos.some((p) => p.url === "/api/entidades/polvoreira")).toBe(true);
+});
+
+test("paróquia inexistente: página própria com 404", async ({ page }) => {
+  await simular(page, "admin");
+  const resposta = await page.goto("/admin/paroquia/nao-existe/");
+  expect(resposta?.status()).toBe(404);
+  await expect(page.getByRole("heading", { name: "Paróquia não encontrada" })).toBeVisible();
+});
+
+test("endereço antigo /admin/?entidade=<id> leva à página da paróquia", async ({ page }) => {
+  await simular(page, "admin");
+  await page.goto("/admin/?entidade=polvoreira");
+  await expect(page).toHaveURL(/\/admin\/paroquia\/polvoreira\/$/);
 });
 
 test("Está tudo certo (P1): mostra os horários, envia a confirmação e acompanha o estado", async ({
@@ -195,7 +270,7 @@ test("Novo horário (P2): escolhe dias e hora, vê o resumo e grava a partir de 
 }) => {
   const pedidos = await simular(page, "entidade");
   await page.goto("/admin/");
-  await page.getByRole("button", { name: "+ Novo horário" }).click();
+  await page.getByRole("button", { name: "Novo horário" }).first().click();
   const dialogo = page.getByRole("dialog", { name: "Novo horário" });
   await dialogo.getByLabel("Hora", { exact: true }).fill("18:30");
   await dialogo.getByText("Sex", { exact: true }).click();
@@ -287,7 +362,7 @@ test("Nova exceção (P3): muda a hora de uma celebração prevista para essa da
 }) => {
   await simular(page, "entidade");
   await page.goto("/admin/");
-  await page.getByRole("button", { name: "+ Adicionar exceção" }).click();
+  await page.getByRole("button", { name: "Adicionar exceção" }).first().click();
   const dialogo = page.getByRole("dialog", { name: "Nova exceção" });
   await dialogo.getByLabel("Data").fill("2099-03-01");
   await dialogo.getByText("Muda a hora", { exact: true }).click();
@@ -326,7 +401,7 @@ test("Apagar exceção (P3): volta a valer o horário habitual", async ({ page }
 test("Dias santos (P4): horário próprio cria a missa dos dias santos", async ({ page }) => {
   await simular(page, "entidade");
   await page.goto("/admin/");
-  await page.getByRole("button", { name: "Alterar", exact: true }).click();
+  await page.getByRole("button", { name: /^Alterar o horário dos dias santos/ }).click();
   const dialogo = page.getByRole("dialog", { name: "Dias santos de preceito" });
   await dialogo.getByLabel(/Horário próprio/).check();
   await dialogo.getByLabel("Hora da missa").fill("19:00");
@@ -338,10 +413,10 @@ test("Dias santos (P4): horário próprio cria a missa dos dias santos", async (
 
 test("Histórico: administrador restaura uma versão anterior", async ({ page }) => {
   const pedidos = await simular(page, "admin");
-  await page.goto("/admin/");
+  await page.goto("/admin/paroquia/nespereira/");
   await page.getByRole("button", { name: "Ver alterações" }).click();
   await expect(page.getByText("Horários iniciais")).toBeVisible();
-  await expect(page.getByText(/versão atual/)).toBeVisible();
+  await expect(page.getByText(/versão atual/i)).toBeVisible();
   // Só as versões anteriores à atual podem ser restauradas.
   await expect(page.getByRole("button", { name: "Restaurar esta versão" })).toHaveCount(1);
   await page.getByRole("button", { name: "Restaurar esta versão" }).click();
@@ -367,7 +442,8 @@ test("Histórico: um contacto vê as alterações mas não restaura", async ({ p
   await page.goto("/admin/");
   await page.getByRole("button", { name: "Ver alterações" }).click();
   await expect(page.getByText("Horários iniciais")).toBeVisible();
-  await expect(page.getByText("Secretaria", { exact: false }).first()).toBeVisible();
+  const historico = page.getByRole("region", { name: "Histórico de alterações" });
+  await expect(historico.getByText("Secretaria", { exact: false }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Restaurar esta versão" })).toHaveCount(0);
 });
 
@@ -409,7 +485,7 @@ test("Acessos: lista, formulário e erro do servidor", async ({ page }) => {
 
 test("sem acesso: a API responde 403 e o painel leva à página própria", async ({ page }) => {
   await entrarComo(page, "entidade");
-  await page.route("**/api/eu", (rota) =>
+  await page.route("**/api/**", (rota) =>
     rota.fulfill({ status: 403, contentType: "application/json", body: '{"erro":"sem_acesso"}' }),
   );
   await page.goto("/admin/");
