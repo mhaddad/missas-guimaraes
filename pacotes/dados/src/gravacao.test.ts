@@ -273,6 +273,24 @@ describe("novo-local", () => {
     });
   });
 
+  it("recusa um novo local com uma imagem de capa de fora do painel", () => {
+    const novo = {
+      ...local("capela-nova", "exemplo"),
+      foto: { url: "https://exemplo.pt/igreja.jpg" },
+    };
+    const p: PedidoGravacao = {
+      tipo: "novo-local",
+      entidade: "exemplo",
+      versaoEntidade: 4,
+      local: novo as unknown as Record<string, unknown>,
+      resumo: resumirPedido([{ antes: null, depois: novo as Local }]),
+    };
+    expect(prepararGravacao(p, estado(), OPCOES)).toMatchObject({
+      estado: "ERRO",
+      motivo: expect.stringMatching(/imagem de capa/),
+    });
+  });
+
   it("CONFLITO se o id já existe ou a entidade mudou", () => {
     const existente: [string, Registo<Local>] = ["capela-nova", { dados: local("capela-nova", "outra"), versao: 1 }];
     expect(prepararGravacao(pedido(), estado([existente]), OPCOES)).toMatchObject({ estado: "CONFLITO" });

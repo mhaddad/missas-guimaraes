@@ -154,6 +154,31 @@ describe("POST /api/entidades/:id/fotos", () => {
     expect(r2.objetos.size).toBe(0);
   });
 
+  it("corta um envio grande sem content-length (por partes) sem o guardar", async () => {
+    const parte = new Uint8Array(512_000);
+    parte.set(JPEG);
+    let enviadas = 0;
+    const corpo = new ReadableStream<Uint8Array>({
+      pull(c) {
+        if (enviadas++ < 10) c.enqueue(parte);
+        else c.close();
+      },
+    });
+    const r = await tratarApiPainel(
+      new Request(`${ORIGEM}/api/entidades/nespereira/fotos`, {
+        method: "POST",
+        headers: { origin: ORIGEM, "content-type": "image/jpeg", cookie: cookies.nespereira ?? "" },
+        body: corpo,
+        duplex: "half",
+      } as RequestInit),
+      { BD: bd, FOTOS: r2.comoR2() },
+      { agora: AGORA },
+    );
+    expect(r.status).toBe(413);
+    expect(enviadas).toBeLessThan(10);
+    expect(r2.objetos.size).toBe(0);
+  });
+
   it("sem o R2, responde indisponível", async () => {
     expect((await enviar("nespereira", JPEG, { semR2: true })).estado).toBe(503);
   });

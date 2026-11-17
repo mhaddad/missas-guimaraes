@@ -37,6 +37,31 @@ export function formatoDaImagem(bytes: Uint8Array): Extensao | null {
   return null;
 }
 
+/** O corpo, lido aos bocados; `null` mal passe de `maximo` (sem o pôr todo em memória). */
+async function lerAte(pedido: Request, maximo: number): Promise<Uint8Array | null> {
+  if (!pedido.body) return new Uint8Array(0);
+  const leitor = pedido.body.getReader();
+  const partes: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await leitor.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maximo) {
+      await leitor.cancel();
+      return null;
+    }
+    partes.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let i = 0;
+  for (const p of partes) {
+    bytes.set(p, i);
+    i += p.byteLength;
+  }
+  return bytes;
+}
+
 /** Lê e confere o corpo de um envio: a imagem e a extensão, ou o código do erro. */
 export async function lerFotoEnviada(
   pedido: Request,
@@ -45,8 +70,8 @@ export async function lerFotoEnviada(
   if (!extensao) return "tipo";
   const declarado = Number(pedido.headers.get("content-length") ?? "0");
   if (declarado > TAMANHO_MAXIMO_FOTO) return "tamanho";
-  const bytes = new Uint8Array(await pedido.arrayBuffer());
-  if (bytes.length > TAMANHO_MAXIMO_FOTO) return "tamanho";
+  const bytes = await lerAte(pedido, TAMANHO_MAXIMO_FOTO);
+  if (!bytes) return "tamanho";
   if (bytes.length === 0) return "corpo";
   if (formatoDaImagem(bytes) !== extensao) return "tipo";
   return { bytes, extensao };

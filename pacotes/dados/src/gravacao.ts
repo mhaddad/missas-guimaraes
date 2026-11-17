@@ -290,6 +290,7 @@ function calcular(
       return erro("o novo local tem de pertencer à entidade do pedido");
     if ((local.confirmado_em ?? null) !== null || (local.confirmado_por ?? null) !== null)
       return erro("um novo local começa sem confirmação");
+    if (!fotoDoPainel(local.foto)) return erro("a imagem de capa tem de ser enviada pelo painel");
     locais.set(id, local as unknown as Local);
     return { entidade: { ...entidade, locais: [...entidade.locais, id] }, locais };
   }
