@@ -163,6 +163,10 @@ test("visão geral do administrador: indicadores, mais antigas e ligação para 
   await expect(page.getByRole("heading", { level: 1, name: "Visão geral" })).toBeVisible();
   const seccoes = page.getByRole("navigation", { name: "Secções do painel" });
   await expect(seccoes.getByRole("link")).toHaveText(["Visão geral", "Paróquias", "Acessos"]);
+  await expect(
+    page.getByRole("link", { name: "Ver o site (abre noutro separador)" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sair (Ana Admin)" })).toBeVisible();
   await expect(page.getByText("Paróquias no site")).toBeVisible();
   const antigas = page.getByRole("region", { name: "Há mais tempo sem atualização" });
   await expect(antigas.getByRole("link")).not.toHaveCount(0);

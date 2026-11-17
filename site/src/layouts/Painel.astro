@@ -1,8 +1,8 @@
 ---
 /**
  * Layout do painel (§7.3), só em pt-PT. O cabeçalho é gerado no servidor a partir da sessão
- * (`Astro.locals.eu`, verificada pelo middleware): selo, secções conforme o perfil, pessoa,
- * *Ver o site* e *Sair*.
+ * (`Astro.locals.eu`, verificada pelo middleware). Em cima: selo, pessoa e *Sair*; na barra de
+ * baixo: as secções conforme o perfil e *Ver o site*.
  */
 import "../styles/global.css";
 import Icone from "../components/Icone.astro";
@@ -65,10 +65,10 @@ const secoes: { chave: Props["ativo"]; href: string; texto: string; icone: strin
       Saltar para o conteúdo
     </a>
     <header class="sticky top-0 z-20 border-b border-borda bg-cartao/95 backdrop-blur">
-      <div class="mx-auto flex max-w-pagina flex-wrap items-center gap-x-6 gap-y-1 px-4 py-2 md:px-6">
+      <div class="mx-auto flex max-w-pagina items-center gap-4 px-4 py-2 md:px-6">
         <a
-          href={eu ? (admin ? "/admin/" : secoes[0]?.href) : "/admin/"}
-          class="flex min-h-12 min-w-0 flex-1 basis-0 items-center gap-3 md:flex-none md:basis-auto"
+          href={eu ? secoes[0]?.href : "/admin/"}
+          class="flex min-h-12 min-w-0 flex-1 items-center gap-3"
         >
           <img
             src="/marca/selo-compacto.svg"
@@ -87,68 +87,53 @@ const secoes: { chave: Props["ativo"]; href: string; texto: string; icone: strin
           </span>
         </a>
         {eu && (
-          <>
-            <div class="flex shrink-0 items-center gap-1 md:order-3">
-              <a
-                class="botao-icone border-transparent md:hidden"
-                href="/"
-                target="_blank"
-                rel="noopener"
-                aria-label="Ver o site (abre noutro separador)"
-                title="Ver o site"
-              >
-                <Icone nome="open_in_new" />
-              </a>
-              <a
-                class="hidden min-h-12 items-center gap-1 rounded-cartao px-3 font-semibold text-texto-secundario hover:text-ardosia md:inline-flex"
-                href="/"
-                target="_blank"
-                rel="noopener"
-              >
-                Ver o site
-                <Icone nome="open_in_new" class="size-4" />
-                <span class="sr-only">(abre noutro separador)</span>
-              </a>
-              <span class="hidden h-8 w-px bg-borda md:block" aria-hidden="true"></span>
-              <span class="hidden px-3 text-right leading-tight md:block">
-                <span class="block font-semibold">{eu.nome}</span>
-                <span class="block text-sm text-texto-secundario">
-                  {admin ? "Administrador" : "Paróquia"}
-                </span>
+          <div class="flex shrink-0 items-center gap-1">
+            <span class="max-w-32 text-right leading-tight sm:max-w-none">
+              <span class="block truncate text-sm font-semibold md:text-base">{eu.nome}</span>
+              <span class="hidden text-sm text-texto-secundario sm:block">
+                {admin ? "Administrador" : "Paróquia"}
               </span>
-              <form method="post" action="/auth/sair">
-                <button
-                  type="submit"
-                  class="botao-icone border-transparent"
-                  aria-label={`Sair (${eu.nome})`}
-                  title="Sair"
-                >
-                  <Icone nome="logout" />
-                </button>
-              </form>
-            </div>
-            <nav
-              aria-label="Secções do painel"
-              class="-mx-4 w-[calc(100%+2rem)] overflow-x-auto px-4 md:order-2 md:mx-0 md:ml-auto md:w-auto md:px-0"
-            >
-              <ul class="flex gap-1">
+            </span>
+            <form method="post" action="/auth/sair">
+              <button
+                type="submit"
+                class="botao-icone border-transparent"
+                aria-label={`Sair (${eu.nome})`}
+                title="Sair"
+              >
+                <Icone nome="logout" />
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
+      {eu && (
+        <div class="border-t border-borda">
+          <div class="mx-auto flex max-w-pagina items-center gap-1 overflow-x-auto px-4 md:px-6">
+            <nav aria-label="Secções do painel">
+              <ul class="flex sm:gap-1">
                 {secoes.map((s) => (
                   <li>
                     <a
-                      class="separador"
+                      class="separador max-sm:px-2"
                       href={s.href}
                       aria-current={ativo === s.chave ? "page" : undefined}
                     >
-                      <Icone nome={s.icone} class="size-5" />
+                      <Icone nome={s.icone} class="hidden size-5 sm:block" />
                       {s.texto}
                     </a>
                   </li>
                 ))}
               </ul>
             </nav>
-          </>
-        )}
-      </div>
+            <a class="separador ml-auto" href="/" target="_blank" rel="noopener" title="Ver o site">
+              <Icone nome="open_in_new" class="size-5" />
+              <span class="sr-only sm:not-sr-only">Ver o site</span>
+              <span class="sr-only">(abre noutro separador)</span>
+            </a>
+          </div>
+        </div>
+      )}
     </header>
     <main
       id="conteudo"
