@@ -182,5 +182,8 @@
   "fotoEmBreve": "Photo of the church coming soon",
   "fotoCredito": "Photo: {credito}",
   "vazioParoquia": "No celebrations recorded for this day.",
-  "semMaisHojeParoquia": "No more celebrations today in this parish."
+  "semMaisHojeParoquia": "No more celebrations today in this parish.",
+  "pesquisaParoquiasRotulo": "Search parishes",
+  "pesquisaParoquiasExemplo": "Parish name or place",
+  "nenhumaParoquia": "No parish matches your search."
 }

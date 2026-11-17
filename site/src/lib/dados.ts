@@ -3,7 +3,7 @@
  * funções preparam o que a página precisa. Sem acesso a arquivos nem à base: só transformam.
  */
 import type { Calendario, Entidade, Local } from "@missas/horarios";
-import { textoPesquisa, type DadosPortal, type LocalPortal } from "./portal.ts";
+import { normalizar, textoPesquisa, type DadosPortal, type LocalPortal } from "./portal.ts";
 
 export interface DadosPublicos {
   locais: Local[];
@@ -34,6 +34,8 @@ export interface ParoquiaResumo {
   /** Localidade (freguesia) e concelho da igreja principal: "Nespereira · Guimarães". */
   lugar: string;
   concelho: string;
+  /** Texto normalizado para a pesquisa: nome da paróquia, das igrejas, localidade e padroeiro. */
+  pesquisa: string;
 }
 
 /**
@@ -44,13 +46,24 @@ export function paroquiasPublicadas(dados: DadosPublicos): ParoquiaResumo[] {
   const publicados = new Map(dados.locais.filter((l) => l.publicar).map((l) => [l.id, l]));
   const lista: (ParoquiaResumo & { localidade: string })[] = [];
   for (const entidade of dados.entidades) {
-    const principal = entidade.locais.map((id) => publicados.get(id)).find(Boolean);
+    const locais = entidade.locais.flatMap((id) => publicados.get(id) ?? []);
+    const principal = locais[0];
     if (!principal) continue;
     lista.push({
       entidade,
       lugar: [principal.localidade, principal.concelho].filter(Boolean).join(" · "),
       concelho: principal.concelho,
       localidade: principal.localidade ?? entidade.nome,
+      pesquisa: normalizar(
+        [
+          entidade.nome,
+          entidade.orago,
+          ...locais.flatMap((l) => [l.nome, l.localidade, l.freguesia]),
+          principal.concelho,
+        ]
+          .filter(Boolean)
+          .join(" "),
+      ),
     });
   }
   return lista

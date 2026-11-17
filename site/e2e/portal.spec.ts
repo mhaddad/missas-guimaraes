@@ -112,6 +112,7 @@ test.describe("lista das paróquias", () => {
     page,
   }) => {
     await page.goto("/paroquias/");
+    await expect(page.locator("html[data-pronto]")).toHaveCount(1);
     const itens = page.locator("#lista-paroquias > li");
     await expect(itens).toHaveCount(4);
     await expect(page.locator('a[href="/paroquia/serzedelo/"]')).toHaveCount(0);
@@ -122,6 +123,42 @@ test.describe("lista das paróquias", () => {
     await page.getByRole("button", { name: "Todos" }).click();
     await page.getByRole("link", { name: /Paróquia de Santa Eulália de Nespereira/ }).click();
     await expect(page).toHaveURL(/\/paroquia\/nespereira\/$/);
+  });
+
+  test("pesquisa pelo nome ou parte do nome, sem acentos, junto com o concelho", async ({
+    page,
+  }) => {
+    await page.goto("/paroquias/");
+    await expect(page.locator("html[data-pronto]")).toHaveCount(1);
+    const visiveis = page.locator("#lista-paroquias > li:visible");
+    const pesquisa = page.getByLabel("Pesquisar paróquias");
+    await pesquisa.fill("eulalia");
+    await expect(visiveis).toHaveCount(1);
+    await expect(visiveis).toContainText("Paróquia de Santa Eulália de Nespereira");
+    await expect(page).toHaveURL(/\/paroquias\/\?q=eulalia$/);
+    await expect(page.locator("#contagem-paroquias")).toHaveText("1 paróquia");
+    // Parte do nome, em maiúsculas.
+    await pesquisa.fill("POLVO");
+    await expect(visiveis).toHaveCount(1);
+    await expect(visiveis).toContainText("Polvoreira");
+    // Com o concelho: nenhuma corresponde.
+    await page.getByRole("button", { name: "Vizela", exact: true }).click();
+    await expect(visiveis).toHaveCount(0);
+    await expect(page.locator("#vazio-paroquias")).toBeVisible();
+    await expect(page).toHaveURL(/\?q=POLVO&concelho=vizela$/);
+    await page.getByRole("button", { name: "Limpar a pesquisa" }).click();
+    await expect(visiveis).toHaveCount(1);
+    await expect(page.locator("#vazio-paroquias")).toBeHidden();
+  });
+
+  test("a pesquisa do endereço passa para os outros idiomas", async ({ page }) => {
+    await page.goto("/paroquias/?q=oliveira");
+    await expect(page.locator("html[data-pronto]")).toHaveCount(1);
+    await expect(page.getByLabel("Pesquisar paróquias")).toHaveValue("oliveira");
+    await expect(page.locator("#lista-paroquias > li:visible")).toHaveCount(1);
+    await page.locator('a[data-idioma="/en/paroquias/"]').click();
+    await expect(page).toHaveURL(/\/en\/paroquias\/\?q=oliveira$/);
+    await expect(page.locator("#lista-paroquias > li:visible")).toHaveCount(1);
   });
 
   test("o atalho Paróquias do cabeçalho leva à lista", async ({ page }) => {
@@ -282,8 +319,8 @@ test.describe("acessibilidade (WCAG 2.1 AA)", () => {
   });
 
   test("lista das paróquias, em inglês", async ({ page }) => {
-    await page.goto("/en/paroquias/");
-    await expect(page.locator("#filtro-concelho")).toBeVisible();
+    await page.goto("/en/paroquias/?q=oliveira");
+    await expect(page.locator("html[data-pronto]")).toHaveCount(1);
     await verificar(page);
   });
 

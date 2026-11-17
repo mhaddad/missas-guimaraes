@@ -1,8 +1,8 @@
 ---
 /**
  * Lista das paróquias (`/paroquias/`): nome, localização resumida e a ligação para a página de
- * cada uma. O filtro por concelho (`scripts/paroquias.ts`) só aparece com JavaScript; sem ele,
- * a lista mostra todas.
+ * cada uma. A pesquisa e o filtro por concelho (`scripts/paroquias.ts`) precisam de JavaScript;
+ * sem ele ficam escondidos e a lista mostra todas.
  */
 import Base from "../layouts/Base.astro";
 import { plural, TEXTOS, type Idioma } from "../i18n/index.ts";
@@ -30,20 +30,50 @@ const paroquias = paroquiasPublicadas(doD1);
   atual="paroquias"
 >
   <Icones />
-  <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
-    <div>
-      <h1 class="text-2xl font-bold md:text-3xl">{t.paroquiasTitulo}</h1>
-      <p id="contagem-paroquias" class="mt-1 text-base text-texto-secundario">
-        {plural(idioma, t.nParoquias, paroquias.length)}
-      </p>
+  <noscript>
+    <style>
+      #controlos-paroquias {
+        display: none;
+      }
+    </style>
+  </noscript>
+  <div class="mb-4">
+    <h1 class="text-2xl font-bold md:text-3xl">{t.paroquiasTitulo}</h1>
+    <p id="contagem-paroquias" class="mt-1 text-base text-texto-secundario" aria-live="polite">
+      {plural(idioma, t.nParoquias, paroquias.length)}
+    </p>
+  </div>
+
+  <section
+    id="controlos-paroquias"
+    class="mb-4 flex flex-col gap-3 rounded-cartao border border-borda bg-cartao p-3 md:flex-row md:items-center md:p-4"
+  >
+    <div class="relative flex-1">
+      <label for="pesquisa-paroquias" class="sr-only">
+        {t.pesquisaParoquiasRotulo}
+      </label>
+      <Icone
+        nome="search"
+        class="pointer-events-none absolute top-1/2 left-3 size-6 -translate-y-1/2 text-texto-secundario"
+      />
+      <input
+        id="pesquisa-paroquias"
+        type="search"
+        autocomplete="off"
+        placeholder={t.pesquisaParoquiasExemplo}
+        class="min-h-12 w-full rounded-cartao border border-borda bg-superficie pr-12 pl-12 text-base placeholder:text-texto-secundario md:text-body-lg"
+      />
+      <button
+        id="limpar-pesquisa-paroquias"
+        type="button"
+        class="absolute top-1/2 right-1 inline-flex size-12 -translate-y-1/2 items-center justify-center rounded-cartao text-texto-secundario"
+        aria-label={t.limparPesquisa}
+        hidden
+      >
+        <Icone nome="close" class="size-6" />
+      </button>
     </div>
-    <div
-      id="filtro-concelho"
-      role="group"
-      aria-label={t.concelho}
-      class="segmentos grid grid-cols-3 md:flex"
-      hidden
-    >
+    <div role="group" aria-label={t.concelho} class="segmentos grid grid-cols-3 md:flex">
       <button type="button" class="segmento" data-concelho="todos" aria-pressed="true">
         {t.todos}
       </button>
@@ -54,13 +84,14 @@ const paroquias = paroquiasPublicadas(doD1);
         Vizela
       </button>
     </div>
-  </div>
+  </section>
 
   <ul id="lista-paroquias" class="mb-10 grid gap-3">
-    {paroquias.map(({ entidade, lugar, concelho }) => (
+    {paroquias.map(({ entidade, lugar, concelho, pesquisa }) => (
       <li
         class="paroquia flex flex-wrap items-center gap-3 rounded-cartao border border-borda bg-cartao p-4 md:p-5"
         data-concelho={concelho === "Vizela" ? "vizela" : "guimaraes"}
+        data-pesquisa={pesquisa}
       >
         <div class="min-w-0 flex-1 basis-56">
           <h2 class="text-lg leading-snug font-semibold">{entidade.nome}</h2>
@@ -77,6 +108,13 @@ const paroquias = paroquiasPublicadas(doD1);
       </li>
     ))}
   </ul>
+  <p
+    id="vazio-paroquias"
+    class="mb-10 rounded-cartao border border-dashed border-borda p-6 text-center text-texto-secundario"
+    hidden
+  >
+    {t.nenhumaParoquia}
+  </p>
   <script type="application/json" id="idioma-paroquias" set:html={JSON.stringify({ idioma })} />
 </Base>
 
