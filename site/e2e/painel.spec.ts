@@ -510,3 +510,57 @@ test("entrada", async ({ page }) => {
     .analyze();
   expect(resultado.violations.map((v) => v.id)).toEqual([]);
 });
+
+test("imagem de capa: escolher, enviar para o R2, ver no site e retirar", async ({
+  page,
+}, info) => {
+  // Grava de verdade (D1 e R2 locais): só num projeto, para não haver duas gravações em paralelo.
+  test.skip(info.project.name !== "computador", "grava no D1 local");
+  await entrarComo(page, "admin");
+  await page.goto("/admin/paroquia/polvoreira/");
+  const capa = page.getByRole("region", { name: "Imagem de capa" });
+  await expect(capa.getByText("Ainda sem imagem de capa.")).toBeVisible();
+  await capa.getByRole("button", { name: "Escolher imagem" }).click();
+
+  const dialogo = page.getByRole("dialog", { name: "Escolher a imagem de capa" });
+  // Uma imagem PNG de 1200 × 800 gerada no próprio navegador (texto: o tsconfig dos e2e não tem DOM).
+  const png = (await page.evaluate(`(async () => {
+    const tela = new OffscreenCanvas(1200, 800);
+    const ctx = tela.getContext("2d");
+    ctx.fillStyle = "#735b28";
+    ctx.fillRect(0, 0, 1200, 800);
+    ctx.fillStyle = "#e2e8f0";
+    ctx.fillRect(400, 200, 400, 500);
+    const blob = await tela.convertToBlob({ type: "image/png" });
+    return [...new Uint8Array(await blob.arrayBuffer())];
+  })()`)) as number[];
+  await dialogo
+    .getByLabel("Fotografia", { exact: true })
+    .setInputFiles({ name: "igreja.png", mimeType: "image/png", buffer: Buffer.from(png) });
+  await expect(dialogo.getByText(/Confirme que tem autorização/)).toBeVisible();
+  await dialogo.getByLabel(/Tenho autorização para publicar/).check();
+  await dialogo.getByLabel("Crédito (opcional)").fill("Paróquia de Polvoreira");
+  await expect(dialogo.getByText("🖼️ Imagem de capa adicionada")).toBeVisible();
+  expect(await axe(page)).toEqual([]);
+  await dialogo.getByRole("button", { name: "Gravar" }).click();
+  await expect(page.getByText("Gravado. Já está no site.")).toBeVisible();
+
+  const imagem = capa.getByRole("img");
+  await expect(imagem).toHaveAttribute("src", /^\/fotos\/[0-9a-f]{64}\.(webp|jpg)$/);
+  const caminho = (await imagem.getAttribute("src")) ?? "";
+  const resposta = await page.request.get(caminho);
+  expect(resposta.status()).toBe(200);
+  expect(resposta.headers()["content-type"]).toMatch(/^image\/(webp|jpeg)$/);
+  expect(resposta.headers()["cache-control"]).toContain("immutable");
+
+  await page.goto("/paroquia/polvoreira/");
+  await expect(page.locator(`img[src="${caminho}"]`)).toBeVisible();
+  await expect(page.getByText("Paróquia de Polvoreira").first()).toBeVisible();
+
+  await page.goto("/admin/paroquia/polvoreira/");
+  await capa.getByRole("button", { name: "Retirar a imagem de capa" }).click();
+  const retirar = page.getByRole("dialog", { name: "Retirar a imagem de capa" });
+  await expect(retirar.getByText("🖼️ Imagem de capa retirada")).toBeVisible();
+  await retirar.getByRole("button", { name: "Retirar" }).click();
+  await expect(capa.getByText("Ainda sem imagem de capa.")).toBeVisible();
+});

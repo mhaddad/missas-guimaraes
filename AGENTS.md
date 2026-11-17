@@ -6,6 +6,7 @@
 
 - **Um só Cloudflare Worker** serve tudo. O Astro (`site/`, modo *server*) gera todas as páginas a partir do D1; as páginas públicas ficam numa cache por idioma, dia de Lisboa e versão dos dados. A API, o login e os relatos estão em `worker/` (biblioteca `@missas/worker`), chamados por `site/src/worker.ts`.
 - **Dados:** D1 (`worker/migracoes/`). Entidades e locais guardam-se como documento JSON no esquema de `dados/schema/*.schema.json`. Cada gravação fica em `gravacoes` + `versoes`, que só crescem (*triggers* recusam `UPDATE` e `DELETE`): é o histórico e o restauro.
+- **Imagens de capa:** enviadas pelo painel para o **R2** (`FOTOS`, `worker/src/fotos.ts`), com o SHA-256 do conteúdo como nome, e servidas em `/fotos/`. Pôr uma imagem na página é uma gravação normal do campo `foto` (só aceita caminhos `/fotos/…`).
 - **Login:** Google, feito pelo próprio Worker (OAuth com PKCE). Só entra quem estiver registado e ativo no ecrã *Acessos*. Sessões no D1 (só o *hash* do cookie).
 - **Gravação:** imediata. O Worker aplica as guardas e a validação (`pacotes/dados/src/gravacao.ts`) e grava numa transação, com controlo de versões (conflito → 409).
 - **Motor de horários** (`pacotes/horarios`): expande regras e exceções em celebrações concretas. Corre no navegador e no Worker, sempre com o mesmo código.
@@ -47,7 +48,7 @@
 ## Segurança — revisão obrigatória
 
 Mudanças em qualquer um destes pontos pedem leitura humana linha a linha e uma revisão de segurança independente antes do *merge*:
-login e sessões (`worker/src/google.ts`, `worker/src/sessao.ts`, `site/src/middleware.ts`); âmbito por perfil e API (`worker/src/contactos.ts`, `worker/src/api/painel.ts`, `worker/src/visao-geral.ts`, rotas do painel em `site/src/middleware.ts`); gravação e histórico (`pacotes/dados/src/gravacao.ts`, `worker/src/bd.ts`, `worker/migracoes/`); ADR-005; tokens de confirmação por e-mail (E6).
+login e sessões (`worker/src/google.ts`, `worker/src/sessao.ts`, `site/src/middleware.ts`); âmbito por perfil e API (`worker/src/contactos.ts`, `worker/src/api/painel.ts`, `worker/src/visao-geral.ts`, rotas do painel em `site/src/middleware.ts`); envio e entrega de imagens (`worker/src/fotos.ts`); gravação e histórico (`pacotes/dados/src/gravacao.ts`, `worker/src/bd.ts`, `worker/migracoes/`); ADR-005; tokens de confirmação por e-mail (E6).
 
 ## Ambientes
 

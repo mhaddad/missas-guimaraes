@@ -7,8 +7,10 @@
  *   /relato (e /api/relato)     relatos do público (Turnstile)
  *   /auth/*                     login Google
  *   /api/*                      API do painel (sessão)
+ *   /fotos/*                    imagens de capa (R2, públicas)
  */
 import { tratarApiPainel, type EnvPainel } from "./api/painel.ts";
+import { servirFoto } from "./fotos.ts";
 import { tratarAuth, type EnvGoogle } from "./google.ts";
 import { tratarRelato, type EnvRelato } from "./relato.ts";
 
@@ -35,6 +37,7 @@ export async function tratarRotas(pedido: Request, env: Env): Promise<Response |
   if (pathname === "/relato" || pathname === "/api/relato") return tratarRelato(pedido, env);
   if (pathname.startsWith("/auth/")) return tratarAuth(pedido, env);
   if (pathname.startsWith("/api/")) return tratarApiPainel(pedido, env);
+  if (pathname.startsWith("/fotos/")) return servirFoto(pedido, env);
   return null;
 }
 

@@ -99,7 +99,12 @@ export const CAMPOS_ALTERACAO: readonly string[] = [
   "notas",
   "notas_i18n",
   "dias_santos",
+  "foto",
 ];
+
+/** Imagens de capa enviadas pelo painel (R2, `worker/src/fotos.ts`): `/fotos/<sha-256>.<ext>`. */
+export const PADRAO_URL_FOTO = /^\/fotos\/[0-9a-f]{64}\.(webp|jpg)$/;
+const MAX_TEXTO_FOTO = 300;
 
 export const PADRAO_ID = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const TIPOS: readonly TipoGravacao[] = ["confirmacao", "alteracao", "novo-local", "restauro"];
@@ -203,6 +208,19 @@ type Recusa = { estado: "ERRO"; motivo: string } | { estado: "CONFLITO"; motivo:
 const erro = (motivo: string): Recusa => ({ estado: "ERRO", motivo });
 const conflito = (motivo: string): Recusa => ({ estado: "CONFLITO", motivo });
 
+/**
+ * Imagem de capa que uma `alteracao` pode gravar: só uma enviada pelo painel (nunca um endereço
+ * de fora) e textos curtos. `null`/ausente retira a imagem.
+ */
+function fotoDoPainel(v: unknown): boolean {
+  if (v === null || v === undefined) return true;
+  if (!objeto(v) || !soChaves(v, ["url", "alt", "credito"])) return false;
+  if (typeof v.url !== "string" || !PADRAO_URL_FOTO.test(v.url)) return false;
+  return [v.alt, v.credito].every(
+    (t) => t === undefined || (typeof t === "string" && t.length <= MAX_TEXTO_FOTO),
+  );
+}
+
 function camposMudados(antes: object, depois: object): string[] {
   const a = antes as Record<string, unknown>;
   const d = depois as Record<string, unknown>;
@@ -254,6 +272,8 @@ function calcular(
       if (r.versao !== versao) return conflito(`o local ${id} mudou desde que foi carregado`);
       const fora = camposMudados(r.dados, dados).filter((c) => !CAMPOS_ALTERACAO.includes(c));
       if (fora.length > 0) return erro(`alteração de campos não permitidos: ${fora.join(", ")}`);
+      if (!iguais(r.dados.foto ?? null, dados.foto ?? null) && !fotoDoPainel(dados.foto))
+        return erro("a imagem de capa tem de ser enviada pelo painel");
       locais.set(id, dados as unknown as Local);
     }
     return { entidade, locais };

@@ -129,6 +129,12 @@ export function descreverAlteracao(a: Alteracao): string {
         ? `✅ Horários confirmados em ${descreverData(a.depois, "pt-PT")}`
         : "Confirmação retirada";
     case "campo":
+      if (a.campo === "foto")
+        return a.antes == null
+          ? "🖼️ Imagem de capa adicionada"
+          : a.depois == null
+            ? "🖼️ Imagem de capa retirada"
+            : "🖼️ Imagem de capa alterada";
       return `Campo ${a.campo} alterado`;
   }
 }
