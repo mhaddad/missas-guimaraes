@@ -835,67 +835,59 @@ function cabecalho(estado: EstadoEntidade, hoje: string): HTMLElement {
     { class: "cartao p-4 md:p-6", "aria-labelledby": "titulo-entidade" },
     h(
       "div",
-      { class: "flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between" },
+      { class: "flex min-w-0 items-start gap-4" },
       h(
-        "div",
-        { class: "flex min-w-0 items-start gap-4" },
-        h(
-          "span",
-          {
-            class:
-              "hidden size-14 shrink-0 items-center justify-center rounded-xl bg-azul-fundo text-azul-texto sm:inline-flex",
-          },
-          icone("church", "size-8"),
-        ),
-        h(
-          "div",
-          { class: "min-w-0" },
-          h(
-            "h1",
-            { id: "titulo-entidade", class: "text-2xl leading-tight font-bold md:text-3xl" },
-            estado.entidade.nome,
-          ),
-          h(
-            "p",
-            { class: "mt-2 flex flex-wrap items-center gap-2 text-texto-secundario" },
-            principal?.concelho &&
-              h(
-                "span",
-                {
-                  class:
-                    "etiqueta bg-slate-100 text-xs tracking-wide text-texto-secundario uppercase",
-                },
-                principal.concelho,
-              ),
-            principal?.localidade && h("span", {}, principal.localidade),
-            telefones.length > 0 &&
-              h(
-                "span",
-                { class: "inline-flex items-center gap-1" },
-                icone("call", "size-4"),
-                telefones.join(" · "),
-              ),
-          ),
-          h(
-            "p",
-            { class: "mt-3" },
-            h(
-              "span",
-              {
-                class: `inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ${classeSelo(estadoSelo)}`,
-              },
-              icone("verified", "size-4"),
-              textoSelo("pt-PT", "longo", estadoSelo, dias, confirmadoEm, tipo),
-            ),
-          ),
-        ),
+        "span",
+        {
+          class:
+            "hidden size-14 shrink-0 items-center justify-center rounded-xl bg-azul-fundo text-azul-texto sm:inline-flex",
+        },
+        icone("church", "size-8"),
       ),
       h(
         "div",
-        { class: "grid gap-2 sm:flex sm:flex-wrap lg:shrink-0 lg:flex-nowrap lg:justify-end" },
-        botaoConfirmar,
-        botaoExcecao,
-        botaoNovo,
+        { class: "min-w-0" },
+        h(
+          "h1",
+          { id: "titulo-entidade", class: "text-2xl leading-tight font-bold md:text-3xl" },
+          estado.entidade.nome,
+        ),
+        h(
+          "p",
+          { class: "mt-2 flex flex-wrap items-center gap-2 text-texto-secundario" },
+          principal?.concelho &&
+            h(
+              "span",
+              {
+                class:
+                  "etiqueta bg-slate-100 text-xs tracking-wide text-texto-secundario uppercase",
+              },
+              principal.concelho,
+            ),
+          principal?.localidade && h("span", {}, principal.localidade),
+          telefones.length > 0 &&
+            h(
+              "span",
+              { class: "inline-flex items-center gap-1" },
+              icone("call", "size-4"),
+              telefones.join(" · "),
+            ),
+          h(
+            "span",
+            {
+              class: `inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ${classeSelo(estadoSelo)}`,
+            },
+            icone("verified", "size-4"),
+            textoSelo("pt-PT", "longo", estadoSelo, dias, confirmadoEm, tipo),
+          ),
+        ),
+        h(
+          "div",
+          { class: "mt-5 grid gap-2 sm:flex sm:flex-wrap" },
+          botaoConfirmar,
+          botaoExcecao,
+          botaoNovo,
+        ),
       ),
     ),
     semRegime.length > 0 &&
