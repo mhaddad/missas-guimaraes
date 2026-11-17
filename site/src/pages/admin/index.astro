@@ -1,63 +1,248 @@
 ---
-/** E-1 — Horários (§7.3): *Está tudo certo* (P1), novo/editar/apagar horário (P2) e histórico (E-6). */
+/**
+ * Visão geral (só administradores; quem é de uma paróquia vai direto para a sua): situação das
+ * confirmações, paróquias que há mais tempo não são atualizadas e as últimas atualizações.
+ * Gerada no servidor com os dados lidos pelo middleware (`Astro.locals.visaoGeral`).
+ */
+import { momentoEmLisboa } from "@missas/horarios";
+import Icone from "../../components/Icone.astro";
 import Painel from "../../layouts/Painel.astro";
+import {
+  ACOES,
+  compararPorAntiguidade,
+  ESTADOS,
+  estadoDaConfirmacao,
+  formatarData,
+  formatarDataHora,
+  haQuanto,
+  ultimaAtualizacao,
+  type EstadoParoquia,
+} from "../../lib/painel.ts";
+
+const visao = Astro.locals.visaoGeral;
+if (!visao) return Astro.redirect("/admin/paroquias/");
+const hoje = momentoEmLisboa(new Date()).data;
+// Só contam as entidades com locais publicados (as que aparecem no site).
+const paroquias = visao.paroquias
+  .filter((p) => p.publicados > 0)
+  .map((p) => ({
+    ...p,
+    estado: estadoDaConfirmacao(p.confirmado_em, hoje),
+    atualizada: ultimaAtualizacao(p),
+  }));
+const total = paroquias.length;
+const contagem = (e: EstadoParoquia) => paroquias.filter((p) => p.estado === e).length;
+const porEstado = (["confirmada", "a-confirmar", "antiga", "nunca"] as const).map((chave) => ({
+  chave,
+  n: contagem(chave),
+  ...ESTADOS[chave],
+}));
+const percentagem = (n: number) => (total ? Math.round((n / total) * 100) : 0);
+const semDiasSantos = paroquias.filter((p) => p.sem_dias_santos > 0).length;
+const nuncaNoPainel = paroquias.filter((p) => p.ultima_gravacao === null).length;
+const maisAntigas = [...paroquias].sort(compararPorAntiguidade((p) => p.atualizada)).slice(0, 8);
+const nomes = new Map(visao.paroquias.map((p) => [p.id, p.nome]));
 ---
 
-<Painel titulo="Horários" ativo="horarios">
-  <div class="mb-6 flex flex-wrap items-end gap-3" id="escolha-entidade" hidden>
-    <div class="grid gap-1">
-      <label for="entidade" class="text-sm font-bold tracking-wide text-texto-secundario uppercase">
-        Entidade
-      </label>
-      <select
-        id="entidade"
-        class="min-h-12 min-w-72 rounded-cartao border border-borda bg-cartao px-3 text-base"
-      ></select>
+<Painel titulo="Visão geral" ativo="visao">
+  <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold md:text-3xl">Visão geral</h1>
+      <p class="mt-1 text-texto-secundario">Situação dos horários a {formatarData(hoje)}.</p>
     </div>
-    <div class="grid gap-1" id="caixa-filtro" hidden>
-      <label
-        for="filtro-entidade"
-        class="text-sm font-bold tracking-wide text-texto-secundario uppercase"
-      >
-        Procurar
-      </label>
-      <input
-        id="filtro-entidade"
-        type="search"
-        placeholder="Nome da paróquia"
-        class="min-h-12 rounded-cartao border border-borda bg-cartao px-3 text-base"
-      />
-    </div>
+    <a class="botao-primario" href="/admin/paroquias/">
+      <Icone nome="church" />
+      Ver todas as paróquias
+    </a>
   </div>
-  <div id="conteudo-entidade" aria-live="polite">
-    <p class="text-texto-secundario">A carregar…</p>
-  </div>
-  <dialog
-    id="dialogo-editor"
-    class="m-auto max-h-[calc(100dvh-2rem)] w-[min(44rem,calc(100%-2rem))] overflow-y-auto rounded-xl border border-borda bg-cartao p-0 text-ardosia shadow-xl backdrop:bg-ardosia/50"
-  ></dialog>
-  <dialog
-    id="dialogo-pedido"
-    aria-labelledby="titulo-pedido"
-    class="m-auto w-[min(40rem,calc(100%-2rem))] rounded-xl border border-borda bg-cartao p-0 text-ardosia shadow-xl backdrop:bg-ardosia/50"
-  >
-    <form method="dialog" class="grid gap-4 p-5 md:p-6">
-      <h2 id="titulo-pedido" class="text-xl font-semibold"></h2>
-      <div id="corpo-pedido" class="grid max-h-[60vh] gap-3 overflow-y-auto text-base"></div>
-      <div class="flex flex-wrap justify-end gap-3">
-        <button value="cancelar" class="botao-secundario">
-          Cancelar
-        </button>
-        <button
-          value="confirmar"
-          id="confirmar-pedido"
-          class="inline-flex min-h-12 items-center rounded-cartao bg-ardosia px-5 text-base font-semibold text-white"
-        ></button>
-      </div>
-    </form>
-  </dialog>
-</Painel>
 
-<script>
-  import "../../scripts/painel-horarios.ts";
-</script>
+  <!-- Indicadores -->
+  <section aria-labelledby="titulo-indicadores" class="mb-6">
+    <h2 id="titulo-indicadores" class="sr-only">
+      Indicadores
+    </h2>
+    <ul class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <li class="cartao flex items-start gap-3 p-3 md:p-4">
+        <span class="hidden size-11 shrink-0 items-center justify-center rounded-cartao sm:inline-flex bg-superficie">
+          <Icone nome="church" class="size-6 text-dourado-texto" />
+        </span>
+        <span>
+          <span class="rotulo block">Paróquias no site</span>
+          <span class="block text-2xl font-bold tabular-nums">{total}</span>
+          <span class="block text-sm text-texto-secundario">
+            {paroquias.reduce((n, p) => n + p.publicados, 0)} igrejas e capelas
+          </span>
+        </span>
+      </li>
+      <li class="cartao flex items-start gap-3 p-3 md:p-4">
+        <span class="hidden size-11 shrink-0 items-center justify-center rounded-cartao sm:inline-flex bg-confirmado-fundo">
+          <Icone nome="verified" class="size-6 text-confirmado" />
+        </span>
+        <span>
+          <span class="rotulo block">Confirmadas</span>
+          <span class="block text-2xl font-bold tabular-nums">
+            {contagem("confirmada")}
+            <span class="ml-1 text-base font-semibold text-texto-secundario">
+              ({percentagem(contagem("confirmada"))}%)
+            </span>
+          </span>
+          <span class="block text-sm text-texto-secundario">nos últimos 45 dias</span>
+        </span>
+      </li>
+      <li class="cartao flex items-start gap-3 p-3 md:p-4">
+        <span class="hidden size-11 shrink-0 items-center justify-center rounded-cartao sm:inline-flex bg-aviso-fundo">
+          <Icone nome="warning" class="size-6 text-dourado-texto" />
+        </span>
+        <span>
+          <span class="rotulo block">Precisam de atenção</span>
+          <span class="block text-2xl font-bold tabular-nums">
+            {total - contagem("confirmada")}
+          </span>
+          <span class="block text-sm text-texto-secundario">
+            a confirmar, antigas ou nunca confirmadas
+          </span>
+        </span>
+      </li>
+      <li class="cartao flex items-start gap-3 p-3 md:p-4">
+        <span class="hidden size-11 shrink-0 items-center justify-center rounded-cartao sm:inline-flex bg-azul-fundo">
+          <Icone nome="update" class="size-6 text-azul-texto" />
+        </span>
+        <span>
+          <span class="rotulo block">Atualizações</span>
+          <span class="block text-2xl font-bold tabular-nums">{visao.gravacoes30dias}</span>
+          <span class="block text-sm text-texto-secundario">nos últimos 30 dias</span>
+        </span>
+      </li>
+    </ul>
+  </section>
+
+  <!-- Distribuição das confirmações -->
+  <section aria-labelledby="titulo-confirmacoes" class="cartao mb-6 p-4 md:p-5">
+    <div class="flex flex-wrap items-baseline justify-between gap-2">
+      <h2 id="titulo-confirmacoes" class="text-lg font-semibold">
+        Confirmação dos horários
+      </h2>
+      <p class="text-sm text-texto-secundario">
+        {nuncaNoPainel} nunca atualizadas no painel · {semDiasSantos} sem o horário dos dias santos
+      </p>
+    </div>
+    <div class="mt-3 flex h-3 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+      {porEstado.map((e) =>
+        e.n > 0 ? (
+          <span class={e.ponto} style={`width: ${(e.n / Math.max(total, 1)) * 100}%`} />
+        ) : null,
+      )}
+    </div>
+    <ul class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      {porEstado.map((e) => (
+        <li>
+          <a
+            class="flex min-h-12 items-center gap-2 rounded-cartao px-2 hover:bg-superficie"
+            href={`/admin/paroquias/?estado=${e.chave}`}
+          >
+            <span class:list={["size-3 shrink-0 rounded-full", e.ponto]} aria-hidden="true" />
+            <span class="flex-1">{e.texto}</span>
+            <span class="font-bold tabular-nums">{e.n}</span>
+            <Icone nome="chevron_right" class="size-5 text-texto-secundario" />
+          </a>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <div class="grid gap-6 lg:grid-cols-2">
+    <!-- Há mais tempo sem atualização -->
+    <section aria-labelledby="titulo-antigas" class="cartao flex flex-col">
+      <div class="flex items-center justify-between gap-3 border-b border-borda px-4 py-3 md:px-5">
+        <h2 id="titulo-antigas" class="text-lg font-semibold">
+          Há mais tempo sem atualização
+        </h2>
+        <a class="ligacao text-sm whitespace-nowrap" href="/admin/paroquias/?ordem=antigas">
+          Ver todas
+        </a>
+      </div>
+      <ol class="divide-y divide-borda">
+        {maisAntigas.map((p) => (
+          <li class="relative flex items-center gap-3 px-4 py-3 hover:bg-superficie md:px-5">
+            <div class="min-w-0 flex-1">
+              <a
+                class="font-semibold after:absolute after:inset-0 hover:underline"
+                href={`/admin/paroquia/${p.id}/`}
+              >
+                {p.nome}
+              </a>
+              <p class="text-sm text-texto-secundario">
+                {[p.localidade, p.concelho].filter(Boolean).join(" · ")}
+              </p>
+            </div>
+            <div class="shrink-0 text-right">
+              <span class:list={["etiqueta text-xs", ESTADOS[p.estado].classe]}>
+                {ESTADOS[p.estado].texto}
+              </span>
+              <p class="mt-1 text-sm text-texto-secundario">
+                {p.atualizada ? `Atualizada ${haQuanto(p.atualizada, hoje)}` : "Nunca atualizada"}
+              </p>
+            </div>
+            <Icone nome="chevron_right" class="size-5 shrink-0 text-texto-secundario" />
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    <!-- Últimas atualizações -->
+    <section aria-labelledby="titulo-recentes" class="cartao flex flex-col">
+      <div class="border-b border-borda px-4 py-3 md:px-5">
+        <h2 id="titulo-recentes" class="text-lg font-semibold">
+          Últimas atualizações
+        </h2>
+      </div>
+      {visao.recentes.length === 0 ? (
+        <p class="px-4 py-6 text-texto-secundario md:px-5">Ainda ninguém gravou nada no painel.</p>
+      ) : (
+        <ol class="divide-y divide-borda">
+          {visao.recentes.map((r) => {
+            const linhas = r.resumo.flatMap((l) => l.linhas);
+            return (
+              <li class="relative flex gap-3 px-4 py-3 hover:bg-superficie md:px-5">
+                <span
+                  class:list={[
+                    "mt-1 inline-flex size-9 shrink-0 items-center justify-center rounded-full",
+                    r.acao === "confirmacao"
+                      ? "bg-confirmado-fundo text-confirmado"
+                      : "bg-azul-fundo text-azul-texto",
+                  ]}
+                  aria-hidden="true"
+                >
+                  <Icone nome={r.acao === "confirmacao" ? "check" : "edit"} class="size-5" />
+                </span>
+                <div class="min-w-0 flex-1">
+                  <a
+                    class="font-semibold after:absolute after:inset-0 hover:underline"
+                    href={`/admin/paroquia/${r.entidade.id}/`}
+                  >
+                    {nomes.get(r.entidade.id) ?? r.entidade.nome}
+                  </a>
+                  <p class="text-sm">
+                    {ACOES[r.acao] ?? r.acao}
+                    {linhas.length > 0 && r.acao !== "confirmacao" && (
+                      <span class="text-texto-secundario">
+                        {" "}
+                        — {linhas[0]}
+                        {linhas.length > 1 && ` (+${linhas.length - 1})`}
+                      </span>
+                    )}
+                  </p>
+                  <p class="text-sm text-texto-secundario">
+                    <time datetime={r.data}>{formatarDataHora(r.data)}</time>
+                    {" · "}
+                    {r.quem ?? "Equipa técnica"}
+                  </p>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </section>
+  </div>
+</Painel>

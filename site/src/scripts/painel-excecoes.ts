@@ -103,6 +103,7 @@ export function abrirExcecao(opcoes: OpcoesExcecao): Promise<Alteracao | null> {
       value: existente?.acao === "alterar" ? (existente.hora ?? "") : "",
     }),
   );
+  caixaNovaHora.classList.add("sm:max-w-[calc(50%-0.5rem)]");
   const caixaExtra = h(
     "div",
     { class: "grid gap-4" },

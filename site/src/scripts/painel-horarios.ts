@@ -1,7 +1,8 @@
 /**
- * E-1 — Horários (§7.3): seletor de entidade, cartão da entidade com *Está tudo certo* (P1),
- * resumo, horários habituais, exceções próximas, regime dos dias santos de cada local e
- * histórico (E-6) com *Restaurar esta versão* para administradores (§8.8).
+ * E-1 — Página de uma paróquia no painel (§7.3): cabeçalho com *Está tudo certo* (P1), novo
+ * horário e nova exceção; indicadores; horários habituais de cada local (editar e apagar, P2);
+ * exceções próximas (P3); dias santos (P4); locais; histórico (E-6) com *Restaurar esta versão*
+ * para administradores (§8.8). A entidade vem da página (`data-entidade`), já autorizada.
  */
 import { alertasDeAnomalia, resumirPedido, type ParLocal } from "@missas/dados/resumo";
 import {
@@ -17,21 +18,15 @@ import {
 } from "@missas/horarios";
 import { TEXTOS, type TipoEntidade } from "../i18n/index.ts";
 import { descreverExcecao } from "../lib/detalhe.ts";
+import { ACOES, formatarData, formatarDataHora, haQuanto } from "../lib/painel.ts";
 import { selo } from "../lib/portal.ts";
 import { classeSelo, textoSelo } from "../lib/selo.ts";
-import { api, carregarEu, ErroApi, h, icone, mostrarErro, type Eu } from "./painel-comum.ts";
+import { api, ErroApi, h, icone, mostrarErro } from "./painel-comum.ts";
 import { abrirDiasSantos } from "./painel-dias-santos.ts";
 import { abrirEditor, type OpcoesEditor } from "./painel-editar.ts";
 import { abrirExcecao, type OpcoesExcecao } from "./painel-excecoes.ts";
 import type { Alteracao } from "./painel-modal.ts";
 import { enviarGravacao, notificar, textoDoErro } from "./painel-pedidos.ts";
-
-interface EntidadeLista {
-  id: string;
-  nome: string;
-  tipo: string;
-  locais: string[];
-}
 
 interface EstadoEntidade {
   entidade: Entidade;
@@ -41,13 +36,9 @@ interface EstadoEntidade {
 
 const t = TEXTOS["pt-PT"];
 const conteudo = document.getElementById("conteudo-entidade") as HTMLElement;
-const escolha = document.getElementById("escolha-entidade") as HTMLElement;
-const seletor = document.getElementById("entidade") as HTMLSelectElement;
-const filtro = document.getElementById("filtro-entidade") as HTMLInputElement;
-const caixaFiltro = document.getElementById("caixa-filtro") as HTMLElement;
 const dialogo = document.getElementById("dialogo-pedido") as HTMLDialogElement;
 const dialogoEditor = document.getElementById("dialogo-editor") as HTMLDialogElement;
-let eu: Eu;
+const admin = conteudo.dataset.perfil === "admin";
 
 /** Pergunta de confirmação num diálogo; `true` se a pessoa confirmar. */
 function perguntar(titulo: string, conteudo: Node[], textoConfirmar: string): Promise<boolean> {
@@ -216,20 +207,6 @@ interface Gravacao {
   contacto: { ref: string; funcao: string | null; nome?: string } | null;
 }
 
-const TITULOS: Record<Gravacao["acao"], string> = {
-  importacao: "Horários iniciais",
-  confirmacao: "Está tudo certo (confirmação)",
-  alteracao: "Alteração",
-  "novo-local": "Novo local",
-  restauro: "Restauro de uma versão anterior",
-};
-
-const DATA_HORA = new Intl.DateTimeFormat("pt-PT", {
-  timeZone: "Europe/Lisbon",
-  dateStyle: "medium",
-  timeStyle: "short",
-});
-
 /** Restaurar esta versão (só `admin`, §8.8): mostra a diferença e envia um pedido `restauro`. */
 async function restaurar(estado: EstadoEntidade, versao: Gravacao, botao: HTMLButtonElement) {
   let antiga: { entidade: Entidade; locais: { local: Local }[] };
@@ -255,7 +232,7 @@ async function restaurar(estado: EstadoEntidade, versao: Gravacao, botao: HTMLBu
   }
   const alertas = alertasDeAnomalia(pares);
   const conteudo = [
-    h("p", {}, `Repor os horários como estavam em ${DATA_HORA.format(new Date(versao.data))}:`),
+    h("p", {}, `Repor os horários como estavam em ${formatarDataHora(versao.data)}:`),
     pares.length
       ? listaDoResumo(pares)
       : h("p", { class: "text-texto-secundario" }, "Só muda a ficha da entidade."),
@@ -297,8 +274,79 @@ const FUNCOES: Record<string, string> = {
   equipa: "Equipa do Arciprestado",
 };
 
+// --- Peças comuns -------------------------------------------------------------------------------
+
+let cartoes = 0;
+
+/** Cartão com cabeçalho (título, contagem e ação opcional) e corpo. */
+function cartao(
+  titulo: string,
+  corpo: (Node | null | false)[],
+  opcoes: { extra?: Node | null; rodape?: Node | null; nivel?: "h2" | "h3" } = {},
+): HTMLElement {
+  const id = `cartao-${++cartoes}`;
+  return h(
+    "section",
+    { class: "cartao flex flex-col", "aria-labelledby": id },
+    h(
+      "div",
+      {
+        class:
+          "flex min-h-14 items-center justify-between gap-3 border-b border-borda px-4 py-3 md:px-5",
+      },
+      h(opcoes.nivel ?? "h2", { id, class: "text-lg font-semibold" }, titulo),
+      opcoes.extra ?? null,
+    ),
+    ...corpo,
+    opcoes.rodape
+      ? h("div", { class: "border-t border-borda px-4 py-2 md:px-5" }, opcoes.rodape)
+      : null,
+  );
+}
+
+function botaoIcone(
+  nome: string,
+  rotulo: string,
+  aoClicar: (b: HTMLButtonElement) => void,
+  perigo = false,
+): HTMLButtonElement {
+  const botao = h(
+    "button",
+    {
+      type: "button",
+      class: `botao-icone${perigo ? " botao-icone-perigo" : ""}`,
+      "aria-label": rotulo,
+      title: rotulo.split(":")[0],
+    },
+    icone(nome),
+  );
+  botao.addEventListener("click", () => aoClicar(botao));
+  return botao;
+}
+
+/** Botão discreto de rodapé de cartão ("+ Novo horário"). */
+function botaoAdicionar(texto: string, aoClicar: (b: HTMLButtonElement) => void): HTMLElement {
+  const botao = h(
+    "button",
+    {
+      type: "button",
+      class:
+        "inline-flex min-h-12 items-center gap-2 rounded-cartao px-2 font-semibold text-dourado-texto hover:bg-superficie",
+    },
+    icone("add"),
+    texto,
+  );
+  botao.addEventListener("click", () => aoClicar(botao));
+  return botao;
+}
+
+const vazio = (texto: string) =>
+  h("p", { class: "px-4 py-5 text-texto-secundario md:px-5" }, texto);
+
+// --- Histórico ------------------------------------------------------------------------------------
+
 async function mostrarHistorico(alvo: HTMLElement, estado: EstadoEntidade): Promise<void> {
-  alvo.replaceChildren(h("p", { class: "text-texto-secundario" }, "A carregar…"));
+  alvo.replaceChildren(vazio("A carregar…"));
   let versoes: Gravacao[];
   try {
     versoes = await api(`/api/entidades/${encodeURIComponent(estado.entidade.id)}/historico`);
@@ -308,19 +356,19 @@ async function mostrarHistorico(alvo: HTMLElement, estado: EstadoEntidade): Prom
   }
   const nomes = new Map(estado.locais.map((l) => [l.local.id, l.local.nome]));
   if (versoes.length === 0) {
-    alvo.replaceChildren(h("p", { class: "text-texto-secundario" }, "Sem alterações registadas."));
+    alvo.replaceChildren(vazio("Sem alterações registadas."));
     return;
   }
   alvo.replaceChildren(
     h(
       "ol",
-      { class: "grid gap-3" },
+      { class: "divide-y divide-borda" },
       ...versoes.map((v, i) => {
         const quem = v.contacto
           ? (v.contacto.nome ?? FUNCOES[v.contacto.funcao ?? ""] ?? "Contacto da paróquia")
           : "Equipa técnica";
         const botao =
-          eu.perfil === "admin" && i > 0
+          admin && i > 0
             ? h(
                 "button",
                 { type: "button", class: "botao-secundario" },
@@ -331,27 +379,47 @@ async function mostrarHistorico(alvo: HTMLElement, estado: EstadoEntidade): Prom
         botao?.addEventListener("click", () => void restaurar(estado, v, botao));
         return h(
           "li",
-          { class: "grid gap-2 rounded-cartao border border-borda bg-cartao p-4" },
+          {
+            class: "grid gap-2 px-4 py-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:px-5",
+          },
           h(
-            "p",
-            { class: "text-sm text-texto-secundario" },
-            `${DATA_HORA.format(new Date(v.data))} · ${quem}${i === 0 ? " · versão atual" : ""}`,
-          ),
-          h("p", { class: "font-semibold" }, TITULOS[v.acao]),
-          ...v.resumo.map((r) =>
+            "div",
+            { class: "min-w-0" },
             h(
-              "div",
-              { class: "text-base text-texto-secundario" },
-              h("p", { class: "font-semibold" }, nomes.get(r.local) ?? r.local),
-              h("ul", { class: "grid gap-1 pl-4" }, ...r.linhas.map((l) => h("li", {}, l))),
+              "p",
+              { class: "flex flex-wrap items-center gap-2" },
+              h("span", { class: "font-semibold" }, ACOES[v.acao] ?? v.acao),
+              i === 0 &&
+                h(
+                  "span",
+                  { class: "etiqueta bg-confirmado-fundo text-xs text-confirmado" },
+                  "Versão atual",
+                ),
+            ),
+            h(
+              "p",
+              { class: "text-sm text-texto-secundario" },
+              h("time", { datetime: v.data }, formatarDataHora(v.data)),
+              ` · ${quem}`,
+            ),
+            ...v.resumo.map((r) =>
+              h(
+                "div",
+                { class: "mt-2 text-base text-texto-secundario" },
+                estado.locais.length > 1 &&
+                  h("p", { class: "font-semibold text-ardosia" }, nomes.get(r.local) ?? r.local),
+                h("ul", { class: "grid gap-1" }, ...r.linhas.map((l) => h("li", {}, l))),
+              ),
             ),
           ),
-          botao && h("div", {}, botao),
+          botao,
         );
       }),
     ),
   );
 }
+
+// --- Horários habituais ---------------------------------------------------------------------------
 
 const DIAS_CURTOS: Record<string, string> = {
   seg: "Seg",
@@ -379,193 +447,296 @@ interface AcoesRegra {
   apagar(botao: HTMLButtonElement): void;
 }
 
-/** O que se pode fazer num local (só com os dados lidos do `main`). */
-interface AcoesLocal {
-  regra(indice: number): AcoesRegra;
-  excecao(indice: number): AcoesRegra;
-  diasSantos(botao: HTMLButtonElement): void;
-}
-
-function cartaoRegra(regra: Regra, hoje: string, acoes?: AcoesRegra): HTMLElement {
-  const automaticas = etiquetas(regra, "pt-PT");
-  const semSemanal = regra.semanas_do_mes || regra.quinzenal ? automaticas : automaticas.slice(1);
-  const inativa = regra.validade?.ate !== undefined && regra.validade.ate < hoje;
+function caixaHora(cima: string, hora: string): HTMLElement {
   return h(
-    "li",
+    "div",
     {
-      class: `flex items-start gap-4 rounded-cartao border border-borda bg-cartao p-4 ${inativa ? "opacity-60" : ""}`,
+      class:
+        "flex w-20 shrink-0 flex-col items-center rounded-cartao bg-superficie px-1 py-2 text-center md:w-24",
     },
     h(
-      "div",
-      {
-        class:
-          "flex w-24 shrink-0 flex-col items-center rounded-cartao bg-superficie px-1 py-2 text-center",
-      },
-      h(
-        "span",
-        { class: "text-xs font-bold tracking-wide text-texto-secundario uppercase" },
-        rotuloDias(regra),
-      ),
-      h("span", { class: "text-timetable-time font-bold tabular-nums" }, regra.hora),
+      "span",
+      { class: "text-xs leading-tight font-bold tracking-wide text-texto-secundario uppercase" },
+      cima,
     ),
+    h("span", { class: "text-timetable-time font-bold tabular-nums" }, hora),
+  );
+}
+
+function botoesLinha(descricao: string, acoes: AcoesRegra): HTMLElement {
+  return h(
+    "div",
+    { class: "flex shrink-0 gap-2" },
+    botaoIcone("edit", `Editar: ${descricao}`, acoes.editar),
+    botaoIcone("delete", `Apagar: ${descricao}`, acoes.apagar, true),
+  );
+}
+
+function linhaRegra(regra: Regra, hoje: string, acoes: AcoesRegra): HTMLElement {
+  const automaticas = etiquetas(regra, "pt-PT");
+  const semSemanal = regra.semanas_do_mes || regra.quinzenal ? automaticas : automaticas.slice(1);
+  const terminou = regra.validade?.ate !== undefined && regra.validade.ate < hoje;
+  const futura = regra.validade?.de !== undefined && regra.validade.de > hoje;
+  return h(
+    "li",
+    { class: `flex items-center gap-3 px-4 py-3 md:gap-4 md:px-5 ${terminou ? "opacity-60" : ""}` },
+    caixaHora(rotuloDias(regra), regra.hora),
     h(
       "div",
       { class: "min-w-0 flex-1" },
       h(
         "p",
-        { class: "text-base font-semibold" },
+        { class: "font-semibold" },
         regra.tipo === "missa"
           ? descreverRegra(regra, "pt-PT")
           : descreverRegra(regra, "pt-PT", { comTipo: true }),
       ),
       h(
         "p",
-        { class: "mt-2 flex flex-wrap gap-2 empty:hidden" },
+        { class: "mt-1 flex flex-wrap gap-1.5 empty:hidden" },
+        terminou &&
+          h("span", { class: "etiqueta bg-slate-100 text-sm text-texto-secundario" }, "Terminou"),
+        futura &&
+          h(
+            "span",
+            { class: "etiqueta bg-azul-fundo text-sm text-azul-texto" },
+            "Ainda não começou",
+          ),
         ...semSemanal.map((e) =>
-          h("span", { class: "etiqueta bg-slate-100 text-texto-secundario" }, e),
+          h("span", { class: "etiqueta bg-slate-100 text-sm text-texto-secundario" }, e),
         ),
-        regra.nota && h("span", { class: "etiqueta bg-azul-fundo text-azul-texto" }, regra.nota),
+        regra.nota &&
+          h("span", { class: "etiqueta bg-azul-fundo text-sm text-azul-texto" }, regra.nota),
       ),
-      acoes && botoesEditarApagar(`${rotuloDias(regra)} às ${regra.hora}`, acoes),
     ),
+    botoesLinha(`${rotuloDias(regra)} às ${regra.hora}`, acoes),
   );
 }
 
-function botoesEditarApagar(descricao: string, acoes: AcoesRegra): HTMLElement {
-  const editar = h(
-    "button",
-    { type: "button", class: "botao-secundario", "aria-label": `Editar: ${descricao}` },
-    "Editar",
-  );
-  const apagar = h(
-    "button",
-    { type: "button", class: "botao-secundario", "aria-label": `Apagar: ${descricao}` },
-    "Apagar",
-  );
-  editar.addEventListener("click", () => acoes.editar(editar));
-  apagar.addEventListener("click", () => acoes.apagar(apagar));
-  return h("div", { class: "mt-3 flex flex-wrap gap-2" }, editar, apagar);
-}
-
-function seccaoLocal(
-  local: Local,
-  tipoEntidade: TipoEntidade,
-  hoje: string,
-  acoes?: AcoesLocal,
-): HTMLElement {
+function cartaoHorarios(estado: EstadoEntidade, indiceLocal: number, hoje: string): HTMLElement {
+  const { local } = estado.locais[indiceLocal] as { local: Local };
+  const varios = estado.locais.length > 1;
   // Ordenadas para mostrar, mas com o índice original em `local.horarios` (para editar).
   const regras = local.horarios
     .map((regra, indice) => ({ regra, indice }))
     .sort((a, b) => compararRegras(a.regra, b.regra));
-  const excecoes = local.excecoes
-    .map((excecao, indice) => ({ excecao, indice }))
-    .filter(({ excecao }) => excecao.data >= hoje)
-    .sort((a, b) => a.excecao.data.localeCompare(b.excecao.data));
-  const botaoDiasSantos =
-    acoes &&
-    h(
-      "button",
-      { type: "button", class: "botao-secundario" },
-      local.dias_santos === null ? "Indicar" : "Alterar",
-    );
-  botaoDiasSantos?.addEventListener("click", () => acoes?.diasSantos(botaoDiasSantos));
-  const { estado, dias } = selo(local.confirmado_em, hoje);
-  return h(
-    "section",
-    { class: "grid gap-4 rounded-xl border border-borda bg-superficie p-4 md:p-5" },
-    h(
-      "div",
-      { class: "flex flex-wrap items-start justify-between gap-3" },
-      h(
-        "div",
-        {},
-        h("h2", { class: "text-xl font-semibold" }, local.nome),
+  const verNoSite = h(
+    "a",
+    {
+      class: "ligacao inline-flex min-h-12 shrink-0 items-center gap-1 text-sm",
+      href: `/paroquia/${local.entidade}/#${local.id}`,
+      target: "_blank",
+      rel: "noopener",
+    },
+    "Ver no site",
+    icone("open_in_new", "size-4"),
+  );
+  return cartao(
+    varios ? `Horários · ${local.nome}` : "Horários habituais",
+    [
+      !local.publicar &&
         h(
           "p",
-          { class: "flex items-center gap-1 text-base text-texto-secundario" },
-          icone("location_on", "size-4"),
-          [local.localidade, local.concelho].filter(Boolean).join(" · "),
+          { class: "mx-4 mt-3 rounded-cartao bg-aviso-fundo p-3 text-dourado-texto md:mx-5" },
+          "Este local não está publicado no site.",
         ),
-        h(
-          "p",
-          { class: `mt-2 inline-block rounded px-2 py-1 text-sm ${classeSelo(estado)}` },
-          textoSelo("pt-PT", "longo", estado, dias, local.confirmado_em, tipoEntidade),
-        ),
+      regras.length
+        ? h(
+            "ul",
+            { class: "divide-y divide-borda" },
+            ...regras.map(({ regra, indice }) =>
+              linhaRegra(regra, hoje, {
+                editar: (b) =>
+                  void editarHorario(
+                    estado,
+                    { modo: "editar", indiceLocal, indiceRegra: indice },
+                    b,
+                  ),
+                apagar: (b) =>
+                  void editarHorario(
+                    estado,
+                    { modo: "apagar", indiceLocal, indiceRegra: indice },
+                    b,
+                  ),
+              }),
+            ),
+          )
+        : vazio("Ainda não há horários registados."),
+    ],
+    {
+      extra: verNoSite,
+      rodape: botaoAdicionar(
+        "Novo horário",
+        (b) => void editarHorario(estado, { modo: "novo", indiceLocal }, b),
       ),
-      h(
-        "a",
-        {
-          class: "ligacao inline-flex min-h-12 items-center",
-          href: `/paroquia/${local.entidade}/#${local.id}`,
-          target: "_blank",
-          rel: "noopener",
-        },
-        "Ver no site",
-      ),
-    ),
-    !local.publicar &&
-      h(
-        "p",
-        { class: "rounded-cartao bg-aviso-fundo p-3 text-base text-dourado-texto" },
-        "Este local não está publicado no site.",
-      ),
-    h(
-      "h3",
-      { class: "text-base font-bold tracking-wide text-texto-secundario uppercase" },
-      "Horários habituais",
-    ),
-    regras.length
-      ? h(
-          "ul",
-          { class: "grid gap-3" },
-          ...regras.map(({ regra, indice }) => cartaoRegra(regra, hoje, acoes?.regra(indice))),
-        )
-      : h("p", { class: "text-texto-secundario" }, "Sem horários registados."),
-    h(
-      "h3",
-      { class: "text-base font-bold tracking-wide text-texto-secundario uppercase" },
-      "Exceções próximas",
-    ),
-    excecoes.length
-      ? h(
-          "ul",
-          { class: "grid gap-3" },
-          ...excecoes.map(({ excecao, indice }) => {
-            const texto = descreverExcecao(excecao, "pt-PT");
-            return h(
-              "li",
-              { class: "rounded-cartao border border-borda bg-cartao p-4 text-base" },
-              h("p", {}, texto),
-              acoes && botoesEditarApagar(texto, acoes.excecao(indice)),
-            );
-          }),
-        )
-      : h("p", { class: "text-texto-secundario" }, "Nenhuma."),
-    h(
-      "h3",
-      { class: "text-base font-bold tracking-wide text-texto-secundario uppercase" },
-      "Dias santos de preceito",
-    ),
-    h(
-      "div",
-      { class: "flex flex-wrap items-center gap-3" },
-      h(
-        "p",
-        {
-          class:
-            local.dias_santos === null
-              ? "rounded-cartao bg-aviso-fundo p-3 text-base text-dourado-texto"
-              : "text-base",
-        },
-        t.regimes[local.dias_santos ?? "null"],
-      ),
-      botaoDiasSantos,
-    ),
+    },
   );
 }
 
-function resumo(estadoEntidade: EstadoEntidade, hoje: string): HTMLElement {
-  const locais = estadoEntidade.locais.map((l) => l.local);
+// --- Coluna lateral -------------------------------------------------------------------------------
+
+function cartaoExcecoes(estado: EstadoEntidade, hoje: string): HTMLElement {
+  const varios = estado.locais.length > 1;
+  const proximas = estado.locais
+    .flatMap(({ local }, indiceLocal) =>
+      local.excecoes.map((excecao, indiceExcecao) => ({
+        local,
+        excecao,
+        indiceLocal,
+        indiceExcecao,
+      })),
+    )
+    .filter(({ excecao }) => excecao.data >= hoje)
+    .sort((a, b) => a.excecao.data.localeCompare(b.excecao.data));
+  const MES = new Intl.DateTimeFormat("pt-PT", { month: "short", timeZone: "UTC" });
+  return cartao(
+    "Exceções próximas",
+    [
+      proximas.length
+        ? h(
+            "ul",
+            { class: "divide-y divide-borda" },
+            ...proximas.map(({ local, excecao, indiceLocal, indiceExcecao }) => {
+              const texto = descreverExcecao(excecao, "pt-PT");
+              const data = new Date(`${excecao.data}T12:00:00Z`);
+              return h(
+                "li",
+                { class: "flex items-start gap-3 px-4 py-3 md:px-5" },
+                h(
+                  "div",
+                  {
+                    class:
+                      "flex w-14 shrink-0 flex-col items-center rounded-cartao bg-aviso-fundo py-1 text-dourado-texto",
+                  },
+                  h(
+                    "span",
+                    { class: "text-xl leading-tight font-bold tabular-nums" },
+                    String(data.getUTCDate()),
+                  ),
+                  h(
+                    "span",
+                    { class: "text-xs font-bold uppercase" },
+                    MES.format(data).replace(".", ""),
+                  ),
+                ),
+                h(
+                  "div",
+                  { class: "min-w-0 flex-1" },
+                  h("p", {}, texto),
+                  varios && h("p", { class: "text-sm text-texto-secundario" }, local.nome),
+                ),
+                botoesLinha(texto, {
+                  editar: (b) =>
+                    void editarExcecao(estado, { modo: "editar", indiceLocal, indiceExcecao }, b),
+                  apagar: (b) =>
+                    void editarExcecao(estado, { modo: "apagar", indiceLocal, indiceExcecao }, b),
+                }),
+              );
+            }),
+          )
+        : vazio("Nenhuma exceção agendada."),
+    ],
+    {
+      extra:
+        proximas.length > 0
+          ? h(
+              "span",
+              { class: "etiqueta bg-aviso-fundo text-sm text-dourado-texto" },
+              String(proximas.length),
+            )
+          : null,
+      rodape: botaoAdicionar(
+        "Adicionar exceção",
+        (b) => void editarExcecao(estado, { modo: "nova" }, b),
+      ),
+    },
+  );
+}
+
+function cartaoDiasSantos(estado: EstadoEntidade): HTMLElement {
+  const varios = estado.locais.length > 1;
+  return cartao("Dias santos de preceito", [
+    h(
+      "ul",
+      { class: "divide-y divide-borda" },
+      ...estado.locais.map(({ local }, indiceLocal) => {
+        const falta = local.dias_santos === null;
+        const botao = h(
+          "button",
+          {
+            type: "button",
+            class: falta ? "botao-primario shrink-0" : "botao-secundario shrink-0",
+            "aria-label": `${falta ? "Indicar" : "Alterar"} o horário dos dias santos${varios ? ` em ${local.nome}` : ""}`,
+          },
+          falta ? "Indicar" : "Alterar",
+        );
+        botao.addEventListener("click", () => void editarDiasSantos(estado, indiceLocal, botao));
+        return h(
+          "li",
+          { class: "flex items-center gap-3 px-4 py-3 md:px-5" },
+          h(
+            "div",
+            { class: "min-w-0 flex-1" },
+            varios && h("p", { class: "font-semibold" }, local.nome),
+            h(
+              "p",
+              {
+                class: falta
+                  ? "flex items-start gap-1 text-dourado-texto"
+                  : "text-texto-secundario",
+              },
+              falta && icone("warning", "mt-0.5 size-5"),
+              falta ? "Ainda não indicado." : t.regimes[local.dias_santos ?? "null"],
+            ),
+          ),
+          botao,
+        );
+      }),
+    ),
+  ]);
+}
+
+function cartaoLocais(estado: EstadoEntidade): HTMLElement {
+  return cartao(
+    "Igrejas e capelas",
+    [
+      h(
+        "ul",
+        { class: "divide-y divide-borda" },
+        ...estado.locais.map(({ local }) =>
+          h(
+            "li",
+            { class: "flex items-center gap-3 px-4 py-3 md:px-5" },
+            icone("church", "size-6 shrink-0 text-dourado-texto"),
+            h(
+              "div",
+              { class: "min-w-0 flex-1" },
+              h("p", { class: "font-semibold" }, local.nome),
+              h(
+                "p",
+                { class: "text-sm text-texto-secundario" },
+                [local.localidade, local.concelho].filter(Boolean).join(" · "),
+              ),
+            ),
+            h(
+              "span",
+              {
+                class: `etiqueta shrink-0 text-xs ${local.publicar ? "bg-confirmado-fundo text-confirmado" : "bg-slate-100 text-texto-secundario"}`,
+              },
+              local.publicar ? "No site" : "Não publicado",
+            ),
+          ),
+        ),
+      ),
+    ],
+    { extra: h("span", { class: "text-sm text-texto-secundario" }, String(estado.locais.length)) },
+  );
+}
+
+// --- Cabeçalho e indicadores ----------------------------------------------------------------------
+
+function indicadores(estado: EstadoEntidade, hoje: string): HTMLElement {
+  const locais = estado.locais.map((l) => l.local);
   // Em vigor: já começou e ainda não acabou (a validade, se houver, inclui hoje).
   const ativas = locais
     .flatMap((l) => l.horarios)
@@ -574,67 +745,179 @@ function resumo(estadoEntidade: EstadoEntidade, hoje: string): HTMLElement {
         !(r.validade?.ate && r.validade.ate < hoje) && !(r.validade?.de && r.validade.de > hoje),
     ).length;
   const excecoes = locais.flatMap((l) => l.excecoes).filter((e) => e.data >= hoje).length;
-  const numero = (rotulo: string, valor: number, nome: string) =>
+  const datas = locais.filter((l) => l.publicar).map((l) => l.confirmado_em);
+  const confirmacao =
+    datas.length === 0 || datas.includes(null)
+      ? null
+      : (datas as string[]).reduce((a, b) => (a < b ? a : b));
+  const numero = (rotulo: string, valor: string, nome: string, detalhe?: string) =>
     h(
-      "div",
-      { class: "flex items-center gap-3 rounded-cartao border border-borda bg-cartao p-4" },
-      icone(nome, "size-6 text-dourado-texto"),
+      "li",
+      { class: "cartao flex items-center gap-3 p-3 md:p-4" },
+      h(
+        "span",
+        {
+          class:
+            "hidden size-11 shrink-0 items-center justify-center rounded-cartao bg-superficie sm:inline-flex",
+        },
+        icone(nome, "size-6 text-dourado-texto"),
+      ),
       h(
         "div",
-        {},
-        h(
-          "p",
-          { class: "text-sm font-bold tracking-wide text-texto-secundario uppercase" },
-          rotulo,
-        ),
-        h("p", { class: "text-xl font-semibold" }, String(valor)),
+        { class: "min-w-0" },
+        h("p", { class: "rotulo" }, rotulo),
+        h("p", { class: "text-xl font-bold" }, valor),
+        detalhe ? h("p", { class: "text-sm text-texto-secundario" }, detalhe) : null,
       ),
     );
   return h(
-    "div",
-    { class: "grid gap-3 sm:grid-cols-3" },
-    numero("Horários em vigor", ativas, "schedule"),
-    numero("Locais", locais.length, "church"),
-    numero("Exceções agendadas", excecoes, "event"),
+    "ul",
+    { class: "grid grid-cols-2 gap-3 lg:grid-cols-4", "aria-label": "Resumo" },
+    numero("Horários em vigor", String(ativas), "schedule"),
+    numero("Igrejas e capelas", String(locais.length), "church"),
+    numero("Exceções agendadas", String(excecoes), "event"),
+    numero(
+      "Última confirmação",
+      confirmacao ? haQuanto(confirmacao, hoje) : "Nunca",
+      "verified",
+      confirmacao ? formatarData(confirmacao) : "Use Está tudo certo",
+    ),
   );
 }
 
+function cabecalho(estado: EstadoEntidade, hoje: string): HTMLElement {
+  const tipo = (
+    estado.entidade.tipo in t.pelaEntidade ? estado.entidade.tipo : "outro"
+  ) as TipoEntidade;
+  const principal = estado.locais.find((l) => l.local.publicar)?.local ?? estado.locais[0]?.local;
+  const datas = estado.locais.filter((l) => l.local.publicar).map((l) => l.local.confirmado_em);
+  const confirmadoEm =
+    datas.length === 0 || datas.includes(null)
+      ? null
+      : (datas as string[]).reduce((a, b) => (a < b ? a : b));
+  const { estado: estadoSelo, dias } = selo(confirmadoEm, hoje);
+
+  const botaoConfirmar = h(
+    "button",
+    { type: "button", class: "botao-confirmar" },
+    icone("check_circle"),
+    "Está tudo certo",
+  );
+  botaoConfirmar.addEventListener("click", () => void confirmarTudo(estado, botaoConfirmar));
+  const botaoExcecao = h(
+    "button",
+    { type: "button", class: "botao-secundario" },
+    icone("event"),
+    "Adicionar exceção",
+  );
+  botaoExcecao.addEventListener(
+    "click",
+    () => void editarExcecao(estado, { modo: "nova" }, botaoExcecao),
+  );
+  const botaoNovo = h(
+    "button",
+    { type: "button", class: "botao-primario" },
+    icone("add"),
+    "Novo horário",
+  );
+  botaoNovo.addEventListener(
+    "click",
+    () => void editarHorario(estado, { modo: "novo" }, botaoNovo),
+  );
+
+  const semRegime = estado.locais
+    .filter(({ local }) => local.dias_santos === null)
+    .map(({ local }) => local.nome);
+  const telefones = estado.entidade.telefones_publicos ?? [];
+
+  return h(
+    "section",
+    { class: "cartao p-4 md:p-6", "aria-labelledby": "titulo-entidade" },
+    h(
+      "div",
+      { class: "flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between" },
+      h(
+        "div",
+        { class: "flex min-w-0 items-start gap-4" },
+        h(
+          "span",
+          {
+            class:
+              "hidden size-14 shrink-0 items-center justify-center rounded-xl bg-azul-fundo text-azul-texto sm:inline-flex",
+          },
+          icone("church", "size-8"),
+        ),
+        h(
+          "div",
+          { class: "min-w-0" },
+          h(
+            "h1",
+            { id: "titulo-entidade", class: "text-2xl leading-tight font-bold md:text-3xl" },
+            estado.entidade.nome,
+          ),
+          h(
+            "p",
+            { class: "mt-2 flex flex-wrap items-center gap-2 text-texto-secundario" },
+            principal?.concelho &&
+              h(
+                "span",
+                {
+                  class:
+                    "etiqueta bg-slate-100 text-xs tracking-wide text-texto-secundario uppercase",
+                },
+                principal.concelho,
+              ),
+            principal?.localidade && h("span", {}, principal.localidade),
+            telefones.length > 0 &&
+              h(
+                "span",
+                { class: "inline-flex items-center gap-1" },
+                icone("call", "size-4"),
+                telefones.join(" · "),
+              ),
+          ),
+          h(
+            "p",
+            { class: "mt-3" },
+            h(
+              "span",
+              {
+                class: `inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ${classeSelo(estadoSelo)}`,
+              },
+              icone("verified", "size-4"),
+              textoSelo("pt-PT", "longo", estadoSelo, dias, confirmadoEm, tipo),
+            ),
+          ),
+        ),
+      ),
+      h(
+        "div",
+        { class: "grid gap-2 sm:flex sm:flex-wrap lg:shrink-0 lg:flex-nowrap lg:justify-end" },
+        botaoConfirmar,
+        botaoExcecao,
+        botaoNovo,
+      ),
+    ),
+    semRegime.length > 0 &&
+      h(
+        "p",
+        {
+          class: "mt-4 flex items-start gap-2 rounded-cartao bg-aviso-fundo p-3 text-dourado-texto",
+          role: "note",
+        },
+        icone("warning", "mt-0.5 size-5"),
+        `Falta indicar o que há nos dias santos de preceito em: ${semRegime.join(", ")}.`,
+      ),
+  );
+}
+
+// --- Página ---------------------------------------------------------------------------------------
+
 async function mostrarEntidade(id: string): Promise<void> {
-  conteudo.replaceChildren(h("p", { class: "text-texto-secundario" }, "A carregar…"));
+  conteudo.setAttribute("aria-busy", "true");
   const hoje = momentoEmLisboa(new Date()).data;
   try {
     const estado = await api<EstadoEntidade>(`/api/entidades/${encodeURIComponent(id)}`);
-    const tipo = (
-      estado.entidade.tipo in t.pelaEntidade ? estado.entidade.tipo : "outro"
-    ) as TipoEntidade;
-    const botaoConfirmar = h(
-      "button",
-      {
-        type: "button",
-        class:
-          "inline-flex min-h-12 items-center gap-2 rounded-cartao bg-confirmado px-5 text-base font-semibold text-white disabled:opacity-60",
-      },
-      icone("check_circle"),
-      "Está tudo certo",
-    );
-    botaoConfirmar.addEventListener("click", () => void confirmarTudo(estado, botaoConfirmar));
-    const botaoNovo = h("button", { type: "button", class: "botao-secundario" }, "+ Novo horário");
-    botaoNovo.addEventListener(
-      "click",
-      () => void editarHorario(estado, { modo: "novo" }, botaoNovo),
-    );
-    const botaoExcecao = h(
-      "button",
-      { type: "button", class: "botao-secundario" },
-      "+ Adicionar exceção",
-    );
-    botaoExcecao.addEventListener(
-      "click",
-      () => void editarExcecao(estado, { modo: "nova" }, botaoExcecao),
-    );
-    const semRegime = estado.locais
-      .filter(({ local }) => local.dias_santos === null)
-      .map(({ local }) => local.nome);
     const listaHistorico = h("div", {});
     const botaoHistorico = h(
       "button",
@@ -646,138 +929,45 @@ async function mostrarEntidade(id: string): Promise<void> {
       botaoHistorico.hidden = true;
       void mostrarHistorico(listaHistorico, estado);
     });
-    const seccaoHistorico = h(
-      "section",
-      { class: "grid gap-3" },
-      h(
-        "h2",
-        { class: "text-base font-bold tracking-wide text-texto-secundario uppercase" },
-        "Histórico",
-      ),
-      botaoHistorico,
-      listaHistorico,
-    );
+    document.title = `${estado.entidade.nome} — Painel dos horários`;
     conteudo.replaceChildren(
       h(
         "div",
         { class: "grid gap-6" },
+        cabecalho(estado, hoje),
+        indicadores(estado, hoje),
         h(
           "div",
-          { class: "rounded-xl border border-borda bg-cartao p-5" },
-          h("h1", { class: "text-2xl font-bold" }, estado.entidade.nome),
-          h("div", { class: "mt-4 flex flex-wrap gap-3" }, botaoConfirmar, botaoNovo, botaoExcecao),
-          semRegime.length > 0 &&
-            h(
-              "p",
-              { class: "mt-3 rounded-cartao bg-aviso-fundo p-3 text-base text-dourado-texto" },
-              `Falta indicar o que há nos dias santos de preceito em: ${semRegime.join(", ")}.`,
-            ),
+          { class: "grid items-start gap-6 lg:grid-cols-3" },
           h(
-            "p",
-            { class: "mt-3 text-base text-texto-secundario" },
-            "Cada alteração aparece no site logo depois de gravar.",
+            "div",
+            { class: "grid gap-6 lg:col-span-2" },
+            ...estado.locais.map((_, indiceLocal) => cartaoHorarios(estado, indiceLocal, hoje)),
+          ),
+          h(
+            "div",
+            { class: "grid gap-6" },
+            cartaoExcecoes(estado, hoje),
+            cartaoDiasSantos(estado),
+            cartaoLocais(estado),
           ),
         ),
-        resumo(estado, hoje),
-        ...estado.locais.map(({ local }, indiceLocal) =>
-          seccaoLocal(local, tipo, hoje, {
-            regra: (indiceRegra) => ({
-              editar: (b) =>
-                void editarHorario(estado, { modo: "editar", indiceLocal, indiceRegra }, b),
-              apagar: (b) =>
-                void editarHorario(estado, { modo: "apagar", indiceLocal, indiceRegra }, b),
-            }),
-            excecao: (indiceExcecao) => ({
-              editar: (b) =>
-                void editarExcecao(estado, { modo: "editar", indiceLocal, indiceExcecao }, b),
-              apagar: (b) =>
-                void editarExcecao(estado, { modo: "apagar", indiceLocal, indiceExcecao }, b),
-            }),
-            diasSantos: (b) => void editarDiasSantos(estado, indiceLocal, b),
-          }),
-        ),
-        seccaoHistorico,
+        cartao("Histórico de alterações", [listaHistorico], {
+          extra: botaoHistorico,
+        }),
       ),
     );
   } catch (e) {
     if (e instanceof ErroApi && e.estado === 403)
-      mostrarErro(conteudo, "Não tem acesso a esta entidade.");
+      mostrarErro(conteudo, "Não tem acesso a esta paróquia.");
     else if (!(e instanceof ErroApi && e.estado === 401))
       mostrarErro(
         conteudo,
         "Não foi possível carregar os horários. Tente novamente daqui a pouco.",
       );
+  } finally {
+    conteudo.setAttribute("aria-busy", "false");
   }
 }
 
-function preencherSeletor(lista: EntidadeLista[], escolhida: string): void {
-  const termo = filtro.value
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase();
-  const visiveis = lista.filter(
-    (e) =>
-      e.id === escolhida ||
-      e.nome
-        .normalize("NFD")
-        .replace(/\p{Diacritic}/gu, "")
-        .toLowerCase()
-        .includes(termo),
-  );
-  seletor.replaceChildren(
-    ...visiveis.map((e) => h("option", { value: e.id, selected: e.id === escolhida }, e.nome)),
-  );
-}
-
-async function iniciar(): Promise<void> {
-  let lista: EntidadeLista[];
-  try {
-    eu = await carregarEu();
-    lista = await api<EntidadeLista[]>("/api/entidades");
-  } catch (e) {
-    if (!(e instanceof ErroApi && (e.estado === 401 || e.estado === 403)))
-      mostrarErro(conteudo, "Não foi possível abrir o painel.");
-    return;
-  }
-  if (lista.length === 0) {
-    conteudo.replaceChildren(
-      h(
-        "p",
-        {},
-        "Ainda não tem nenhuma entidade associada. Fale com a secretaria do Arciprestado.",
-      ),
-    );
-    return;
-  }
-  const pedida = new URLSearchParams(location.search).get("entidade");
-  const guardada = (() => {
-    try {
-      return localStorage.getItem("painel.entidade");
-    } catch {
-      return null;
-    }
-  })();
-  const inicial = [pedida, guardada, eu.entidades[0]?.id, lista[0]?.id].find(
-    (id) => id && lista.some((e) => e.id === id),
-  ) as string;
-
-  if (lista.length > 1) {
-    escolha.hidden = false;
-    caixaFiltro.hidden = eu.perfil !== "admin";
-    preencherSeletor(lista, inicial);
-    filtro.addEventListener("input", () => preencherSeletor(lista, seletor.value));
-    seletor.addEventListener("change", () => {
-      const id = seletor.value;
-      try {
-        localStorage.setItem("painel.entidade", id);
-      } catch {
-        /* sem armazenamento local */
-      }
-      history.replaceState(null, "", `?entidade=${encodeURIComponent(id)}`);
-      void mostrarEntidade(id);
-    });
-  }
-  await mostrarEntidade(inicial);
-}
-
-void iniciar();
+void mostrarEntidade(conteudo.dataset.entidade ?? "");

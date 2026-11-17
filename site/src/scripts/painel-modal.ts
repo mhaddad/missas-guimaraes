@@ -5,7 +5,7 @@
  */
 import { alertasDeAnomalia, resumirPedido } from "@missas/dados/resumo";
 import { momentoEmLisboa, validar, type Local } from "@missas/horarios";
-import { h } from "./painel-comum.ts";
+import { h, icone } from "./painel-comum.ts";
 
 export interface LocalComSha {
   local: Local;
@@ -113,34 +113,44 @@ export function abrirModal(opcoes: OpcoesModal): Promise<Alteracao | null> {
   const resumo = h("div", { class: "grid gap-2", "aria-live": "polite" });
   const confirmar = h(
     "label",
-    { class: "flex min-h-12 items-center gap-3 font-semibold", hidden: true },
+    { class: "mr-auto flex min-h-12 items-center gap-3 font-semibold", hidden: true },
     h("input", { type: "checkbox", name: "confirmar_alertas", class: "size-5" }),
     "Tenho a certeza",
   );
-  const gravar = h(
+  const gravar = h("button", { type: "submit", class: "botao-primario" }, opcoes.textoGravar);
+  const cancelar = h("button", { type: "button", class: "botao-secundario" }, "Cancelar");
+  const fechar = h(
     "button",
     {
-      type: "submit",
-      class:
-        "inline-flex min-h-12 items-center rounded-cartao bg-ardosia px-5 text-base font-semibold text-white disabled:opacity-50",
+      type: "button",
+      class: "botao-icone -mt-1 -mr-2 border-transparent",
+      "aria-label": "Fechar",
+      title: "Fechar",
     },
-    opcoes.textoGravar,
+    icone("close"),
   );
-  const cancelar = h("button", { type: "button", class: "botao-secundario" }, "Cancelar");
   const form = h(
     "form",
-    { class: "grid gap-5 p-5 md:p-6", novalidate: true },
-    h("h2", { id: idTitulo, class: "text-xl font-semibold" }, opcoes.titulo),
-    opcoes.cabecalho ?? null,
-    ...opcoes.campos,
+    { class: "modal-conteudo", novalidate: true },
     h(
-      "section",
-      { class: "grid gap-2 rounded-cartao border border-borda bg-superficie p-4" },
-      h("h3", { class: "rotulo" }, "O que vai mudar"),
-      resumo,
+      "div",
+      { class: "modal-cabecalho" },
+      h("h2", { id: idTitulo, class: "text-xl font-semibold" }, opcoes.titulo),
+      fechar,
     ),
-    confirmar,
-    h("div", { class: "flex flex-wrap justify-end gap-3" }, cancelar, gravar),
+    h(
+      "div",
+      { class: "modal-corpo" },
+      opcoes.cabecalho ?? null,
+      ...opcoes.campos,
+      h(
+        "section",
+        { class: "grid gap-2 rounded-cartao border border-borda bg-superficie p-4" },
+        h("h3", { class: "rotulo" }, "O que vai mudar"),
+        resumo,
+      ),
+    ),
+    h("div", { class: "modal-rodape" }, confirmar, cancelar, gravar),
   );
   dialogo.setAttribute("aria-labelledby", idTitulo);
   dialogo.replaceChildren(form);
@@ -188,6 +198,7 @@ export function abrirModal(opcoes: OpcoesModal): Promise<Alteracao | null> {
   return new Promise((resolver) => {
     let resultado: Alteracao | null = null;
     cancelar.addEventListener("click", () => dialogo.close());
+    fechar.addEventListener("click", () => dialogo.close());
     form.addEventListener("submit", (ev) => {
       ev.preventDefault();
       atualizar();
