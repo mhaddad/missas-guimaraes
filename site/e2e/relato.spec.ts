@@ -57,7 +57,9 @@ test("a partir do detalhe de uma igreja", async ({ page }) => {
     .analyze();
   expect(resultado.violations.map((v) => v.id)).toEqual([]);
 
-  await dialogo.getByRole("button", { name: "Cancelar" }).click();
+  // Sem Cancelar: fecha-se pelo X no topo, também depois de enviar.
+  await expect(dialogo.getByRole("button", { name: "Cancelar" })).toHaveCount(0);
+  await dialogo.getByRole("button", { name: "Fechar" }).click();
   await expect(dialogo).toBeHidden();
 });
 
@@ -86,6 +88,8 @@ test("pelo rodapé, sem igreja, em inglês, e com o limite atingido", async ({ p
   await expect(dialogo.getByRole("status")).toHaveText(
     "Too many reports in a row. Please try again in a minute.",
   );
+  await dialogo.getByRole("button", { name: "Close" }).click();
+  await expect(dialogo).toBeHidden();
   expect(corpos).toEqual([
     {
       local: null,
