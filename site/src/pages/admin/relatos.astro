@@ -1,0 +1,51 @@
+---
+/**
+ * Relatos do público (só administradores): o que as pessoas reportaram no botão *Reportar erro*
+ * do site, com o estado (por resolver, resolvido, descartado). Os dados vêm de `/api/relatos`
+ * (`scripts/painel-relatos.ts`). Um relato nunca muda os horários: corrige-se na paróquia.
+ */
+import Painel from "../../layouts/Painel.astro";
+---
+
+<Painel titulo="Relatos" ativo="relatos">
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold md:text-3xl">Relatos do público</h1>
+    <p class="mt-1 max-w-3xl text-texto-secundario">
+      O que as pessoas reportaram com o botão <em>Reportar erro</em> do site. Confirme com a
+      paróquia, corrija os horários na página dela e marque o relato como resolvido. Um relato nunca
+      muda os horários sozinho.
+    </p>
+  </div>
+
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <div
+      role="group"
+      aria-label="Estado"
+      class="segmentos grid w-full grid-cols-2 sm:flex sm:w-auto"
+    >
+      <button type="button" class="segmento" data-estado="aberto" aria-pressed="true">
+        Por resolver
+      </button>
+      <button type="button" class="segmento" data-estado="resolvido" aria-pressed="false">
+        Resolvidos
+      </button>
+      <button type="button" class="segmento" data-estado="descartado" aria-pressed="false">
+        Descartados
+      </button>
+      <button type="button" class="segmento" data-estado="todos" aria-pressed="false">
+        Todos
+      </button>
+    </div>
+    <p id="contagem-relatos" class="text-sm text-texto-secundario" aria-live="polite"></p>
+  </div>
+
+  <section class="cartao" aria-label="Relatos">
+    <ul id="lista-relatos" class="divide-y divide-borda" aria-busy="true">
+      <li class="px-4 py-5 text-texto-secundario md:px-5">A carregar…</li>
+    </ul>
+  </section>
+</Painel>
+
+<script>
+  import "../../scripts/painel-relatos.ts";
+</script>

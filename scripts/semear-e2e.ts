@@ -1,6 +1,7 @@
 /**
  * Base local para os testes de ponta a ponta (Playwright): migrações, os dados fixos de
- * `site/e2e/dados` e dois contactos com sessão aberta (admin e um contacto da Nespereira).
+ * `site/e2e/dados`, dois contactos com sessão aberta (admin e um contacto da Nespereira) e dois
+ * relatos do público.
  * Corre antes do `wrangler dev` (ver `playwright.config.ts`). Nada disto toca na base remota.
  *
  *   npx tsx scripts/semear-e2e.ts
@@ -46,6 +47,9 @@ const contactos = [
   "INSERT INTO contacto_entidades VALUES ('c_bbbbbbbb', 'nespereira');",
   `INSERT INTO sessoes VALUES (${sql(hash(SESSOES.admin))}, 'c_aaaaaaaa', ${sql(quando)}, ${sql(expira)});`,
   `INSERT INTO sessoes VALUES (${sql(hash(SESSOES.entidade))}, 'c_bbbbbbbb', ${sql(quando)}, ${sql(expira)});`,
+  // Relatos do público (página Relatos e cartão na página da paróquia).
+  `INSERT INTO relatos VALUES ('r_00000000e1', 'nespereira', 'A missa de domingo passou para as 10:30.', 'pt-PT', 'aberto', ${sql(quando)});`,
+  `INSERT INTO relatos VALUES ('r_00000000e2', 'polvoreira', 'There was no mass on Saturday.', 'en', 'aberto', ${sql(quando)});`,
 ];
 const locais = new Map(ler<Local>("locais").map((l) => [l.id, l]));
 const arquivo = join(ESTADO_E2E, "..", "semente-e2e.sql");

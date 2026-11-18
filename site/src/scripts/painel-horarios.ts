@@ -22,6 +22,7 @@ import { ACOES, formatarData, formatarDataHora, haQuanto } from "../lib/painel.t
 import { selo } from "../lib/portal.ts";
 import { classeSelo, textoSelo } from "../lib/selo.ts";
 import { abrirCapa, abrirRetirarCapa } from "./painel-capa.ts";
+import { linhaRelato, type RelatoPainel } from "./painel-relatos-comum.ts";
 import { api, ErroApi, h, icone, mostrarErro } from "./painel-comum.ts";
 import { abrirDiasSantos } from "./painel-dias-santos.ts";
 import { abrirEditor, type OpcoesEditor } from "./painel-editar.ts";
@@ -814,6 +815,34 @@ function cartaoLocais(estado: EstadoEntidade): HTMLElement {
   );
 }
 
+/** Relatos do público por resolver nesta paróquia (só aparece quando há algum). */
+function cartaoRelatos(relatos: RelatoPainel[], entidade: string): HTMLElement {
+  return cartao(
+    "Relatos do público por resolver",
+    [
+      h(
+        "p",
+        { class: "px-4 pt-3 text-sm text-texto-secundario md:px-5" },
+        "Alguém reportou um erro nos horários no site. Confirme, corrija se for preciso e marque como resolvido.",
+      ),
+      h(
+        "ul",
+        { class: "divide-y divide-borda" },
+        ...relatos.map((r) =>
+          linhaRelato(r, { comParoquia: false, depois: () => void mostrarEntidade(entidade) }),
+        ),
+      ),
+    ],
+    {
+      extra: h(
+        "span",
+        { class: "etiqueta bg-aviso-fundo text-dourado-texto" },
+        String(relatos.length),
+      ),
+    },
+  );
+}
+
 // --- Cabeçalho e indicadores ----------------------------------------------------------------------
 
 function indicadores(estado: EstadoEntidade, hoje: string): HTMLElement {
@@ -990,7 +1019,13 @@ async function mostrarEntidade(id: string): Promise<void> {
   conteudo.setAttribute("aria-busy", "true");
   const hoje = momentoEmLisboa(new Date()).data;
   try {
-    const estado = await api<EstadoEntidade>(`/api/entidades/${encodeURIComponent(id)}`);
+    const [estado, relatos] = await Promise.all([
+      api<EstadoEntidade>(`/api/entidades/${encodeURIComponent(id)}`),
+      // Os relatos são um extra: se falharem, a página mostra-se na mesma.
+      api<RelatoPainel[]>(`/api/relatos?estado=aberto&entidade=${encodeURIComponent(id)}`).catch(
+        () => [] as RelatoPainel[],
+      ),
+    ]);
     const listaHistorico = h("div", {});
     const botaoHistorico = h(
       "button",
@@ -1008,6 +1043,7 @@ async function mostrarEntidade(id: string): Promise<void> {
         "div",
         { class: "grid gap-6" },
         cabecalho(estado, hoje),
+        relatos.length > 0 && cartaoRelatos(relatos, id),
         indicadores(estado, hoje),
         h(
           "div",

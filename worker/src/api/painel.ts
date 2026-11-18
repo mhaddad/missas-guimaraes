@@ -10,6 +10,8 @@
  *   POST /api/entidades/:id/fotos            envio de uma imagem de capa (R2, `fotos.ts`)
  *   POST /api/gravacoes                      confirmação, alteração, novo local ou restauro
  *   GET/POST /api/acessos · PUT /api/acessos/:id   só administradores
+ *   GET  /api/relatos?estado=…&entidade=…      relatos do público no âmbito da pessoa
+ *   PATCH /api/relatos/:id                     estado de um relato (aberto, resolvido, descartado)
  *
  * Em todos os pedidos: sessão válida (cookie) e contacto ativo; âmbito (`podeVer`). Nas
  * escritas: mesma origem e `application/json` (contra CSRF; no envio de imagens, `image/webp` ou
@@ -38,6 +40,14 @@ import {
   type Contacto,
 } from "../contactos.ts";
 import { extensaoDoTipo, guardarFoto, lerFotoEnviada, type EnvFotos } from "../fotos.ts";
+import {
+  ESTADOS_RELATO,
+  listarRelatos,
+  mudarEstadoRelato,
+  obterRelato,
+  PADRAO_ID_RELATO,
+  type EstadoRelato,
+} from "../relatos-painel.ts";
 import { lerSessao } from "../sessao.ts";
 
 export interface EnvPainel extends EnvFotos {
@@ -291,6 +301,74 @@ async function acessos(
   return erro(405, "metodo");
 }
 
+const eEstadoRelato = (v: unknown): v is EstadoRelato =>
+  typeof v === "string" && (ESTADOS_RELATO as readonly string[]).includes(v);
+
+async function relatos(
+  pedido: Request,
+  bd: D1Database,
+  eu: Contacto,
+  caminho: string,
+  env: EnvPainel,
+  agora: Date,
+): Promise<Response> {
+  // Relatos sem local (ou de um local que já não existe) só para administradores.
+  const pode = (entidade: string | null) =>
+    eu.perfil === "admin" || (entidade !== null && podeVer(eu, entidade));
+
+  if (caminho === "/api/relatos" && pedido.method === "GET") {
+    const params = new URL(pedido.url).searchParams;
+    const estado = params.get("estado");
+    const entidade = params.get("entidade");
+    if (estado !== null && estado !== "todos" && !eEstadoRelato(estado)) return erro(400, "estado");
+    if (entidade !== null && !PADRAO_ID.test(entidade)) return erro(400, "entidade");
+    if (entidade !== null && !podeVer(eu, entidade)) return erro(403, "ambito");
+    return json(
+      await listarRelatos(bd, pode, {
+        ...(eEstadoRelato(estado) && { estado }),
+        ...(entidade !== null && { entidade }),
+      }),
+    );
+  }
+
+  const m = /^\/api\/relatos\/([^/]+)$/.exec(caminho);
+  if (m && pedido.method === "PATCH") {
+    const id = m[1] ?? "";
+    if (!PADRAO_ID_RELATO.test(id)) return erro(400, "id");
+    let corpo: unknown;
+    try {
+      corpo = await lerCorpo(pedido);
+    } catch {
+      return erro(400, "corpo");
+    }
+    const estado = (corpo as { estado?: unknown } | null)?.estado;
+    if (
+      typeof corpo !== "object" ||
+      corpo === null ||
+      Object.keys(corpo).some((k) => k !== "estado") ||
+      !eEstadoRelato(estado)
+    )
+      return erro(400, "estado");
+    const relato = await obterRelato(bd, id);
+    // Fora do âmbito responde como inexistente: não se revela que o relato existe.
+    if (!relato || !pode(relato.entidade?.id ?? null)) return erro(404, "relato");
+    if (env.LIMITE_PAINEL && !(await env.LIMITE_PAINEL.limit({ key: eu.id })).success)
+      return erro(429, "limite");
+    if (relato.estado !== estado) {
+      await mudarEstadoRelato(bd, id, estado);
+      await auditar(
+        bd,
+        eu.id,
+        `relato.${estado}`,
+        { id, entidade: relato.entidade?.id ?? null },
+        agora,
+      );
+    }
+    return json({ ...relato, estado });
+  }
+  return erro(405, "metodo");
+}
+
 export async function tratarApiPainel(
   pedido: Request,
   env: EnvPainel,
@@ -392,6 +470,9 @@ export async function tratarApiPainel(
     }
     return gravacao(bd, eu, corpo, env, agora);
   }
+
+  if (caminho === "/api/relatos" || caminho.startsWith("/api/relatos/"))
+    return relatos(pedido, bd, eu, caminho, env, agora);
 
   if (caminho === "/api/acessos" || caminho.startsWith("/api/acessos/"))
     return acessos(pedido, bd, eu, caminho, agora);

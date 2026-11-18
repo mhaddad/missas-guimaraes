@@ -48,7 +48,7 @@
 ## Segurança — revisão obrigatória
 
 Mudanças em qualquer um destes pontos pedem leitura humana linha a linha e uma revisão de segurança independente antes do *merge*:
-login e sessões (`worker/src/google.ts`, `worker/src/sessao.ts`, `site/src/middleware.ts`); âmbito por perfil e API (`worker/src/contactos.ts`, `worker/src/api/painel.ts`, `worker/src/visao-geral.ts`, rotas do painel em `site/src/middleware.ts`); envio e entrega de imagens (`worker/src/fotos.ts`); gravação e histórico (`pacotes/dados/src/gravacao.ts`, `worker/src/bd.ts`, `worker/migracoes/`); ADR-005; tokens de confirmação por e-mail (E6).
+login e sessões (`worker/src/google.ts`, `worker/src/sessao.ts`, `site/src/middleware.ts`); âmbito por perfil e API (`worker/src/contactos.ts`, `worker/src/api/painel.ts`, `worker/src/visao-geral.ts`, `worker/src/relatos-painel.ts`, rotas do painel em `site/src/middleware.ts`); envio e entrega de imagens (`worker/src/fotos.ts`); gravação e histórico (`pacotes/dados/src/gravacao.ts`, `worker/src/bd.ts`, `worker/migracoes/`); ADR-005; tokens de confirmação por e-mail (E6).
 
 ## Ambientes
 

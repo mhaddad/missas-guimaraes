@@ -17,6 +17,7 @@ import { tratarRelato, type EnvRelato } from "./relato.ts";
 export { lerEntidade, lerLocais, lerTudo } from "./bd.ts";
 export { lerSessao } from "./sessao.ts";
 export { estadoDasParoquias, visaoGeral } from "./visao-geral.ts";
+export type { RelatoPainel } from "./relatos-painel.ts";
 export type { AtualizacaoRecente, ParoquiaPainel, VisaoGeral } from "./visao-geral.ts";
 export { chavePagina, guardarPagina, obterPagina, PAGINAS_PUBLICAS } from "./paginas.ts";
 export type { Contacto } from "./contactos.ts";

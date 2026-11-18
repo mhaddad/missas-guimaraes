@@ -5,6 +5,7 @@
  */
 import type { ResumoLocal, TipoGravacao } from "@missas/dados";
 import { lerTudo } from "./bd.ts";
+import { contarRelatosAbertos } from "./relatos-painel.ts";
 
 /** Uma entidade como aparece na lista do painel. */
 export interface ParoquiaPainel {
@@ -44,6 +45,8 @@ export interface VisaoGeral {
   recentes: AtualizacaoRecente[];
   /** Gravações no painel nos últimos 30 dias. */
   gravacoes30dias: number;
+  /** Relatos do público por resolver. */
+  relatosAbertos: number;
 }
 
 /** Estado de todas as entidades, por ordem alfabética do nome. */
@@ -120,12 +123,13 @@ export async function visaoGeral(bd: D1Database, agora = new Date()): Promise<Vi
   const paroquias = await estadoDasParoquias(bd);
   const nomes = new Map(paroquias.map((p) => [p.id, p.nome]));
   const desde = new Date(agora.getTime() - 30 * 86_400_000).toISOString();
-  const [recentes, contagem] = await Promise.all([
+  const [recentes, contagem, relatosAbertos] = await Promise.all([
     ultimasAtualizacoes(bd, nomes),
     bd
       .prepare("SELECT count(*) AS n FROM gravacoes WHERE acao != 'importacao' AND criado_em >= ?")
       .bind(desde)
       .first<number>("n"),
+    contarRelatosAbertos(bd),
   ]);
-  return { paroquias, recentes, gravacoes30dias: Number(contagem ?? 0) };
+  return { paroquias, recentes, gravacoes30dias: Number(contagem ?? 0), relatosAbertos };
 }
