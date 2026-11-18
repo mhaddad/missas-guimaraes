@@ -12,6 +12,7 @@ import {
   type CelebracaoPortal,
   type LocalPortal,
 } from "../lib/portal.ts";
+import { formatarDiaDaSemanaEData } from "../lib/formatos.ts";
 import { classeSelo, textoSelo } from "../lib/selo.ts";
 
 export function porId<T extends HTMLElement = HTMLElement>(id: string): T {
@@ -116,7 +117,14 @@ export function etiquetasDe(
   const destaque = "etiqueta bg-aviso-fundo text-dourado-texto";
   const azul = "etiqueta bg-azul-fundo text-azul-texto";
   if (o.tipo !== "missa" && !semTipo) lista.push(h("span", { class: azul }, t.tipos[o.tipo]));
-  if (o.vespera) lista.push(h("span", { class: destaque }, t.etiquetaVespera));
+  if (o.vespera)
+    lista.push(
+      h(
+        "span",
+        { class: destaque },
+        formatar(t.etiquetaVespera, { dia: String(Number(o.data.slice(8, 10))) }),
+      ),
+    );
   if (o.dia_santo) lista.push(h("span", { class: destaque }, t.etiquetaDiaSanto));
   if (o.origem === "excecao") lista.push(h("span", { class: destaque }, t.etiquetaSoNesteDia));
   if (o.hora_original) {
@@ -240,6 +248,35 @@ export function iniciarPartilha(idioma: Idioma): void {
 }
 
 /** Marca o botão escolhido num grupo segmentado (`aria-pressed`). */
+/**
+ * As linhas da lista do dia. Na escolha "Próx. domingo", as missas vespertinas de sábado ficam
+ * num bloco próprio, antes das de domingo, cada bloco com o seu título.
+ */
+export function comBlocosDoDomingo(
+  idioma: Idioma,
+  celebracoes: readonly CelebracaoPortal[],
+  linha: (o: CelebracaoPortal) => HTMLElement,
+): HTMLElement[] {
+  const vesperas = celebracoes.filter((o) => o.vespera);
+  if (vesperas.length === 0) return celebracoes.map(linha);
+  const domingo = celebracoes.filter((o) => !o.vespera);
+  const t = TEXTOS[idioma];
+  const titulo = (texto: string) =>
+    h(
+      "li",
+      { class: "mt-2 text-sm font-semibold text-texto-secundario first:mt-0" },
+      texto.charAt(0).toLocaleUpperCase(idioma) + texto.slice(1),
+    );
+  const sabado = vesperas[0]?.data ?? "";
+  const dataDomingo = domingo[0]?.data;
+  return [
+    titulo(formatar(t.blocoVespertinas, { data: formatarDiaDaSemanaEData(sabado, idioma) })),
+    ...vesperas.map(linha),
+    ...(dataDomingo ? [titulo(formatarDiaDaSemanaEData(dataDomingo, idioma))] : []),
+    ...domingo.map(linha),
+  ];
+}
+
 export function marcar(seletor: string, atributo: string, valor: string): void {
   document.querySelectorAll<HTMLElement>(seletor).forEach((b) => {
     b.setAttribute("aria-pressed", String(b.getAttribute(atributo) === valor));

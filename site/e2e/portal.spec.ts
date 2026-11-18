@@ -59,6 +59,25 @@ test.describe("filtros e endereço", () => {
     await expect(page.locator("#lista-hora > li").first()).toContainText("Vizela");
   });
 
+  test("próximo domingo: as vespertinas de sábado num bloco próprio, com a data", async ({
+    page,
+  }) => {
+    await abrir(page, "/?dia=domingo");
+    const linhas = page.locator("#lista-hora > li");
+    await expect(linhas.first()).toHaveText(
+      "Sábado, 7 de novembro · missas vespertinas, que contam para o domingo",
+    );
+    await expect(linhas.nth(1)).toContainText("Sábado, 7 · vespertina");
+    await expect(
+      page.locator("#lista-hora > li", { hasText: /^Domingo, 8 de novembro$/ }),
+    ).toHaveCount(1);
+    expect(
+      (
+        await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+      ).violations.map((v) => v.id),
+    ).toEqual([]);
+  });
+
   test("pesquisa sem acentos", async ({ page }) => {
     await abrir(page, "/?dia=domingo");
     const todas = await page.locator("#lista-hora > li").count();
