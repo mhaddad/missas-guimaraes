@@ -100,7 +100,6 @@
   "etiquetaEmVezDe": "Em vez das {hora}",
   "etiquetaConfissoes": "Confissões às {hora}",
   "etiquetaVespera": "Sábado, {dia} · vespertina",
-  "blocoVespertinas": "{data} · missas vespertinas, que contam para o domingo",
   "faixaDiaSanto": "{data} — {nome}, dia santo de preceito",
   "semInformacaoDiaSanto": "Sem informação para este dia santo — confirme com a paróquia",
   "semInformacaoDiaSantoTexto": "Estas igrejas ainda não indicaram o horário dos dias santos. Mostramos o horário habitual deste dia da semana, que pode não se aplicar.",

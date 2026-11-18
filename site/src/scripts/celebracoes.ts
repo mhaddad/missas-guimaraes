@@ -250,7 +250,8 @@ export function iniciarPartilha(idioma: Idioma): void {
 /** Marca o botão escolhido num grupo segmentado (`aria-pressed`). */
 /**
  * As linhas da lista do dia. Na escolha "Próx. domingo", as missas vespertinas de sábado ficam
- * num bloco próprio, antes das de domingo, cada bloco com o seu título.
+ * num bloco próprio, antes das de domingo, cada bloco com a data por título ("Sábado, 21 de
+ * novembro", "Domingo, 22 de novembro"); cada vespertina mantém a etiqueta.
  */
 export function comBlocosDoDomingo(
   idioma: Idioma,
@@ -260,7 +261,6 @@ export function comBlocosDoDomingo(
   const vesperas = celebracoes.filter((o) => o.vespera);
   if (vesperas.length === 0) return celebracoes.map(linha);
   const domingo = celebracoes.filter((o) => !o.vespera);
-  const t = TEXTOS[idioma];
   const titulo = (texto: string) =>
     h(
       "li",
@@ -270,7 +270,7 @@ export function comBlocosDoDomingo(
   const sabado = vesperas[0]?.data ?? "";
   const dataDomingo = domingo[0]?.data;
   return [
-    titulo(formatar(t.blocoVespertinas, { data: formatarDiaDaSemanaEData(sabado, idioma) })),
+    titulo(formatarDiaDaSemanaEData(sabado, idioma)),
     ...vesperas.map(linha),
     ...(dataDomingo ? [titulo(formatarDiaDaSemanaEData(dataDomingo, idioma))] : []),
     ...domingo.map(linha),

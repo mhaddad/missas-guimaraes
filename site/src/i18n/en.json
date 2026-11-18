@@ -100,7 +100,6 @@
   "etiquetaEmVezDe": "Instead of {hora}",
   "etiquetaConfissoes": "Confession at {hora}",
   "etiquetaVespera": "Saturday {dia} · vigil Mass",
-  "blocoVespertinas": "{data} · vigil Masses, which count for Sunday",
   "faixaDiaSanto": "{data} — {nome}, holy day of obligation",
   "semInformacaoDiaSanto": "No information for this holy day — please check with the parish",
   "semInformacaoDiaSantoTexto": "These churches have not yet given their holy day times. We show the usual times for this weekday, which may not apply.",

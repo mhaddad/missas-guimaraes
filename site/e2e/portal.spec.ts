@@ -59,18 +59,15 @@ test.describe("filtros e endereço", () => {
     await expect(page.locator("#lista-hora > li").first()).toContainText("Vizela");
   });
 
-  test("próximo domingo: as vespertinas de sábado num bloco próprio, com a data", async ({
+  test("próximo domingo: as vespertinas sob a data do sábado, depois o domingo", async ({
     page,
   }) => {
     await abrir(page, "/?dia=domingo");
     const linhas = page.locator("#lista-hora > li");
-    await expect(linhas.first()).toHaveText(
-      "Sábado, 7 de novembro · missas vespertinas, que contam para o domingo",
-    );
+    await expect(linhas.first()).toHaveText("Sábado, 7 de novembro");
     await expect(linhas.nth(1)).toContainText("Sábado, 7 · vespertina");
-    await expect(
-      page.locator("#lista-hora > li", { hasText: /^Domingo, 8 de novembro$/ }),
-    ).toHaveCount(1);
+    await expect(linhas.nth(2)).toHaveText("Domingo, 8 de novembro");
+    await expect(page.getByText(/missas vespertinas/)).toHaveCount(0);
     expect(
       (
         await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
