@@ -10,6 +10,7 @@ import {
   comCabecalhosDeSeguranca,
   ePaginaPublica,
   guardarPagina,
+  indexavel,
   obterPagina,
   semIndexacao,
   tratarRotas,
@@ -51,6 +52,6 @@ export default {
     const segura = import.meta.env.DEV
       ? resposta // No `astro dev`, o Vite injeta scripts embutidos (HMR).
       : comCabecalhosDeSeguranca(resposta, new URL(pedido.url));
-    return env.AMBIENTE !== "producao" ? semIndexacao(segura) : segura;
+    return indexavel(new URL(pedido.url).pathname, env.AMBIENTE) ? segura : semIndexacao(segura);
   },
 } satisfies ExportedHandler<Env>;

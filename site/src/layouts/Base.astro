@@ -3,6 +3,7 @@ import "../styles/global.css";
 import Cabecalho from "../components/Cabecalho.astro";
 import Icone from "../components/Icone.astro";
 import { IDIOMAS, TEXTOS, type Idioma } from "../i18n/index.ts";
+import type { ImagemPartilha } from "../lib/partilha.ts";
 
 interface Props {
   titulo: string;
@@ -16,6 +17,8 @@ interface Props {
   atual?: "inicio" | "paroquias";
   /** Atalhos e barra inferior sem o resto do site público (páginas de erro: sem canónico). */
   navegacao?: boolean;
+  /** Imagem de partilha (`og:image`) própria, como a fotografia da igreja; sem ela, a geral. */
+  imagem?: ImagemPartilha | undefined;
 }
 
 const {
@@ -26,6 +29,7 @@ const {
   caminho = "",
   atual,
   navegacao = publico,
+  imagem,
 } = Astro.props;
 const t = TEXTOS[idioma];
 const absoluto = (caminho: string) => new URL(caminho, Astro.site).toString();
@@ -60,10 +64,19 @@ const LOCALES = { "pt-PT": "pt_PT", en: "en_GB", es: "es_ES" } as const;
         <meta property="og:description" content={descricao} />
         <meta property="og:url" content={absoluto(t.caminho + caminho)} />
         <meta property="og:locale" content={LOCALES[idioma]} />
-        <meta property="og:image" content={absoluto("/partilha.png")} />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content={TEXTOS[idioma].arciprestado} />
+        {imagem ? (
+          <>
+            <meta property="og:image" content={absoluto(imagem.url)} />
+            <meta property="og:image:alt" content={imagem.alt} />
+          </>
+        ) : (
+          <>
+            <meta property="og:image" content={absoluto("/partilha.png")} />
+            <meta property="og:image:width" content="1200" />
+            <meta property="og:image:height" content="630" />
+            <meta property="og:image:alt" content={TEXTOS[idioma].arciprestado} />
+          </>
+        )}
         <meta name="twitter:card" content="summary_large_image" />
       </>
     )}

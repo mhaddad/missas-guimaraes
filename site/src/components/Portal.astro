@@ -63,6 +63,19 @@ const nomeSolenidade = (s: (typeof solenidades)[number]) =>
     </p>
   </noscript>
 
+  <!-- Só se o script da página falhar (scripts/portal.ts): em vez de um espaço em branco. -->
+  <div
+    id="falha-portal"
+    role="alert"
+    class="mb-6 rounded-cartao border border-borda bg-cartao px-4 py-3 text-base"
+    hidden
+  >
+    {t.falhaPortal}{" "}
+    <a class="ligacao" href={`${t.caminho}paroquias/`}>
+      {t.semJavaScriptLigacao}
+    </a>
+  </div>
+
   <!-- Controlos: só com JavaScript -->
   <section id="controlos" class="mb-4 rounded-cartao border border-borda bg-cartao p-3 md:p-5">
     <div class="relative">

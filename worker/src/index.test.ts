@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { semIndexacao, tratarRotas, type Env } from "./index.ts";
+import { indexavel, semIndexacao, tratarRotas, type Env } from "./index.ts";
 import { novaBase } from "./teste-util.ts";
 
 const env = (ambiente: Env["AMBIENTE"]): Env => ({ AMBIENTE: ambiente, BD: novaBase().comoD1() });
@@ -23,6 +23,14 @@ describe("tratarRotas", () => {
     expect((await pedir("/api/eu"))?.status).toBe(401);
     for (const caminho of ["/", "/en/", "/admin/", "/dados/horarios.json"])
       expect(await pedir(caminho)).toBeNull();
+  });
+
+  it("indexável só em produção e nunca os fragmentos", () => {
+    expect(indexavel("/", "producao")).toBe(true);
+    expect(indexavel("/paroquia/nespereira/", "producao")).toBe(true);
+    expect(indexavel("/fragmentos/pt-PT/nespereira/", "producao")).toBe(false);
+    expect(indexavel("/fragmentos/en/nespereira/", "producao")).toBe(false);
+    expect(indexavel("/", "homologacao")).toBe(false);
   });
 
   it("semIndexacao acrescenta X-Robots-Tag sem mudar o resto", async () => {

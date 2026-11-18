@@ -167,6 +167,7 @@
   "todosOsHorarios": "All mass times",
   "igrejaNaoEncontrada": "This parish is not on the site.",
   "semJavaScriptLigacao": "See the list of parishes",
+  "falhaPortal": "The services for the day could not be shown. The weekly times of every church are in the list of parishes.",
   "paroquiasTitulo": "Parishes",
   "paroquiasDescricao": "The parishes of Guimarães and Vizela, each with its own page: mass times, address and contacts.",
   "nParoquias": {

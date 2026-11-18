@@ -43,7 +43,15 @@ export async function tratarRotas(pedido: Request, env: Env): Promise<Response |
   return null;
 }
 
-/** Na homologação, nada é indexado: `X-Robots-Tag` em todas as respostas (D26). */
+/**
+ * Se a resposta pode ser indexada: só em produção, e nunca os fragmentos (`/fragmentos/…`, pedaços
+ * de HTML que a página inicial pede ao abrir uma linha; sem contexto, não são páginas).
+ */
+export function indexavel(caminho: string, ambiente: Env["AMBIENTE"]): boolean {
+  return ambiente === "producao" && !caminho.startsWith("/fragmentos/");
+}
+
+/** `X-Robots-Tag: noindex`: na homologação em todas as respostas (D26); em produção, nos fragmentos. */
 export function semIndexacao(resposta: Response): Response {
   const nova = new Response(resposta.body, resposta);
   nova.headers.set("X-Robots-Tag", "noindex, nofollow");
