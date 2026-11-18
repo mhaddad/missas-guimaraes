@@ -6,9 +6,9 @@
 import { handle } from "@astrojs/cloudflare/handler";
 import {
   chavePagina,
+  ePaginaPublica,
   guardarPagina,
   obterPagina,
-  PAGINAS_PUBLICAS,
   semIndexacao,
   tratarRotas,
   type Env as EnvServidor,
@@ -29,7 +29,7 @@ const CABECALHOS_PAGINA = {
 async function pagina(pedido: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const { pathname } = new URL(pedido.url);
   const bd = env.BD;
-  if (pedido.method !== "GET" || !bd || !PAGINAS_PUBLICAS.has(pathname))
+  if (pedido.method !== "GET" || !bd || !ePaginaPublica(pathname))
     return handle(pedido, env as never, ctx);
 
   const chave = await chavePagina(bd, pathname, env.VERSAO_CODIGO?.id ?? "local");

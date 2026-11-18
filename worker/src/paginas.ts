@@ -1,7 +1,7 @@
 /**
- * Cache das páginas públicas (ADR-005 §3). Gerar a página com todos os locais é o trabalho mais
- * pesado do Worker; com a cache, gera-se no máximo uma vez por idioma, por dia, por versão dos
- * dados e por versão do código. A chave muda sozinha a cada gravação (`versao_dados`), à
+ * Cache das páginas públicas (ADR-005 §3): a inicial, a lista, a de cada paróquia e os fragmentos.
+ * Gerar uma página (Astro + D1) é o trabalho mais pesado do Worker; com a cache, gera-se no
+ * máximo uma vez por página, por dia, por versão dos dados e por versão do código. A chave muda sozinha a cada gravação (`versao_dados`), à
  * meia-noite de Lisboa e a cada deploy (a página aponta para CSS e JS com nomes do build: uma
  * cópia de outro deploy ficaria sem estilos). Nunca é preciso apagar nada à mão. Primeiro em
  * memória (por isolado), depois no D1.
@@ -9,7 +9,7 @@
 import { momentoEmLisboa } from "@missas/horarios";
 import { versaoDados } from "./bd.ts";
 
-/** As páginas que vão para a cache. */
+/** As páginas fixas que vão para a cache. */
 export const PAGINAS_PUBLICAS = new Set([
   "/",
   "/en/",
@@ -18,7 +18,22 @@ export const PAGINAS_PUBLICAS = new Set([
   "/en/paroquias/",
   "/es/paroquias/",
 ]);
-const MAXIMO_EM_MEMORIA = 12;
+const ID = "[a-z0-9]+(?:-[a-z0-9]+)*";
+/** Página de cada paróquia (`/paroquia/<id>/`, também em /en/ e /es/). */
+const PAROQUIA = new RegExp(`^/(?:(?:en|es)/)?paroquia/${ID}/$`);
+/** Detalhe de uma igreja, pedido ao abrir um cartão. */
+const FRAGMENTO = new RegExp(`^/fragmentos/(?:pt-PT|en|es)/${ID}/$`);
+
+/**
+ * Se a página vai para a cache: as fixas, a de cada paróquia e os fragmentos. Uma paróquia que
+ * não existe dá 404, que nunca se guarda (ver `site/src/worker.ts`).
+ */
+export function ePaginaPublica(caminho: string): boolean {
+  return PAGINAS_PUBLICAS.has(caminho) || PAROQUIA.test(caminho) || FRAGMENTO.test(caminho);
+}
+
+/** Em memória ficam as mais pedidas; as outras vêm do D1 (uma leitura, sem gerar a página). */
+const MAXIMO_EM_MEMORIA = 64;
 const memoria = new Map<string, string>();
 
 export async function chavePagina(
