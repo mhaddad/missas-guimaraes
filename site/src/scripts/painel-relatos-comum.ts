@@ -100,9 +100,18 @@ export function linhaRelato(
       IDIOMAS[relato.idioma] ? h("span", {}, IDIOMAS[relato.idioma]) : null,
     ),
     h(
-      "blockquote",
-      { class: "border-l-4 border-borda pl-3 whitespace-pre-line text-ardosia" },
-      relato.mensagem,
+      "figure",
+      { class: "grid gap-1" },
+      h(
+        "blockquote",
+        { class: "border-l-4 border-borda pl-3 whitespace-pre-line text-ardosia" },
+        relato.mensagem,
+      ),
+      h(
+        "figcaption",
+        { class: "pl-4 text-xs text-texto-secundario" },
+        "Enviado por alguém do público pelo site; não verificado.",
+      ),
     ),
     h("div", { class: "flex flex-wrap gap-2" }, ...acoes),
   );

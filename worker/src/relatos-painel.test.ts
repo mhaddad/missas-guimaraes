@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Local } from "@missas/horarios";
 import { tratarApiPainel } from "./api/painel.ts";
-import { contarRelatosAbertos } from "./relatos-painel.ts";
+import { contarRelatosAbertos, mudarEstadoRelato } from "./relatos-painel.ts";
 import { comSessao, contacto, importar, novaBase } from "./teste-util.ts";
 
 const AGORA = new Date("2026-11-18T12:00:00Z");
@@ -104,6 +104,20 @@ describe("GET /api/relatos", () => {
     expect((await pedir("/api/relatos?entidade=Nesp%27")).estado).toBe(400);
   });
 
+  it("o limite aplica-se depois do âmbito: relatos de outras paróquias não escondem os desta", async () => {
+    for (let i = 0; i < 520; i++)
+      await relato(
+        `r_${(0x100 + i).toString(16).padStart(10, "0")}`,
+        i % 2 ? "polvoreira" : null,
+        "aberto",
+        `2026-11-18T0${i % 10}:00:00Z`,
+      );
+    expect(ids((await pedir("/api/relatos?estado=aberto")).corpo)).toEqual(["r_000000000a"]);
+    expect(
+      ids((await pedir("/api/relatos?estado=aberto&entidade=nespereira", { quem: "admin" })).corpo),
+    ).toEqual(["r_000000000a"]);
+  });
+
   it("conta os abertos", async () => {
     expect(await contarRelatosAbertos(bd)).toBe(3);
   });
@@ -124,9 +138,25 @@ describe("PATCH /api/relatos/:id", () => {
       {
         contacto_id: "c_bbbbbbbb",
         acao: "relato.resolvido",
-        detalhe: JSON.stringify({ id: "r_000000000a", entidade: "nespereira" }),
+        detalhe: JSON.stringify({ id: "r_000000000a", entidade: "nespereira", de: "aberto" }),
       },
     ]);
+  });
+
+  it("só muda a partir do estado visto; senão não muda nem regista", async () => {
+    const mudanca = {
+      id: "r_000000000d",
+      de: "aberto" as const,
+      para: "descartado" as const,
+      entidade: "nespereira",
+      quem: "c_bbbbbbbb",
+      agora: AGORA,
+    };
+    // O r_…d já está resolvido: um pedido que o viu aberto não o muda.
+    expect(await mudarEstadoRelato(bd, mudanca)).toBe(false);
+    const n = await bd.prepare("SELECT count(*) AS n FROM auditoria").first<number>("n");
+    expect(n).toBe(0);
+    expect(await mudarEstadoRelato(bd, { ...mudanca, de: "resolvido" })).toBe(true);
   });
 
   it("fora do âmbito responde como inexistente e não muda nada", async () => {

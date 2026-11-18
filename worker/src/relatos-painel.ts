@@ -55,24 +55,32 @@ function paraPainel(r: Linha): RelatoPainel {
 }
 
 /**
- * Relatos que `pode` deixa ver, do mais recente para o mais antigo. `pode` recebe a entidade do
- * relato (`null` se o local não existe ou não foi indicado).
+ * Relatos do âmbito, do mais recente para o mais antigo. `ambito`: `"todas"` (administradores,
+ * incluindo os relatos sem local) ou as entidades da pessoa. O âmbito e os filtros aplicam-se no
+ * SQL, antes do limite (relatos de outras paróquias nunca empurram os desta para fora da lista);
+ * `pode` volta a confirmar cada linha.
  */
 export async function listarRelatos(
   bd: D1Database,
+  ambito: "todas" | readonly string[],
   pode: (entidade: string | null) => boolean,
   filtro: { estado?: EstadoRelato; entidade?: string } = {},
 ): Promise<RelatoPainel[]> {
   const { results } = await bd
     .prepare(
-      `${SELECAO} WHERE (?1 IS NULL OR r.estado = ?1) ORDER BY r.criado_em DESC LIMIT ${MAXIMO}`,
+      `${SELECAO}
+       WHERE (?1 IS NULL OR r.estado = ?1)
+         AND (?2 IS NULL OR l.entidade_id = ?2)
+         AND (?3 IS NULL OR l.entidade_id IN (SELECT value FROM json_each(?3)))
+       ORDER BY r.criado_em DESC LIMIT ${MAXIMO}`,
     )
-    .bind(filtro.estado ?? null)
+    .bind(
+      filtro.estado ?? null,
+      filtro.entidade ?? null,
+      ambito === "todas" ? null : JSON.stringify(ambito),
+    )
     .all<Linha>();
-  return results
-    .filter((r) => pode(r.entidade_id))
-    .filter((r) => filtro.entidade === undefined || r.entidade_id === filtro.entidade)
-    .map(paraPainel);
+  return results.filter((r) => pode(r.entidade_id)).map(paraPainel);
 }
 
 export async function obterRelato(bd: D1Database, id: string): Promise<RelatoPainel | null> {
@@ -80,12 +88,31 @@ export async function obterRelato(bd: D1Database, id: string): Promise<RelatoPai
   return r ? paraPainel(r) : null;
 }
 
+/**
+ * Muda o estado e regista-o na auditoria, numa só transação. Só muda se o relato ainda estiver
+ * no estado `de` (dois pedidos ao mesmo tempo: o segundo devolve `false` e não regista nada).
+ */
 export async function mudarEstadoRelato(
   bd: D1Database,
-  id: string,
-  estado: EstadoRelato,
-): Promise<void> {
-  await bd.prepare("UPDATE relatos SET estado = ? WHERE id = ?").bind(estado, id).run();
+  mudanca: {
+    id: string;
+    de: EstadoRelato;
+    para: EstadoRelato;
+    entidade: string | null;
+    quem: string;
+    agora: Date;
+  },
+): Promise<boolean> {
+  const { id, de, para, entidade, quem, agora } = mudanca;
+  const [atualizacao] = await bd.batch([
+    bd.prepare("UPDATE relatos SET estado = ? WHERE id = ? AND estado = ?").bind(para, id, de),
+    bd
+      .prepare(
+        "INSERT INTO auditoria (contacto_id, acao, detalhe, criado_em) SELECT ?, ?, ?, ? WHERE changes() > 0",
+      )
+      .bind(quem, `relato.${para}`, JSON.stringify({ id, entidade, de }), agora.toISOString()),
+  ]);
+  return (atualizacao?.meta.changes ?? 0) > 0;
 }
 
 /** Relatos por resolver (todos): para a visão geral do administrador. */

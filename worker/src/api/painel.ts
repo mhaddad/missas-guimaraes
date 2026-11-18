@@ -324,7 +324,7 @@ async function relatos(
     if (entidade !== null && !PADRAO_ID.test(entidade)) return erro(400, "entidade");
     if (entidade !== null && !podeVer(eu, entidade)) return erro(403, "ambito");
     return json(
-      await listarRelatos(bd, pode, {
+      await listarRelatos(bd, eu.perfil === "admin" ? "todas" : eu.entidades, pode, {
         ...(eEstadoRelato(estado) && { estado }),
         ...(entidade !== null && { entidade }),
       }),
@@ -354,16 +354,18 @@ async function relatos(
     if (!relato || !pode(relato.entidade?.id ?? null)) return erro(404, "relato");
     if (env.LIMITE_PAINEL && !(await env.LIMITE_PAINEL.limit({ key: eu.id })).success)
       return erro(429, "limite");
-    if (relato.estado !== estado) {
-      await mudarEstadoRelato(bd, id, estado);
-      await auditar(
-        bd,
-        eu.id,
-        `relato.${estado}`,
-        { id, entidade: relato.entidade?.id ?? null },
+    if (
+      relato.estado !== estado &&
+      !(await mudarEstadoRelato(bd, {
+        id,
+        de: relato.estado,
+        para: estado,
+        entidade: relato.entidade?.id ?? null,
+        quem: eu.id,
         agora,
-      );
-    }
+      }))
+    )
+      return erro(409, "conflito");
     return json({ ...relato, estado });
   }
   return erro(405, "metodo");
