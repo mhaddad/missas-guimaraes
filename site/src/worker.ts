@@ -1,11 +1,13 @@
 /**
  * Ponto de entrada do Worker (ADR-005). Primeiro as rotas próprias (API, login Google, relatos);
  * depois as páginas, geradas pelo Astro. As páginas públicas passam pela cache (por idioma, dia
- * de Lisboa e versão dos dados); as do painel nunca.
+ * de Lisboa e versão dos dados); as do painel nunca. Todas as respostas levam os cabeçalhos de
+ * segurança (`worker/src/seguranca.ts`).
  */
 import { handle } from "@astrojs/cloudflare/handler";
 import {
   chavePagina,
+  comCabecalhosDeSeguranca,
   guardarPagina,
   obterPagina,
   PAGINAS_PUBLICAS,
@@ -46,6 +48,9 @@ async function pagina(pedido: Request, env: Env, ctx: ExecutionContext): Promise
 export default {
   async fetch(pedido, env, ctx) {
     const resposta = (await tratarRotas(pedido, env)) ?? (await pagina(pedido, env, ctx));
-    return env.AMBIENTE !== "producao" ? semIndexacao(resposta) : resposta;
+    const segura = import.meta.env.DEV
+      ? resposta // No `astro dev`, o Vite injeta scripts embutidos (HMR).
+      : comCabecalhosDeSeguranca(resposta, new URL(pedido.url));
+    return env.AMBIENTE !== "producao" ? semIndexacao(segura) : segura;
   },
 } satisfies ExportedHandler<Env>;
