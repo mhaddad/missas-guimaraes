@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { chavePagina, esquecerPaginas, guardarPagina, obterPagina } from "./paginas.ts";
+import {
+  chavePagina,
+  ePaginaPublica,
+  esquecerPaginas,
+  guardarPagina,
+  obterPagina,
+} from "./paginas.ts";
 import { novaBase } from "./teste-util.ts";
 
 const AGORA = new Date("2026-11-16T23:30:00Z");
@@ -28,5 +34,36 @@ describe("cache das páginas públicas", () => {
     );
     esquecerPaginas();
     expect(await obterPagina(bd, await chavePagina(bd, "/", "deploy-2", AGORA))).toBeNull();
+  });
+});
+
+describe("ePaginaPublica", () => {
+  it("as fixas, a página de cada paróquia (nos três idiomas) e os fragmentos", () => {
+    for (const caminho of [
+      "/",
+      "/en/paroquias/",
+      "/paroquia/nespereira/",
+      "/en/paroquia/nossa-senhora-da-oliveira/",
+      "/es/paroquia/vizela-sao-joao/",
+      "/fragmentos/pt-PT/nespereira/",
+      "/fragmentos/en/nespereira/",
+    ])
+      expect(ePaginaPublica(caminho), caminho).toBe(true);
+  });
+
+  it("nunca o painel, a API, outros idiomas ou caminhos fora do padrão", () => {
+    for (const caminho of [
+      "/admin/",
+      "/admin/paroquia/nespereira/",
+      "/api/entidades/nespereira",
+      "/fr/paroquia/nespereira/",
+      "/paroquia/Nespereira/",
+      "/paroquia/nespereira",
+      "/paroquia/nespereira/extra/",
+      "/paroquia/../admin/",
+      "/fragmentos/fr/nespereira/",
+      "/dados/horarios.json",
+    ])
+      expect(ePaginaPublica(caminho), caminho).toBe(false);
   });
 });

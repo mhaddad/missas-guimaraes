@@ -18,7 +18,7 @@ export { lerEntidade, lerLocais, lerTudo } from "./bd.ts";
 export { lerSessao } from "./sessao.ts";
 export { estadoDasParoquias, visaoGeral } from "./visao-geral.ts";
 export type { AtualizacaoRecente, ParoquiaPainel, VisaoGeral } from "./visao-geral.ts";
-export { chavePagina, guardarPagina, obterPagina, PAGINAS_PUBLICAS } from "./paginas.ts";
+export { chavePagina, ePaginaPublica, guardarPagina, obterPagina } from "./paginas.ts";
 export { comCabecalhosDeSeguranca } from "./seguranca.ts";
 export type { Contacto } from "./contactos.ts";
 
