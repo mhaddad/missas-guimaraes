@@ -2,8 +2,9 @@
 /**
  * Layout do painel (§7.3), só em pt-PT. O cabeçalho é gerado no servidor a partir da sessão
  * (`Astro.locals.eu`, verificada pelo middleware). Em cima, só o selo e o nome; por baixo, o menu
- * (fixo ao rolar): as secções conforme o perfil, *Ver o site*, a pessoa (a partir de `md`) e *Sair*.
- * No telemóvel, os itens do menu repartem a largura, com o ícone por cima do texto.
+ * (fixo ao rolar): as secções conforme o perfil, *Ver o site* (só para as paróquias; o administrador
+ * tem-no na visão geral), a pessoa (a partir de `md`) e *Sair*. No telemóvel, os itens do menu
+ * repartem a largura, com o ícone por cima do texto.
  */
 import "../styles/global.css";
 import Icone from "../components/Icone.astro";
@@ -98,7 +99,7 @@ const iniciais = (eu?.nome ?? "")
         <div class="mx-auto flex max-w-pagina items-stretch gap-1 px-2 py-1 md:items-center md:gap-2 md:px-6 md:py-1.5">
           <nav
             aria-label="Secções do painel"
-            class="flex min-w-0 grow-[var(--n)] md:grow-0"
+            class="flex min-w-0 grow-[var(--n)] basis-0 md:grow-0 md:basis-auto"
             style={`--n: ${secoes.length}`}
           >
             <ul class="flex w-full gap-1">
@@ -116,12 +117,17 @@ const iniciais = (eu?.nome ?? "")
               ))}
             </ul>
           </nav>
-          <div class="flex grow-[2] gap-1 md:ml-auto md:grow-0 md:items-center md:gap-2">
-            <a class="menu-item flex-1 md:flex-none" href="/" target="_blank" rel="noopener">
-              <Icone nome="open_in_new" class="size-5" />
-              Ver o site
-              <span class="sr-only">(abre noutro separador)</span>
-            </a>
+          <div
+            class="flex grow-[var(--n)] basis-0 gap-1 md:ml-auto md:grow-0 md:basis-auto md:items-center md:gap-2"
+            style={`--n: ${admin ? 1 : 2}`}
+          >
+            {!admin && (
+              <a class="menu-item flex-1 md:flex-none" href="/" target="_blank" rel="noopener">
+                <Icone nome="open_in_new" class="size-5" />
+                Ver o site
+                <span class="sr-only">(abre noutro separador)</span>
+              </a>
+            )}
             <span class="hidden h-8 w-px bg-borda md:block" aria-hidden="true"></span>
             <span class="hidden items-center gap-2 px-1 md:flex">
               <span

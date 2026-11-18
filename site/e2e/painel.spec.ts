@@ -125,6 +125,9 @@ test("contacto de uma paróquia vai direto para a sua e só vê essa", async ({ 
   ).toBeVisible();
   const seccoes = page.getByRole("navigation", { name: "Secções do painel" });
   await expect(seccoes.getByRole("link")).toHaveText(["A minha paróquia"]);
+  await expect(
+    page.getByRole("link", { name: "Ver o site (abre noutro separador)" }),
+  ).toBeVisible();
   await expect(page.getByRole("button", { name: "Sair (Secretaria)" })).toBeVisible();
   await expect(page.getByText("Domingos às 11:15")).toBeVisible();
   await expect(page.getByText("2.º e 4.º sábados do mês às 17:00")).toBeVisible();
@@ -168,9 +171,13 @@ test("visão geral do administrador: indicadores, mais antigas e ligação para 
     "Relatos",
     "Acessos",
   ]);
+  // O administrador tem *Ver o site* na visão geral, ao lado de *Ver todas as paróquias*.
+  await expect(page.getByRole("link", { name: "Ver o site (abre noutro separador)" })).toHaveCount(
+    1,
+  );
   await expect(
-    page.getByRole("link", { name: "Ver o site (abre noutro separador)" }),
-  ).toBeVisible();
+    page.getByRole("main").getByRole("link", { name: "Ver o site (abre noutro separador)" }),
+  ).toHaveAttribute("href", "/");
   await expect(page.getByRole("button", { name: "Sair (Ana Admin)" })).toBeVisible();
   await expect(page.getByText("Paróquias no site")).toBeVisible();
   const antigas = page.getByRole("region", { name: "Há mais tempo sem atualização" });
