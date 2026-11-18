@@ -340,6 +340,89 @@ test("o contacto da paróquia não vê o botão de esconder do site", async ({ p
   await expect(page.getByRole("button", { name: /Esconder do site/ })).toHaveCount(0);
 });
 
+test("Contactos no site: normaliza o que se escreve, mostra o resumo e grava", async ({ page }) => {
+  await simular(page, "entidade");
+  await page.goto("/admin/");
+  const cartaoContactos = page.getByRole("region", { name: "Contactos no site" });
+  await expect(cartaoContactos.getByText("Não indicado")).toHaveCount(4);
+  await cartaoContactos.getByRole("button", { name: "Editar" }).click();
+  const dialogo = page.getByRole("dialog", { name: "Contactos no site" });
+  await dialogo.getByLabel("Responsáveis").fill("Pe. João Silva (pároco)");
+  await dialogo.getByLabel("Telefones").fill("253123456\n12345");
+  await expect(dialogo.getByText(/Telefone inválido: 12345/)).toBeVisible();
+  await expect(dialogo.getByRole("button", { name: "Gravar" })).toBeDisabled();
+  await dialogo.getByLabel("Telefones").fill("253123456\n+351 912 345 678");
+  await dialogo.getByLabel("E-mail").fill("Paroquia@Exemplo.PT");
+  await dialogo.getByLabel("Site").fill("javascript:alert(1)");
+  await expect(dialogo.getByText(/Site inválido/)).toBeVisible();
+  await dialogo.getByLabel("Site").fill("paroquia.pt");
+  await expect(dialogo.getByText("📞 Telefones: — → 253 123 456, 912 345 678")).toBeVisible();
+  expect(await axe(page)).toEqual([]);
+  const post = (await clicarEEnviar(
+    page,
+    dialogo.getByRole("button", { name: "Gravar" }),
+  )) as unknown;
+  expect(post).toEqual({
+    tipo: "contactos",
+    entidade: "nespereira",
+    versaoEntidade: 1,
+    contactos: {
+      responsaveis: ["Pe. João Silva (pároco)"],
+      telefones_publicos: ["253 123 456", "912 345 678"],
+      email: "paroquia@exemplo.pt",
+      site: "https://paroquia.pt/",
+    },
+    resumo: [
+      {
+        local: "nespereira",
+        linhas: [
+          "👤 Responsáveis: — → Pe. João Silva (pároco)",
+          "📞 Telefones: — → 253 123 456, 912 345 678",
+          "✉️ E-mail: — → paroquia@exemplo.pt",
+          "🌐 Site: — → https://paroquia.pt/",
+        ],
+      },
+    ],
+  });
+});
+
+test("Morada e localização: coordenadas como no Google Maps, notas e resumo", async ({ page }) => {
+  await simular(page, "entidade");
+  await page.goto("/admin/");
+  await page
+    .getByRole("button", { name: "Editar morada e localização: Igreja de Santa Eulália" })
+    .click();
+  const dialogo = page.getByRole("dialog", { name: /^Morada e localização/ });
+  await expect(dialogo.getByLabel("Coordenadas no mapa")).toHaveValue("41.4, -8.3");
+  await dialogo.getByLabel("Morada").fill("Largo da Igreja, 1");
+  await dialogo.getByLabel("Código postal").fill("4800");
+  await dialogo.getByLabel("Coordenadas no mapa").fill("38.7, -9.1");
+  await expect(dialogo.getByText(/concelhos de Guimarães ou Vizela/)).toBeVisible();
+  await dialogo.getByLabel("Coordenadas no mapa").fill("41,4005, -8,3002");
+  await expect(dialogo.getByRole("link", { name: /Ver no mapa/ })).toHaveAttribute(
+    "href",
+    /query=41\.4005,-8\.3002$/,
+  );
+  await dialogo
+    .getByLabel("Notas")
+    .fill("Missa com coro no 1.º domingo\n\n  Estacionamento no adro  ");
+  await expect(dialogo.getByText("📍 Morada: — → Largo da Igreja, 1")).toBeVisible();
+  expect(await axe(page)).toEqual([]);
+  const post = await clicarEEnviar(page, dialogo.getByRole("button", { name: "Gravar" }));
+  expect(post.locais["nespereira"]?.dados).toMatchObject({
+    morada: "Largo da Igreja, 1",
+    codigo_postal: "4800",
+    geo: { lat: 41.4005, lon: -8.3002 },
+    notas: ["Missa com coro no 1.º domingo", "Estacionamento no adro"],
+  });
+  expect(post.resumo[0]?.linhas).toEqual([
+    "📮 Código postal: — → 4800",
+    "📍 Localização no mapa alterada",
+    "📍 Morada: — → Largo da Igreja, 1",
+    "📝 Notas alteradas",
+  ]);
+});
+
 const hojeLisboa = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Lisbon" }).format(new Date());
 

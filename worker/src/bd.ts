@@ -75,7 +75,8 @@ export async function lerTudo(bd: D1Database): Promise<{ entidades: Entidade[]; 
 
 export interface Gravacao {
   entidadeId: string;
-  acao: TipoGravacao | "importacao";
+  /** Só as ações que a tabela aceita (um pedido `contactos` grava-se como `alteracao`). */
+  acao: Exclude<TipoGravacao, "contactos"> | "importacao";
   contactoId: string | null;
   canal: string | null;
   resumo: ResumoLocal[];
@@ -217,7 +218,8 @@ export async function gravar(bd: D1Database, g: Gravacao, agora = new Date()): P
 
 export interface LinhaGravacao {
   id: number;
-  acao: TipoGravacao | "importacao";
+  /** Só as ações que a tabela aceita (um pedido `contactos` grava-se como `alteracao`). */
+  acao: Exclude<TipoGravacao, "contactos"> | "importacao";
   contacto_id: string | null;
   canal: string | null;
   resumo: ResumoLocal[];

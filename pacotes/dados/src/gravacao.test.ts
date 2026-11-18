@@ -8,6 +8,7 @@ import {
   type PedidoGravacao,
   type Registo,
 } from "./gravacao.ts";
+import { contactosDe, resumirContactos } from "./contactos.ts";
 import { alertasDeAnomalia, resumirPedido } from "./resumo.ts";
 
 const AGORA = new Date("2026-11-30T11:45:00Z");
@@ -259,6 +260,114 @@ describe("alteracao", () => {
   it("a entidade do pedido tem de ser a do estado", () => {
     const p = { ...alteracao("igreja-a", (l) => l), entidade: "outra" };
     expect(prepararGravacao(p, estado(), OPCOES)).toEqual({ estado: "ERRO", motivo: "entidade" });
+  });
+});
+
+describe("alteracao: morada, localização e notas", () => {
+  it("grava a morada, a localização e as notas, com o resumo próprio", () => {
+    const p = alteracao("igreja-a", (l) => ({
+      ...l,
+      morada: "Largo da Igreja, 1",
+      codigo_postal: "4800-001",
+      geo: { lat: 41.4405, lon: -8.2905 },
+      notas: ["Missa com coro ao 1.º domingo"],
+    }));
+    const r = pronto(prepararGravacao(p, estado(), OPCOES));
+    expect(r.resumo[0]?.linhas).toEqual([
+      "📮 Código postal: — → 4800-001",
+      "📍 Localização no mapa alterada",
+      "📍 Morada: — → Largo da Igreja, 1",
+      "📝 Notas alteradas",
+    ]);
+    expect(r.alertas).toEqual([]);
+  });
+
+  it("recusa textos inválidos e coordenadas fora da região", () => {
+    expect(
+      prepararGravacao(alteracao("igreja-a", (l) => ({ ...l, morada: "Rua\nNova" })), estado(), OPCOES),
+    ).toMatchObject({ estado: "ERRO", motivo: "morada inválido" });
+    expect(
+      prepararGravacao(
+        alteracao("igreja-a", (l) => ({ ...l, geo: { lat: 38.7, lon: -9.1 } })),
+        estado(),
+        OPCOES,
+      ),
+    ).toMatchObject({ estado: "ERRO", motivo: "os dados não passam a validação" });
+  });
+
+  it("mudar a localização mais de 1 km é um alerta de anomalia", () => {
+    const p = alteracao("igreja-a", (l) => ({ ...l, geo: { lat: 41.46, lon: -8.29 } }));
+    expect(pronto(prepararGravacao(p, estado(), OPCOES)).alertas).toEqual([
+      "Igreja igreja-a: a localização no mapa muda 2,2 km.",
+    ]);
+  });
+});
+
+describe("contactos", () => {
+  const novos = {
+    responsaveis: ["Pe. João Silva (pároco)"],
+    telefones_publicos: ["253 123 456"],
+    email: "paroquia@exemplo.pt",
+    site: "https://paroquia.pt/",
+  };
+  const pedido = (contactos: Record<string, unknown> = novos, versaoEntidade = 4): PedidoGravacao => ({
+    tipo: "contactos",
+    entidade: "exemplo",
+    versaoEntidade,
+    contactos,
+    resumo: resumirContactos(
+      "exemplo",
+      contactosDe(entidade("exemplo", [])),
+      contactos as unknown as ReturnType<typeof contactosDe>,
+    ),
+  });
+
+  it("lê só os quatro campos", () => {
+    expect(lerPedidoGravacao({ ...pedido(), confirmar_alertas: true })).toMatchObject({
+      tipo: "contactos",
+    });
+    expect(lerPedidoGravacao({ ...pedido(), locais: {} })).toBe("campos");
+    expect(lerPedidoGravacao({ ...pedido({ ...novos, nome: "Outra" }) })).toBe("contactos");
+    const { site: _site, ...semSite } = novos;
+    expect(lerPedidoGravacao(pedido(semSite))).toBe("contactos");
+    expect(lerPedidoGravacao({ ...pedido(), versaoEntidade: -1 })).toBe("versaoEntidade");
+  });
+
+  it("muda só os contactos da entidade, com o resumo próprio", () => {
+    const r = pronto(prepararGravacao(pedido(), estado(), OPCOES));
+    expect(r.entidade).toEqual({ ...entidade("exemplo", ["igreja-a", "capela-b"]), ...novos });
+    expect(r.locais.size).toBe(0);
+    expect(r.resumo).toEqual([
+      {
+        local: "exemplo",
+        linhas: [
+          "👤 Responsáveis: — → Pe. João Silva (pároco)",
+          "📞 Telefones: — → 253 123 456",
+          "✉️ E-mail: — → paroquia@exemplo.pt",
+          "🌐 Site: — → https://paroquia.pt/",
+        ],
+      },
+    ]);
+  });
+
+  it("CONFLITO com a versão antiga; ERRO com contactos fora da forma canónica", () => {
+    expect(prepararGravacao(pedido(novos, 3), estado(), OPCOES)).toMatchObject({
+      estado: "CONFLITO",
+    });
+    for (const mau of [
+      { ...novos, site: "javascript:alert(1)" },
+      { ...novos, telefones_publicos: ["253123456"] },
+      { ...novos, email: "a@b" },
+      { ...novos, responsaveis: ["<b>x</b>\n"] },
+    ])
+      expect(prepararGravacao(pedido(mau), estado(), OPCOES)).toMatchObject({ estado: "ERRO" });
+  });
+
+  it("recusa um resumo que não coincide", () => {
+    expect(prepararGravacao({ ...pedido(), resumo: [] }, estado(), OPCOES)).toMatchObject({
+      estado: "ERRO",
+      motivo: "o resumo não coincide com as alterações",
+    });
   });
 });
 

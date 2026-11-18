@@ -6,7 +6,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./resumo": "./src/resumo.ts"
+    "./resumo": "./src/resumo.ts",
+    "./contactos": "./src/contactos.ts"
   },
   "dependencies": {
     "@missas/horarios": "0.0.0",
