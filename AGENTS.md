@@ -20,18 +20,18 @@
 | `npm run dev` | Site em modo de desenvolvimento |
 | `npm run verificar` | Formatação, lint, tipos, testes e validação dos dados: **tem de passar antes de cada PR** |
 | `npm test` | Testes (Vitest) |
-| `npm run validar` | Valida os YAML de `dados/` (fonte da importação inicial para o D1) |
-| `npm run importar:d1 -- --local` | Importa os YAML para o D1 local (`--remote` só na migração; ver o script) |
+| `npm run validar` | Valida o calendário (`dados/calendario.yml`) |
+| `npm run importar:d1 -- --local` | Põe os dados fixos dos testes (`site/e2e/dados`) num D1 local, para o desenvolvimento |
 | `npm run e2e` | Testes no navegador contra o `wrangler dev` com um D1 local e dados fixos |
 | `npm run build` | Gera o site em `site/dist` |
-| `npm run formatar:dados` | Reescreve os YAML de `dados/` no formato canónico |
+| `npm run formatar:dados` | Reescreve o calendário e os dados fixos dos testes no formato canónico |
 | `npm run gerar:tipos` / `npm run gerar:validadores` | Depois de mudar `dados/schema/`: tipos TypeScript e validadores pré-compilados |
 
 ## Convenções
 
 - **Língua:** textos visíveis em **português europeu** (pt-PT: "ecrã", "telemóvel", "registadas"), com versões em inglês e espanhol no site. Termos do domínio em português também no código (`local`, `entidade`, `horarios`, `excecoes`, `confirmado_em`); vocabulário técnico genérico pode ficar em inglês.
 - **Hora:** sempre **Europe/Lisbon**. Nunca "GMT+0" fixo: no verão é GMT+1.
-- **Dados:** o nome do arquivo é o `id`; um local pertence a uma entidade e a entidade lista o local (nos dois sentidos). Os YAML seguem o formato canónico do projeto (serializador em `pacotes/dados`, `npm run formatar:dados`); não os reformatar com outras ferramentas.
+- **Dados:** as entidades e os locais vivem só no D1 e mudam só pelo painel (com as guardas, a validação e o histórico). No repositório ficam o esquema, o calendário (`dados/calendario.yml`, lido pelo site) e os dados fixos dos testes (`site/e2e/dados`). Um local pertence a uma entidade e a entidade lista o local (nos dois sentidos). Os YAML seguem o formato canónico do projeto (serializador em `pacotes/dados`, `npm run formatar:dados`); não os reformatar com outras ferramentas.
 - **Esquema:** `dados/schema/*.schema.json` é a única fonte de verdade; os arquivos `*.gerado.*` não se editam à mão (ADR-002).
 - **Testes primeiro** no motor e na gravação: os casos de referência são o contrato. Não se altera um teste existente para o fazer passar.
 - **Um PR por tarefa**, pequeno, com a CI verde.
@@ -43,7 +43,7 @@
 3. **Nunca pôr segredos** no código, nos testes ou nos workflows. Há só dois, ambos segredos do Worker (*Type: Secret*): `GOOGLE_CLIENT_SECRET` e `TURNSTILE_SECRET`.
 4. **Nunca inventar afirmações institucionais nem integrações.** Este projeto é uma aplicação do Arciprestado de Guimarães e Vizela; **não é uma plataforma oficial da Arquidiocese de Braga** e não está ligado à Cúria, a agendas diocesanas nem a outros sistemas. Ficam fora textos como "Plataforma Eclesiástica Oficial", "Sincronização Curial", "Gestão canónica", "Conforme com as normas canónicas", "Comunidade notificada em tempo real". Sobre a publicação, dizer só o que é verdade: uma gravação aparece no site logo a seguir (ADR-005), mas ninguém é notificado. Na dúvida, texto simples e factual.
 5. **Nunca usar o dourado `#B09247` nem o celeste `#6EB1E4` em texto** (contraste insuficiente). Texto dourado: `dourado-texto` (`#735B28`); texto azul: `azul-texto` (`#006493`). Tokens em `site/src/styles/tokens.css`.
-6. **Nunca escrever SQL que altere ou apague `gravacoes` ou `versoes`.** O histórico só cresce; a única exceção é a substituição completa na migração (`importar-d1.ts --substituir`).
+6. **Nunca escrever SQL que altere ou apague `gravacoes` ou `versoes`.** O histórico só cresce, sem exceções (a importação inicial já foi feita).
 
 ## Segurança — revisão obrigatória
 

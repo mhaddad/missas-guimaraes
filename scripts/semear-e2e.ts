@@ -55,7 +55,7 @@ const locais = new Map(ler<Local>("locais").map((l) => [l.id, l]));
 const arquivo = join(ESTADO_E2E, "..", "semente-e2e.sql");
 writeFileSync(
   arquivo,
-  gerarSql(ler<Entidade>("entidades"), locais, quando, false) + contactos.join("\n") + "\n",
+  gerarSql(ler<Entidade>("entidades"), locais, quando) + contactos.join("\n") + "\n",
 );
 wrangler("execute", "BD", "--file", arquivo);
 console.log("✓ Base local dos e2e pronta.");

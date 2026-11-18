@@ -1,8 +1,8 @@
 /**
- * Reescreve os YAML de dados/ no formato canónico (§8.3, item 7):
+ * Reescreve no formato canónico (§8.3, item 7) o calendário e os dados fixos dos testes:
  *   npm run formatar:dados
- * Não muda os dados nem os comentários; `npm run validar` falha se algum arquivo não estiver
- * no formato canónico.
+ * Não muda os dados nem os comentários; `npm run validar` falha se o calendário não estiver no
+ * formato canónico.
  */
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -11,7 +11,7 @@ import { formatar } from "@missas/dados";
 const RAIZ = new URL("..", import.meta.url).pathname;
 const caminhos = [
   "dados/calendario.yml",
-  ...["dados/entidades", "dados/locais"].flatMap((pasta) =>
+  ...["site/e2e/dados/entidades", "site/e2e/dados/locais"].flatMap((pasta) =>
     readdirSync(join(RAIZ, pasta))
       .filter((nome) => nome.endsWith(".yml"))
       .sort()
