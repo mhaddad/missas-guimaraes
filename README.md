@@ -8,7 +8,7 @@ Horários das missas e celebrações nas igrejas dos concelhos de Guimarães e V
 
 - O site é uma só página, rápida e sem publicidade, em português, inglês e espanhol.
 - As paróquias atualizam os seus horários num painel, com login Google.
-- Os dados são arquivos YAML neste repositório (`dados/`). Cada alteração é um commit, por isso o histórico mostra o que mudou e quando, e qualquer versão pode ser recuperada.
+- Os dados estão numa base de dados na Cloudflare (D1), não neste repositório. Cada alteração fica no histórico: mostra o que mudou e quando, e qualquer versão pode ser reposta pelo painel.
 
 ## Desenvolvimento
 

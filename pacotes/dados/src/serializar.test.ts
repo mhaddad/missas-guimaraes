@@ -36,14 +36,14 @@ revisao:
 `;
 
 describe("formato canónico", () => {
-  it("C31: reescrever todos os YAML de dados/ não produz diferenças", () => {
+  it("C31: reescrever o calendário e os dados fixos dos testes não produz diferenças", () => {
     const caminhos = [
       "dados/calendario.yml",
-      ...["dados/entidades", "dados/locais"].flatMap((pasta) =>
+      ...["site/e2e/dados/entidades", "site/e2e/dados/locais"].flatMap((pasta) =>
         readdirSync(join(RAIZ, pasta)).map((nome) => `${pasta}/${nome}`),
       ),
     ];
-    expect(caminhos.length).toBeGreaterThan(150);
+    expect(caminhos.length).toBeGreaterThan(4);
     const diferentes = caminhos.filter((c) => {
       const conteudo = readFileSync(join(RAIZ, c), "utf8");
       return formatar(conteudo, c) !== conteudo;
@@ -165,7 +165,7 @@ excecoes:
 describe("leitura", () => {
   it("lê e valida locais, entidades e o calendário", () => {
     expect(lerLocal(LOCAL).id).toBe("teste");
-    expect(lerEntidade(readFileSync(join(RAIZ, "dados/entidades/homologacao-teste.yml"), "utf8")).tipo).toBe("paroquia");
+    expect(lerEntidade(readFileSync(join(RAIZ, "site/e2e/dados/entidades/nespereira.yml"), "utf8")).tipo).toBe("paroquia");
     expect(lerCalendario(readFileSync(join(RAIZ, "dados/calendario.yml"), "utf8")).anos["2027"]?.moveis.pascoa).toBe(
       "2027-03-28",
     );
