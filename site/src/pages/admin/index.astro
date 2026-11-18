@@ -50,10 +50,17 @@ const nomes = new Map(visao.paroquias.map((p) => [p.id, p.nome]));
       <h1 class="text-2xl font-bold md:text-3xl">Visão geral</h1>
       <p class="mt-1 text-texto-secundario">Situação dos horários a {formatarData(hoje)}.</p>
     </div>
-    <a class="botao-primario" href="/admin/paroquias/">
-      <Icone nome="church" />
-      Ver todas as paróquias
-    </a>
+    <div class="flex flex-wrap gap-2 max-sm:w-full max-sm:[&>*]:flex-auto">
+      <a class="botao-secundario" href="/" target="_blank" rel="noopener">
+        <Icone nome="open_in_new" />
+        Ver o site
+        <span class="sr-only">(abre noutro separador)</span>
+      </a>
+      <a class="botao-primario" href="/admin/paroquias/">
+        <Icone nome="church" />
+        Ver todas as paróquias
+      </a>
+    </div>
   </div>
 
   {visao.relatosAbertos > 0 && (
