@@ -172,6 +172,7 @@ async function gravacao(
   const resultado = prepararGravacao(lido, estado, {
     agora,
     contacto: { ref: eu.id, canal: "painel" },
+    admin: eu.perfil === "admin",
     calendario: regrasDosDiasSantos(),
     ...(alvo && { alvo }),
   });

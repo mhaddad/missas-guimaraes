@@ -71,6 +71,8 @@ export interface OpcoesGravacao {
   agora: Date;
   /** Quem grava: id opaco do contacto e canal (vai para `confirmado_por`). */
   contacto: { ref: string; canal: CanalGravacao };
+  /** Quem grava é administrador: só assim uma `alteracao` pode mudar `CAMPOS_SO_ADMIN`. */
+  admin?: boolean;
   /** Regras dos dias santos, para a validação. */
   calendario?: Calendario;
   /** Só em `restauro`: o estado da entidade depois da gravação `restaura`. */
@@ -101,6 +103,9 @@ export const CAMPOS_ALTERACAO: readonly string[] = [
   "dias_santos",
   "foto",
 ];
+
+/** Campos que só um administrador muda numa `alteracao`: mostrar ou esconder um local no site. */
+export const CAMPOS_SO_ADMIN: readonly string[] = ["publicar"];
 
 /** Imagens de capa enviadas pelo painel (R2, `worker/src/fotos.ts`): `/fotos/<sha-256>.<ext>`. */
 export const PADRAO_URL_FOTO = /^\/fotos\/[0-9a-f]{64}\.(webp|jpg)$/;
@@ -270,7 +275,8 @@ function calcular(
       const r = atual(id);
       if (!r) return erro(`o local ${id} não existe`);
       if (r.versao !== versao) return conflito(`o local ${id} mudou desde que foi carregado`);
-      const fora = camposMudados(r.dados, dados).filter((c) => !CAMPOS_ALTERACAO.includes(c));
+      const permitidos = opcoes.admin === true ? [...CAMPOS_ALTERACAO, ...CAMPOS_SO_ADMIN] : CAMPOS_ALTERACAO;
+      const fora = camposMudados(r.dados, dados).filter((c) => !permitidos.includes(c));
       if (fora.length > 0) return erro(`alteração de campos não permitidos: ${fora.join(", ")}`);
       if (!iguais(r.dados.foto ?? null, dados.foto ?? null) && !fotoDoPainel(dados.foto))
         return erro("a imagem de capa tem de ser enviada pelo painel");

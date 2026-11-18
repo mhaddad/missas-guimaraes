@@ -135,6 +135,8 @@ export function descreverAlteracao(a: Alteracao): string {
           : a.depois == null
             ? "🖼️ Imagem de capa retirada"
             : "🖼️ Imagem de capa alterada";
+      if (a.campo === "publicar")
+        return a.depois === true ? "👁️ Volta a aparecer no site" : "🚫 Escondido do site";
       return `Campo ${a.campo} alterado`;
   }
 }

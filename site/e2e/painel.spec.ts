@@ -312,6 +312,34 @@ test("Alertas pedidos pelo servidor: diálogo do painel, sem o confirm do navega
   expect(confirmNativo).toBe(false);
 });
 
+test("Esconder do site: só o administrador, com confirmação e gravado no histórico", async ({
+  page,
+}) => {
+  await simular(page, "admin");
+  await page.goto("/admin/paroquia/nespereira/");
+  const botao = page.getByRole("button", { name: /^Esconder do site: / });
+  await expect(botao).toHaveCount(1);
+  await botao.click();
+  const dialogo = page.getByRole("dialog", { name: "Esconder do site?" });
+  await expect(dialogo).toContainText("deixa de aparecer no site");
+  await expect(dialogo).toContainText("a paróquia também deixa de aparecer");
+  expect(await axe(page)).toEqual([]);
+  const post = await clicarEEnviar(page, dialogo.getByRole("button", { name: "Esconder do site" }));
+  expect(post).toMatchObject({ tipo: "alteracao", entidade: "nespereira" });
+  expect((post.locais["nespereira"]?.dados as { publicar?: boolean }).publicar).toBe(false);
+  expect(post.resumo).toEqual([{ local: "nespereira", linhas: ["🚫 Escondido do site"] }]);
+  await expect(
+    page.getByRole("status").filter({ hasText: "Gravado. Já está no site." }),
+  ).toBeVisible();
+});
+
+test("o contacto da paróquia não vê o botão de esconder do site", async ({ page }) => {
+  await simular(page, "entidade");
+  await page.goto("/admin/");
+  await expect(page.getByText("No site", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Esconder do site/ })).toHaveCount(0);
+});
+
 const hojeLisboa = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Lisbon" }).format(new Date());
 

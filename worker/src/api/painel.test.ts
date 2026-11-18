@@ -237,6 +237,18 @@ describe("gravações", () => {
     expect((await gravarCorpo({ ...corpo, restaura: 2 }, "admin")).estado).toBe(404);
   });
 
+  it("esconder do site (publicar): só o admin; o contacto da paróquia recebe 422", async () => {
+    const esconder = alteracao("nespereira", (l) => ({ ...l, publicar: false }));
+    expect((await gravarCorpo(esconder)).corpo).toMatchObject({
+      erro: "invalido",
+      motivo: expect.stringMatching(/campos não permitidos: publicar/),
+    });
+    expect((await gravarCorpo(esconder, "admin")).corpo).toMatchObject({ estado: "GRAVADO" });
+    expect((await pedir("/api/entidades/nespereira")).corpo).toMatchObject({
+      locais: [{ versao: 2, local: { publicar: false } }],
+    });
+  });
+
   it("corpo inválido (400) e grande demais (413)", async () => {
     expect((await gravarCorpo({ tipo: "apagar", entidade: "nespereira" })).corpo).toMatchObject({
       erro: "pedido",
