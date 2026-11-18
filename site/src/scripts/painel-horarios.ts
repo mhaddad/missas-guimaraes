@@ -894,7 +894,7 @@ function cartaoContactos(estado: EstadoEntidade): HTMLElement {
       { class: "grid gap-0.5" },
       h("dt", { class: "rotulo" }, rotulo),
       ...(valores.length
-        ? valores.map((v) => h("dd", { class: "break-words" }, v))
+        ? valores.map((v) => h("dd", { class: "wrap-anywhere" }, v))
         : [h("dd", { class: "text-texto-secundario" }, "Não indicado")]),
     );
   const editar = h(
@@ -932,22 +932,23 @@ function cartaoLocais(estado: EstadoEntidade): HTMLElement {
             "li",
             { class: "flex items-center gap-3 px-4 py-3 md:px-5" },
             icone("church", "size-6 shrink-0 text-dourado-texto"),
+            // A etiqueta fica por baixo do nome: na coluna estreita, ao lado não cabem os botões.
             h(
               "div",
-              { class: "min-w-0 flex-1" },
-              h("p", { class: "font-semibold" }, local.nome),
+              { class: "grid min-w-0 flex-1 justify-items-start gap-1" },
+              h("p", { class: "font-semibold wrap-anywhere" }, local.nome),
               h(
                 "p",
                 { class: "text-sm text-texto-secundario" },
                 [local.localidade, local.concelho].filter(Boolean).join(" · "),
               ),
-            ),
-            h(
-              "span",
-              {
-                class: `etiqueta shrink-0 text-xs ${local.publicar ? "bg-confirmado-fundo text-confirmado" : "bg-slate-100 text-texto-secundario"}`,
-              },
-              local.publicar ? "No site" : "Não publicado",
+              h(
+                "span",
+                {
+                  class: `etiqueta text-xs ${local.publicar ? "bg-confirmado-fundo text-confirmado" : "bg-slate-100 text-texto-secundario"}`,
+                },
+                local.publicar ? "No site" : "Não publicado",
+              ),
             ),
             botaoIcone(
               "edit",
@@ -1198,12 +1199,14 @@ async function mostrarEntidade(id: string): Promise<void> {
           { class: "grid items-start gap-6 lg:grid-cols-3" },
           h(
             "div",
-            { class: "grid gap-6 lg:col-span-2" },
+            { class: "grid grid-cols-[minmax(0,1fr)] gap-6 lg:col-span-2" },
             ...estado.locais.map((_, indiceLocal) => cartaoHorarios(estado, indiceLocal, hoje)),
           ),
+          // Faixas `minmax(0,1fr)`: o conteúdo de um cartão nunca alarga a coluna (com a faixa
+          // automática, a largura mínima do conteúdo passava por cima da coluna da grelha).
           h(
             "div",
-            { class: "grid gap-6" },
+            { class: "grid grid-cols-[minmax(0,1fr)] gap-6" },
             cartaoCapa(estado),
             cartaoExcecoes(estado, hoje),
             cartaoDiasSantos(estado),
