@@ -26,6 +26,7 @@ import {
   icone,
   iniciarPartilha,
   lugarDe,
+  comBlocosDoDomingo,
   marcar,
   porId,
   prepararAcoes,
@@ -280,7 +281,9 @@ function desenhar(): void {
   const passadas = dia.celebracoes.filter((o) => minutosAte(momento, o) < 0);
   const futuras = dia.celebracoes.filter((o) => minutosAte(momento, o) >= 0);
 
-  elListaHora.replaceChildren(...futuras.map((o) => linhaCelebracao(o, hoje)));
+  elListaHora.replaceChildren(
+    ...comBlocosDoDomingo(idioma, futuras, (o) => linhaCelebracao(o, hoje)),
+  );
   elListaAnteriores.replaceChildren(...passadas.map((o) => linhaCelebracao(o, hoje, true)));
   elAnteriores.hidden = passadas.length === 0;
   elAnterioresTexto.textContent = plural(idioma, t.anteriores, passadas.length);
@@ -318,7 +321,7 @@ function desenhar(): void {
 
   elSemInformacao.hidden = dia.semInformacao.length === 0;
   elListaSemInformacao.replaceChildren(
-    ...dia.semInformacao.map((o) => linhaCelebracao(o, hoje, false)),
+    ...comBlocosDoDomingo(idioma, dia.semInformacao, (o) => linhaCelebracao(o, hoje, false)),
   );
 
   // Estado no endereço, para partilhar a pesquisa (§6.2)
