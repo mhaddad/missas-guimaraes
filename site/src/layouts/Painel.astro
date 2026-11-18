@@ -11,7 +11,7 @@ import Icones from "../components/Icones.astro";
 
 interface Props {
   titulo: string;
-  ativo: "visao" | "paroquias" | "acessos" | "nenhum";
+  ativo: "visao" | "paroquias" | "relatos" | "acessos" | "nenhum";
   /** Páginas sem sessão (entrar, sem acesso): sem secções nem conta. */
   simples?: boolean;
   /** Largura do conteúdo: `larga` para listas e a página de uma paróquia. */
@@ -26,6 +26,7 @@ const secoes: { chave: Props["ativo"]; href: string; texto: string; icone: strin
   ? [
       { chave: "visao", href: "/admin/", texto: "Visão geral", icone: "dashboard" },
       { chave: "paroquias", href: "/admin/paroquias/", texto: "Paróquias", icone: "church" },
+      { chave: "relatos", href: "/admin/relatos/", texto: "Relatos", icone: "flag" },
       { chave: "acessos", href: "/admin/acessos/", texto: "Acessos", icone: "group" },
     ]
   : unica && outras.length === 0

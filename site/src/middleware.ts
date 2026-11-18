@@ -30,7 +30,7 @@ interface Contexto {
 }
 
 const LIVRES = new Set(["/admin/entrar/", "/admin/sem-acesso/"]);
-const SO_ADMIN = ["/admin/acessos/"];
+const SO_ADMIN = ["/admin/acessos/", "/admin/relatos/"];
 const COM_DADOS = new Set([
   "/",
   "/en/",

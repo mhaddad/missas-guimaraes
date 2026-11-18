@@ -162,7 +162,12 @@ test("visão geral do administrador: indicadores, mais antigas e ligação para 
   await page.goto("/admin/");
   await expect(page.getByRole("heading", { level: 1, name: "Visão geral" })).toBeVisible();
   const seccoes = page.getByRole("navigation", { name: "Secções do painel" });
-  await expect(seccoes.getByRole("link")).toHaveText(["Visão geral", "Paróquias", "Acessos"]);
+  await expect(seccoes.getByRole("link")).toHaveText([
+    "Visão geral",
+    "Paróquias",
+    "Relatos",
+    "Acessos",
+  ]);
   await expect(
     page.getByRole("link", { name: "Ver o site (abre noutro separador)" }),
   ).toBeVisible();
@@ -563,4 +568,55 @@ test("imagem de capa: escolher, enviar para o R2, ver no site e retirar", async 
   await expect(retirar.getByText("🖼️ Imagem de capa retirada")).toBeVisible();
   await retirar.getByRole("button", { name: "Retirar" }).click();
   await expect(capa.getByText("Ainda sem imagem de capa.")).toBeVisible();
+});
+
+// Os dois mexem nos mesmos relatos do D1 local: um a seguir ao outro.
+test.describe.serial("relatos do público", () => {
+  test("relatos do público: aviso na visão geral, lista, resolver e reabrir", async ({
+    page,
+  }, info) => {
+    // Grava de verdade no D1 local: só num projeto, para não haver mudanças em paralelo.
+    test.skip(info.project.name !== "computador", "grava no D1 local");
+    await entrarComo(page, "admin");
+    await page.goto("/admin/");
+    await page.getByRole("link", { name: /2 relatos do público por resolver/ }).click();
+    await expect(page).toHaveURL(/\/admin\/relatos\/$/);
+    const seccoes = page.getByRole("navigation", { name: "Secções do painel" });
+    await expect(seccoes.getByRole("link", { name: "Relatos" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    const lista = page.locator("#lista-relatos > li");
+    await expect(lista).toHaveCount(2);
+    const nespereira = lista.filter({ hasText: "A missa de domingo passou para as 10:30." });
+    await expect(
+      nespereira.getByRole("link", { name: "Paróquia de Santa Eulália de Nespereira" }),
+    ).toBeVisible();
+    await expect(lista.filter({ hasText: "There was no mass" })).toContainText("Em inglês");
+    expect(await axe(page)).toEqual([]);
+
+    await nespereira.getByRole("button", { name: "Marcar como resolvido" }).click();
+    await expect(page.getByText("Relato marcado como resolvido.")).toBeVisible();
+    await expect(lista).toHaveCount(1);
+    await page.getByRole("button", { name: "Resolvidos" }).click();
+    await expect(page).toHaveURL(/\?estado=resolvido$/);
+    await expect(lista).toHaveCount(1);
+    await lista.getByRole("button", { name: "Reabrir" }).click();
+    await expect(page.getByText("Relato reaberto.")).toBeVisible();
+    await expect(page.getByText("Ainda não há relatos resolvidos.")).toBeVisible();
+  });
+
+  test("relatos: o contacto da paróquia vê os seus na página da paróquia, não a lista geral", async ({
+    page,
+  }, info) => {
+    test.skip(info.project.name !== "computador", "lê o D1 local partilhado com o teste anterior");
+    await entrarComo(page, "entidade");
+    await page.goto("/admin/paroquia/nespereira/");
+    const cartao = page.getByRole("region", { name: "Relatos do público por resolver" });
+    await expect(cartao.locator("li")).toHaveCount(1);
+    await expect(cartao).toContainText("A missa de domingo passou para as 10:30.");
+    await expect(cartao).not.toContainText("There was no mass");
+    await page.goto("/admin/relatos/");
+    await expect(page).toHaveURL(/\/admin\/paroquia\/nespereira\/$/);
+  });
 });

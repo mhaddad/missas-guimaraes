@@ -56,6 +56,26 @@ const nomes = new Map(visao.paroquias.map((p) => [p.id, p.nome]));
     </a>
   </div>
 
+  {visao.relatosAbertos > 0 && (
+    <a
+      href="/admin/relatos/"
+      class="cartao mb-6 flex items-center gap-3 border-dourado/40 bg-aviso-fundo p-4 hover:border-dourado"
+    >
+      <Icone nome="flag" class="size-6 text-dourado-texto" />
+      <span class="min-w-0 flex-1">
+        <span class="block font-semibold">
+          {visao.relatosAbertos === 1
+            ? "1 relato do público por resolver"
+            : `${visao.relatosAbertos} relatos do público por resolver`}
+        </span>
+        <span class="block text-sm text-texto-secundario">
+          Pessoas reportaram erros nos horários com o botão do site.
+        </span>
+      </span>
+      <Icone nome="chevron_right" class="size-5 text-texto-secundario" />
+    </a>
+  )}
+
   <!-- Indicadores -->
   <section aria-labelledby="titulo-indicadores" class="mb-6">
     <h2 id="titulo-indicadores" class="sr-only">
