@@ -4,6 +4,7 @@
  * `[data-relatar]`. Sem a chave pública do Turnstile, não aparece.
  */
 import type { Local } from "@missas/horarios";
+import Icone from "./Icone.astro";
 import { TEXTOS, type Idioma } from "../i18n/index.ts";
 
 interface Props {
@@ -24,9 +25,20 @@ const siteKey: string | undefined = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ||
     class="m-auto max-h-[calc(100dvh-2rem)] w-[min(36rem,calc(100%-2rem))] overflow-y-auto rounded-xl border border-borda bg-cartao p-0 text-ardosia shadow-xl backdrop:bg-ardosia/50"
   >
     <form id="form-relato" class="grid grid-cols-[minmax(0,1fr)] gap-4 p-5 md:p-6" novalidate>
-      <h2 id="relato-titulo" class="text-xl font-semibold">
-        {t.reportarTitulo}
-      </h2>
+      <div class="flex items-start justify-between gap-4">
+        <h2 id="relato-titulo" class="pt-2 text-xl font-semibold">
+          {t.reportarTitulo}
+        </h2>
+        <button
+          type="button"
+          class="botao-icone -mt-1 -mr-1"
+          aria-label={t.reportarFechar}
+          title={t.reportarFechar}
+          data-fechar-relato
+        >
+          <Icone nome="close" class="size-6" />
+        </button>
+      </div>
       <div class="flex flex-col gap-1">
         <label for="relato-local" class="font-semibold">
           {t.reportarIgreja}
@@ -60,10 +72,7 @@ const siteKey: string | undefined = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ||
       </div>
       <div id="relato-turnstile" class="min-h-16" />
       <p id="relato-estado" role="status" class="text-base font-semibold empty:hidden" />
-      <div class="flex flex-wrap justify-end gap-3">
-        <button type="button" class="botao-secundario" data-fechar-relato>
-          {t.reportarCancelar}
-        </button>
+      <div class="flex justify-end">
         <button type="submit" id="relato-enviar" class="botao-primario">
           {t.reportarEnviar}
         </button>
