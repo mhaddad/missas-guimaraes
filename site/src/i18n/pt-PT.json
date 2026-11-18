@@ -185,5 +185,13 @@
   "semMaisHojeParoquia": "Já não há mais celebrações hoje nesta paróquia.",
   "pesquisaParoquiasRotulo": "Pesquisar paróquias",
   "pesquisaParoquiasExemplo": "Nome da paróquia ou localidade",
-  "nenhumaParoquia": "Nenhuma paróquia corresponde à pesquisa."
+  "nenhumaParoquia": "Nenhuma paróquia corresponde à pesquisa.",
+  "erro404Titulo": "Página não encontrada",
+  "erro404Texto": "O endereço pode estar incompleto, ou a página mudou de lugar. Procure a paróquia pelo nome ou volte ao início.",
+  "erro500Titulo": "Algo correu mal",
+  "erro500Texto": "Não foi possível mostrar esta página. Tente novamente daqui a pouco.",
+  "tentarNovamente": "Tentar novamente",
+  "verCelebracoesHoje": "Ver as celebrações de hoje",
+  "verTodasParoquias": "Ver todas as paróquias",
+  "pesquisar": "Pesquisar"
 }

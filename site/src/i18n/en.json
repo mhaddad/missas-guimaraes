@@ -185,5 +185,13 @@
   "semMaisHojeParoquia": "No more celebrations today in this parish.",
   "pesquisaParoquiasRotulo": "Search parishes",
   "pesquisaParoquiasExemplo": "Parish name or place",
-  "nenhumaParoquia": "No parish matches your search."
+  "nenhumaParoquia": "No parish matches your search.",
+  "erro404Titulo": "Page not found",
+  "erro404Texto": "The address may be incomplete, or the page has moved. Search for the parish by name or go back to the start.",
+  "erro500Titulo": "Something went wrong",
+  "erro500Texto": "This page could not be shown. Please try again in a moment.",
+  "tentarNovamente": "Try again",
+  "verCelebracoesHoje": "See today's celebrations",
+  "verTodasParoquias": "See all parishes",
+  "pesquisar": "Search"
 }

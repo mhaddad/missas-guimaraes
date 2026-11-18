@@ -1,0 +1,12 @@
+---
+/** Erro ao gerar uma página: mensagem simples, sem pormenores técnicos (o erro fica nos registos). */
+import PaginaErro from "../components/PaginaErro.astro";
+
+interface Props {
+  error: unknown;
+}
+
+Astro.response.status = 500;
+---
+
+<PaginaErro tipo={500} />
