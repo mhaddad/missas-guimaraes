@@ -880,14 +880,14 @@ function cabecalho(estado: EstadoEntidade, hoje: string): HTMLElement {
 
   const botaoConfirmar = h(
     "button",
-    { type: "button", class: "botao-confirmar" },
+    { type: "button", class: "botao-confirmar botao-compacto" },
     icone("check_circle"),
     "Está tudo certo",
   );
   botaoConfirmar.addEventListener("click", () => void confirmarTudo(estado, botaoConfirmar));
   const botaoExcecao = h(
     "button",
-    { type: "button", class: "botao-secundario" },
+    { type: "button", class: "botao-secundario botao-compacto" },
     icone("event"),
     "Adicionar exceção",
   );
@@ -897,7 +897,7 @@ function cabecalho(estado: EstadoEntidade, hoje: string): HTMLElement {
   );
   const botaoNovo = h(
     "button",
-    { type: "button", class: "botao-primario" },
+    { type: "button", class: "botao-primario botao-compacto" },
     icone("add"),
     "Novo horário",
   );
@@ -964,7 +964,7 @@ function cabecalho(estado: EstadoEntidade, hoje: string): HTMLElement {
         ),
         h(
           "div",
-          { class: "mt-5 grid gap-2 sm:flex sm:flex-wrap" },
+          { class: "mt-4 flex flex-wrap gap-2 max-sm:[&>*]:flex-auto" },
           botaoConfirmar,
           botaoExcecao,
           botaoNovo,

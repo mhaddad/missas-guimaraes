@@ -1,8 +1,9 @@
 ---
 /**
  * Layout do painel (§7.3), só em pt-PT. O cabeçalho é gerado no servidor a partir da sessão
- * (`Astro.locals.eu`, verificada pelo middleware). Em cima: selo, pessoa e *Sair*; na barra de
- * baixo: as secções conforme o perfil e *Ver o site*.
+ * (`Astro.locals.eu`, verificada pelo middleware). Em cima, só o selo e o nome; por baixo, o menu
+ * (fixo ao rolar): as secções conforme o perfil, *Ver o site*, a pessoa (a partir de `md`) e *Sair*.
+ * No telemóvel, os itens do menu repartem a largura, com o ícone por cima do texto.
  */
 import "../styles/global.css";
 import Icone from "../components/Icone.astro";
@@ -44,6 +45,12 @@ const secoes: { chave: Props["ativo"]; href: string; texto: string; icone: strin
           icone: "church",
         },
       ];
+const iniciais = (eu?.nome ?? "")
+  .split(/\s+/)
+  .filter(Boolean)
+  .filter((_, i, todas) => i === 0 || i === todas.length - 1)
+  .map((p) => p[0]?.toUpperCase())
+  .join("");
 ---
 
 <!doctype html>
@@ -64,77 +71,86 @@ const secoes: { chave: Props["ativo"]; href: string; texto: string; icone: strin
     >
       Saltar para o conteúdo
     </a>
-    <header class="sticky top-0 z-20 border-b border-borda bg-cartao/95 backdrop-blur">
-      <div class="mx-auto flex max-w-pagina items-center gap-4 px-4 py-2 md:px-6">
-        <a
-          href={eu ? secoes[0]?.href : "/admin/"}
-          class="flex min-h-12 min-w-0 flex-1 items-center gap-3"
-        >
+    <header class="border-b border-borda bg-cartao">
+      <div class="mx-auto flex max-w-pagina items-center px-4 py-2 md:px-6">
+        <a href={eu ? secoes[0]?.href : "/admin/"} class="flex min-h-12 min-w-0 items-center gap-3">
           <img
             src="/marca/selo-compacto.svg"
             alt=""
             width="44"
             height="42"
-            class="h-9 w-auto shrink-0 md:h-10"
+            class="h-8 w-auto shrink-0 md:h-10"
           />
           <span class="min-w-0">
             <span class="block text-sm leading-tight font-bold md:text-base">
               Arciprestado de Guimarães e Vizela
             </span>
-            <span class="block text-sm leading-tight font-semibold text-dourado-texto">
+            <span class="block text-xs leading-tight font-semibold text-dourado-texto md:text-sm">
               Painel dos horários
             </span>
           </span>
         </a>
-        {eu && (
-          <div class="flex shrink-0 items-center gap-1">
-            <span class="max-w-32 text-right leading-tight sm:max-w-none">
-              <span class="block truncate text-sm font-semibold md:text-base">{eu.nome}</span>
-              <span class="hidden text-sm text-texto-secundario sm:block">
-                {admin ? "Administrador" : "Paróquia"}
+      </div>
+    </header>
+    {eu && (
+      <div class="sticky top-0 z-20 border-b border-borda bg-cartao/95 backdrop-blur">
+        <div class="mx-auto flex max-w-pagina items-stretch gap-1 px-2 py-1 md:items-center md:gap-2 md:px-6 md:py-1.5">
+          <nav
+            aria-label="Secções do painel"
+            class="flex min-w-0 grow-[var(--n)] md:grow-0"
+            style={`--n: ${secoes.length}`}
+          >
+            <ul class="flex w-full gap-1">
+              {secoes.map((s) => (
+                <li class="flex flex-1 md:flex-none">
+                  <a
+                    class="menu-item"
+                    href={s.href}
+                    aria-current={ativo === s.chave ? "page" : undefined}
+                  >
+                    <Icone nome={s.icone} class="size-5" />
+                    {s.texto}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          <div class="flex grow-[2] gap-1 md:ml-auto md:grow-0 md:items-center md:gap-2">
+            <a class="menu-item flex-1 md:flex-none" href="/" target="_blank" rel="noopener">
+              <Icone nome="open_in_new" class="size-5" />
+              Ver o site
+              <span class="sr-only">(abre noutro separador)</span>
+            </a>
+            <span class="hidden h-8 w-px bg-borda md:block" aria-hidden="true"></span>
+            <span class="hidden items-center gap-2 px-1 md:flex">
+              <span
+                class="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-azul-fundo text-xs font-bold text-azul-texto"
+                aria-hidden="true"
+              >
+                {iniciais}
+              </span>
+              <span class="leading-tight">
+                <span class="block text-sm font-semibold">{eu.nome}</span>
+                <span class="block text-xs text-texto-secundario">
+                  {admin ? "Administrador" : "Paróquia"}
+                </span>
               </span>
             </span>
-            <form method="post" action="/auth/sair">
+            <form method="post" action="/auth/sair" class="flex flex-1 md:flex-none">
               <button
                 type="submit"
-                class="botao-icone border-transparent"
+                class="menu-item"
                 aria-label={`Sair (${eu.nome})`}
-                title="Sair"
+                title={`Sair (${eu.nome})`}
               >
-                <Icone nome="logout" />
+                <Icone nome="logout" class="size-5" />
+                Sair
               </button>
             </form>
           </div>
-        )}
-      </div>
-      {eu && (
-        <div class="border-t border-borda">
-          <div class="mx-auto flex max-w-pagina items-center gap-1 overflow-x-auto px-4 md:px-6">
-            <nav aria-label="Secções do painel">
-              <ul class="flex sm:gap-1">
-                {secoes.map((s) => (
-                  <li>
-                    <a
-                      class="separador max-sm:px-2"
-                      href={s.href}
-                      aria-current={ativo === s.chave ? "page" : undefined}
-                    >
-                      <Icone nome={s.icone} class="hidden size-5 sm:block" />
-                      {s.texto}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-            <a class="separador ml-auto" href="/" target="_blank" rel="noopener" title="Ver o site">
-              <Icone nome="open_in_new" class="size-5" />
-              <span class="sr-only sm:not-sr-only">Ver o site</span>
-              <span class="sr-only">(abre noutro separador)</span>
-            </a>
-          </div>
         </div>
-      )}
-    </header>
+      </div>
+    )}
     <main
       id="conteudo"
       class:list={[
