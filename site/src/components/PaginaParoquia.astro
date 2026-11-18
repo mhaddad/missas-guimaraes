@@ -10,6 +10,7 @@ import Base from "../layouts/Base.astro";
 import { TEXTOS, type Idioma } from "../i18n/index.ts";
 import { dadosPortal } from "../lib/dados.ts";
 import { jsonLd } from "../lib/jsonld.ts";
+import { imagemDePartilha } from "../lib/partilha.ts";
 import { ligacaoMapa } from "../lib/portal.ts";
 import FotoIgreja from "./FotoIgreja.astro";
 import HorarioSemanal from "./HorarioSemanal.astro";
@@ -68,6 +69,7 @@ const telefones = entidade?.telefones_publicos ?? [];
   idioma={idioma}
   publico
   caminho={caminho}
+  imagem={paroquia && imagemDePartilha(paroquia.locais)}
 >
   <Icones />
   <p class="mb-2">

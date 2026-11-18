@@ -347,3 +347,40 @@ test.describe("acessibilidade (WCAG 2.1 AA)", () => {
     await verificar(page);
   });
 });
+
+test("se o script da página inicial falhar, aparece um aviso com a lista das paróquias", async ({
+  page,
+}) => {
+  // Dados embutidos ilegíveis: o arranque falha logo no início.
+  await page.route(
+    (url) => url.pathname === "/",
+    async (rota) => {
+      const resposta = await rota.fetch();
+      const html = (await resposta.text()).replace(
+        /(id="dados-portal"[^>]*>)[\s\S]*?(<\/script>)/,
+        "$1{$2",
+      );
+      await rota.fulfill({ response: resposta, body: html });
+    },
+  );
+  const erros: string[] = [];
+  page.on("console", (m) => m.type() === "error" && erros.push(m.text()));
+  await page.goto("/");
+  const aviso = page.getByRole("alert");
+  await expect(aviso).toContainText("Não foi possível mostrar as celebrações do dia.");
+  await expect(aviso.getByRole("link", { name: "Ver a lista de paróquias" })).toHaveAttribute(
+    "href",
+    "/paroquias/",
+  );
+  await expect(page.locator("#controlos")).toBeHidden();
+  await expect(page.locator("#celebracoes-do-dia")).toBeHidden();
+  expect(erros.length).toBeGreaterThan(0); // o erro fica na consola, para diagnóstico
+  await aviso.getByRole("link", { name: "Ver a lista de paróquias" }).click();
+  await expect(page).toHaveURL(/\/paroquias\/$/);
+});
+
+test("sem falhas, o aviso fica escondido", async ({ page }) => {
+  await abrir(page, "/");
+  await expect(page.locator("#falha-portal")).toBeHidden();
+  await expect(page.locator("#controlos")).toBeVisible();
+});

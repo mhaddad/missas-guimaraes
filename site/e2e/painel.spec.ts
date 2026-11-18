@@ -257,6 +257,61 @@ test("Está tudo certo (P1): mostra os horários, envia a confirmação e acompa
   });
 });
 
+test("Alertas pedidos pelo servidor: diálogo do painel, sem o confirm do navegador", async ({
+  page,
+}) => {
+  const pedidos = await simular(page, "entidade");
+  // O servidor encontra um alerta que o painel não viu: pede a confirmação reforçada (428).
+  await page.route("**/api/gravacoes", async (rota) => {
+    const corpo = rota.request().postDataJSON() as { confirmar_alertas?: boolean };
+    pedidos.push({ metodo: "POST", url: "/api/gravacoes", corpo });
+    await rota.fulfill({
+      status: corpo.confirmar_alertas ? 200 : 428,
+      contentType: "application/json",
+      body: JSON.stringify(
+        corpo.confirmar_alertas
+          ? { ok: true, estado: "GRAVADO", gravacao: 3, alertas: [] }
+          : { erro: "confirmar_alertas", alertas: ["hora fora do habitual (23:30)"] },
+      ),
+    });
+  });
+  let confirmNativo = false;
+  page.on("dialog", (d) => {
+    confirmNativo = true;
+    void d.dismiss();
+  });
+  const posts = () => pedidos.filter((p) => p.metodo === "POST" && p.url === "/api/gravacoes");
+
+  await page.goto("/admin/");
+  // Primeiro desiste: nada é reenviado.
+  await page.getByRole("button", { name: "Está tudo certo" }).click();
+  await page
+    .getByRole("dialog", { name: "Está tudo certo?" })
+    .getByRole("button", { name: "Confirmo que estes horários estão corretos" })
+    .click();
+  const alerta = page.getByRole("dialog", { name: "Tem a certeza?" });
+  await expect(alerta.getByText("hora fora do habitual (23:30)")).toBeVisible();
+  expect(await axe(page)).toEqual([]);
+  await alerta.getByRole("button", { name: "Cancelar" }).click();
+  await expect(alerta).toBeHidden();
+  expect(posts()).toHaveLength(1);
+
+  // Depois confirma: reenvia com `confirmar_alertas`.
+  await page.getByRole("button", { name: "Está tudo certo" }).click();
+  await page
+    .getByRole("dialog", { name: "Está tudo certo?" })
+    .getByRole("button", { name: "Confirmo que estes horários estão corretos" })
+    .click();
+  await alerta.getByRole("button", { name: "Tenho a certeza, gravar" }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Gravado. Já está no site." }),
+  ).toBeVisible();
+  expect(
+    posts().map((p) => (p.corpo as { confirmar_alertas?: boolean }).confirmar_alertas),
+  ).toEqual([undefined, undefined, true]);
+  expect(confirmNativo).toBe(false);
+});
+
 const hojeLisboa = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Lisbon" }).format(new Date());
 

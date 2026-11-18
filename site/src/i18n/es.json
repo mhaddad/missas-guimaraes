@@ -167,6 +167,7 @@
   "todosOsHorarios": "Todos los horarios",
   "igrejaNaoEncontrada": "Esta parroquia no está en el sitio.",
   "semJavaScriptLigacao": "Ver la lista de parroquias",
+  "falhaPortal": "No se pudieron mostrar las celebraciones del día. Los horarios semanales de todas las iglesias están en la lista de parroquias.",
   "paroquiasTitulo": "Parroquias",
   "paroquiasDescricao": "Las parroquias de Guimarães y Vizela, cada una con su página: horarios, dirección y contactos.",
   "nParoquias": {

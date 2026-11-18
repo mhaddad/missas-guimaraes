@@ -77,6 +77,19 @@ function listaDoResumo(pares: ParLocal[]): HTMLElement {
   );
 }
 
+/** Confirmação reforçada pedida pelo servidor (alertas de anomalia), no diálogo do painel. */
+function confirmarAlertas(alertas: string[]): Promise<boolean> {
+  return perguntar(
+    "Tem a certeza?",
+    [
+      h("p", {}, "Esta alteração tem algo fora do habitual:"),
+      h("ul", { class: "grid list-disc gap-1 pl-5" }, ...alertas.map((a) => h("li", {}, a))),
+      h("p", { class: "text-texto-secundario" }, "Confira antes de gravar."),
+    ],
+    "Tenho a certeza, gravar",
+  );
+}
+
 /** Grava (imediato, ADR-005) e mostra a entidade com o estado novo. */
 async function enviarEAcompanhar(
   corpo: Record<string, unknown>,
@@ -85,7 +98,7 @@ async function enviarEAcompanhar(
 ): Promise<void> {
   botao.disabled = true;
   try {
-    const gravado = await enviarGravacao(corpo);
+    const gravado = await enviarGravacao(corpo, confirmarAlertas);
     if (!gravado) {
       notificar(semAlteracoes, "ok");
       return;

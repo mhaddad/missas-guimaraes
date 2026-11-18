@@ -66,10 +66,13 @@ export function textoDoErro(e: unknown): string {
 
 /**
  * Grava (`POST /api/gravacoes`, imediato). Devolve `true` se gravou, `false` se não havia nada a
- * mudar. Se o servidor pedir a confirmação reforçada (alertas de anomalia), pergunta à pessoa e
- * reenvia. Lança `ErroApi` nos outros erros.
+ * mudar. Se o servidor pedir a confirmação reforçada (alertas de anomalia), pergunta à pessoa com
+ * `confirmarAlertas` (o diálogo do painel) e reenvia. Lança `ErroApi` nos outros erros.
  */
-export async function enviarGravacao(corpo: Record<string, unknown>): Promise<boolean> {
+export async function enviarGravacao(
+  corpo: Record<string, unknown>,
+  confirmarAlertas: (alertas: string[]) => Promise<boolean>,
+): Promise<boolean> {
   try {
     const r = await api<{ estado: string }>("/api/gravacoes", {
       method: "POST",
@@ -79,8 +82,8 @@ export async function enviarGravacao(corpo: Record<string, unknown>): Promise<bo
   } catch (e) {
     if (e instanceof ErroApi && e.codigo === "confirmar_alertas" && !corpo.confirmar_alertas) {
       const alertas = (e.corpo.alertas as string[] | undefined) ?? [];
-      if (!confirm(`${alertas.join("\n")}\n\nTem a certeza de que quer continuar?`)) throw e;
-      return enviarGravacao({ ...corpo, confirmar_alertas: true });
+      if (!(await confirmarAlertas(alertas))) throw e;
+      return enviarGravacao({ ...corpo, confirmar_alertas: true }, confirmarAlertas);
     }
     throw e;
   }

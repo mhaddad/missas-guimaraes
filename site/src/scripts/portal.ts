@@ -37,12 +37,14 @@ import { iniciarRelatos } from "./relato.ts";
 
 // --- Dados e estado ---------------------------------------------------------------------------
 
-const dados = JSON.parse(porId("dados-portal").textContent ?? "{}") as DadosPortal;
-const { idioma } = JSON.parse(porId("idioma-portal").textContent ?? "{}") as { idioma: Idioma };
-const t = TEXTOS[idioma];
-const calendario = prepararCalendario(dados.calendario);
-const locais = new Map(dados.locais.map((l) => [l.id, l]));
-let estado: Estado = lerEstado(location.search);
+// Lidos no arranque (`lerPagina`, dentro do `try` do fim): um erro mostra o aviso da página em vez
+// de deixar o espaço das celebrações em branco.
+let dados!: DadosPortal;
+let idioma!: Idioma;
+let t!: (typeof TEXTOS)[Idioma];
+let calendario!: ReturnType<typeof prepararCalendario>;
+let locais!: Map<string, LocalPortal>;
+let estado!: Estado;
 
 const agora = () => momentoEmLisboa(new Date());
 const paginaDaParoquia = (local: LocalPortal) => `${t.caminho}paroquia/${local.entidade.id}/`;
@@ -231,21 +233,47 @@ function cartaoASeguir(o: CelebracaoPortal, minutos: number, hoje: string): HTML
 
 // --- Desenho da página --------------------------------------------------------------------------
 
-const elControlos = porId("controlos");
-const elPesquisa = porId<HTMLInputElement>("pesquisa");
-const elLimpar = porId<HTMLButtonElement>("limpar-pesquisa");
-const elFiltroTipo = porId<HTMLButtonElement>("filtro-tipo");
-const elFaixaDiaSanto = porId("faixa-dia-santo");
-const elASeguir = porId("a-seguir");
-const elTituloDia = porId("titulo-dia");
-const elAindaHoje = porId("ainda-hoje");
-const elListaHora = porId("lista-hora");
-const elVazioHora = porId("vazio-hora");
-const elAnteriores = porId<HTMLDetailsElement>("anteriores");
-const elAnterioresTexto = porId("anteriores-texto");
-const elListaAnteriores = porId("lista-anteriores");
-const elSemInformacao = porId("sem-informacao");
-const elListaSemInformacao = porId("lista-sem-informacao");
+let elControlos!: HTMLElement;
+let elPesquisa!: HTMLInputElement;
+let elLimpar!: HTMLButtonElement;
+let elFiltroTipo!: HTMLButtonElement;
+let elFaixaDiaSanto!: HTMLElement;
+let elASeguir!: HTMLElement;
+let elTituloDia!: HTMLElement;
+let elAindaHoje!: HTMLElement;
+let elListaHora!: HTMLElement;
+let elVazioHora!: HTMLElement;
+let elAnteriores!: HTMLDetailsElement;
+let elAnterioresTexto!: HTMLElement;
+let elListaAnteriores!: HTMLElement;
+let elSemInformacao!: HTMLElement;
+let elListaSemInformacao!: HTMLElement;
+
+/** Os dados embutidos e os elementos da página (lança se faltar algum). */
+function lerPagina(): void {
+  dados = JSON.parse(porId("dados-portal").textContent ?? "{}") as DadosPortal;
+  ({ idioma } = JSON.parse(porId("idioma-portal").textContent ?? "{}") as { idioma: Idioma });
+  t = TEXTOS[idioma];
+  calendario = prepararCalendario(dados.calendario);
+  locais = new Map(dados.locais.map((l) => [l.id, l]));
+  estado = lerEstado(location.search);
+
+  elControlos = porId("controlos");
+  elPesquisa = porId<HTMLInputElement>("pesquisa");
+  elLimpar = porId<HTMLButtonElement>("limpar-pesquisa");
+  elFiltroTipo = porId<HTMLButtonElement>("filtro-tipo");
+  elFaixaDiaSanto = porId("faixa-dia-santo");
+  elASeguir = porId("a-seguir");
+  elTituloDia = porId("titulo-dia");
+  elAindaHoje = porId("ainda-hoje");
+  elListaHora = porId("lista-hora");
+  elVazioHora = porId("vazio-hora");
+  elAnteriores = porId<HTMLDetailsElement>("anteriores");
+  elAnterioresTexto = porId("anteriores-texto");
+  elListaAnteriores = porId("lista-anteriores");
+  elSemInformacao = porId("sem-informacao");
+  elListaSemInformacao = porId("lista-sem-informacao");
+}
 
 function tituloDoDia(data: string): string {
   if (estado.dia === "hoje") return t.celebracoesHoje;
@@ -335,7 +363,7 @@ function desenhar(): void {
 
 function mudar(parcial: Partial<Estado>): void {
   estado = { ...estado, ...parcial };
-  desenhar();
+  redesenhar();
 }
 
 // --- Ligações antigas a um local (/#nespereira) → página da paróquia ----------------------------
@@ -347,7 +375,28 @@ function abrirLocalDoEndereco(): void {
 
 // --- Arranque -----------------------------------------------------------------------------------
 
+/**
+ * Se o script falhar (dados ilegíveis, um elemento em falta, um erro ao desenhar), esconde os
+ * controlos e o espaço das celebrações e mostra o aviso da página, com a lista das paróquias.
+ */
+function mostrarFalha(erro: unknown): void {
+  console.error(erro);
+  document.getElementById("controlos")?.setAttribute("hidden", "");
+  document.getElementById("celebracoes-do-dia")?.setAttribute("hidden", "");
+  document.getElementById("falha-portal")?.removeAttribute("hidden");
+}
+
+/** Desenha, e mostra o aviso se correr mal (nos cliques e de minuto a minuto). */
+function redesenhar(): void {
+  try {
+    desenhar();
+  } catch (e) {
+    mostrarFalha(e);
+  }
+}
+
 function iniciar(): void {
+  lerPagina();
   abrirLocalDoEndereco();
   const { data: hoje } = agora();
   atualizarSelos(idioma, document, hoje);
@@ -393,8 +442,12 @@ function iniciar(): void {
 
   // De minuto a minuto: "em 25 min" e as celebrações que já passaram.
   setInterval(() => {
-    if (document.visibilityState === "visible") desenhar();
+    if (document.visibilityState === "visible") redesenhar();
   }, 60_000);
 }
 
-iniciar();
+try {
+  iniciar();
+} catch (e) {
+  mostrarFalha(e);
+}

@@ -167,6 +167,7 @@
   "todosOsHorarios": "Todos os horários",
   "igrejaNaoEncontrada": "Esta paróquia não está no site.",
   "semJavaScriptLigacao": "Ver a lista de paróquias",
+  "falhaPortal": "Não foi possível mostrar as celebrações do dia. Os horários semanais de todas as igrejas estão na lista de paróquias.",
   "paroquiasTitulo": "Paróquias",
   "paroquiasDescricao": "As paróquias dos concelhos de Guimarães e Vizela, cada uma com a sua página: horários, morada e contactos.",
   "nParoquias": {
