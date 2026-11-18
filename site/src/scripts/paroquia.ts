@@ -22,7 +22,6 @@ import {
   h,
   icone,
   iniciarPartilha,
-  comBlocosDoDomingo,
   marcar,
   porId,
   prepararAcoes,
@@ -123,11 +122,9 @@ function iniciar(elDados: HTMLElement): void {
     const passadas = doDia.celebracoes.filter((o) => minutosAte(momento, o) < 0);
     const futuras = doDia.celebracoes.filter((o) => minutosAte(momento, o) >= 0);
     elLista.replaceChildren(
-      ...(dia === "domingo"
-        ? comBlocosDoDomingo(idioma, futuras, (o) => linha(o))
-        : futuras.map((o, i) =>
-            linha(o, i === 0 && dia === "hoje" ? minutosAte(momento, o) : undefined),
-          )),
+      ...futuras.map((o, i) =>
+        linha(o, i === 0 && dia === "hoje" ? minutosAte(momento, o) : undefined),
+      ),
     );
     elListaAnteriores.replaceChildren(...passadas.map(linhaPassada));
     elAnteriores.hidden = passadas.length === 0;
@@ -148,9 +145,7 @@ function iniciar(elDados: HTMLElement): void {
     }
 
     elSemInformacao.hidden = doDia.semInformacao.length === 0;
-    elListaSemInformacao.replaceChildren(
-      ...comBlocosDoDomingo(idioma, doDia.semInformacao, (o) => linha(o)),
-    );
+    elListaSemInformacao.replaceChildren(...doDia.semInformacao.map((o) => linha(o)));
 
     const query = dia === "hoje" ? "" : `?dia=${dia}`;
     if (query !== location.search)
