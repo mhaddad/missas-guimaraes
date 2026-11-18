@@ -106,6 +106,17 @@
     @apply text-dourado-texto;
   }
   /* Secções do painel (cabeçalho). */
+  /* Menu do painel: no telemóvel, colunas iguais com o ícone por cima; a partir de md, em linha. */
+  .menu-item {
+    @apply flex min-h-14 w-full flex-col items-center justify-center gap-0.5 rounded-cartao px-1 text-xs font-semibold whitespace-nowrap text-texto-secundario transition-colors hover:bg-superficie hover:text-ardosia md:min-h-10 md:w-auto md:flex-row md:gap-1.5 md:px-3 md:text-sm;
+  }
+  .menu-item[aria-current="page"] {
+    @apply bg-superficie text-ardosia shadow-[inset_0_-2px_0_var(--color-dourado)];
+  }
+  /* Botões mais baixos, para ações em linha (cabeçalho da paróquia). */
+  .botao-compacto {
+    @apply min-h-10 gap-1.5 px-3.5 text-sm;
+  }
   .separador {
     @apply inline-flex min-h-12 items-center gap-2 rounded-cartao px-3 font-semibold whitespace-nowrap text-texto-secundario transition-colors hover:bg-superficie hover:text-ardosia;
   }
