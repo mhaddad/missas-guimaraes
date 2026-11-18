@@ -11,6 +11,16 @@ export {
 } from "./serializar.ts";
 export { ErroLeitura, lerCalendario, lerEntidade, lerLocal } from "./ler.ts";
 export {
+  CAMPOS_CONTACTOS,
+  contactosDe,
+  normalizarEmail,
+  normalizarSite,
+  normalizarTelefone,
+  problemaNosContactos,
+  resumirContactos,
+  type ContactosPublicos,
+} from "./contactos.ts";
+export {
   lerPedidoGravacao,
   prepararGravacao,
   CAMPOS_ALTERACAO,

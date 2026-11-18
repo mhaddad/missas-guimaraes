@@ -13,10 +13,19 @@ import {
   type Entidade,
   type Local,
 } from "@missas/horarios";
+import {
+  CAMPOS_CONTACTOS,
+  contactosDe,
+  problemaNaMorada,
+  problemaNosContactos,
+  resumirContactos,
+  type ContactosPublicos,
+} from "./contactos.ts";
 import { alertasDeAnomalia, resumirPedido, type ParLocal, type ResumoLocal } from "./resumo.ts";
 import { validarDados, type ArquivoDados, type ProblemaDados } from "./validar.ts";
 
-export type TipoGravacao = "confirmacao" | "alteracao" | "novo-local" | "restauro";
+/** `contactos` grava-se no histórico como `alteracao` (a tabela `gravacoes` só aceita estas ações). */
+export type TipoGravacao = "confirmacao" | "alteracao" | "novo-local" | "restauro" | "contactos";
 export type CanalGravacao = "painel" | "email";
 
 /** Pedido tal como chega do painel (já lido por `lerPedidoGravacao`). */
@@ -41,6 +50,15 @@ export type PedidoGravacao =
       /** Versão da entidade de onde partiu (o novo local é acrescentado à sua lista). */
       versaoEntidade: number;
       local: Record<string, unknown>;
+      resumo: ResumoLocal[];
+    }
+  | {
+      tipo: "contactos";
+      entidade: string;
+      /** Versão da entidade de onde partiu. */
+      versaoEntidade: number;
+      /** Os contactos públicos como ficam (só `CAMPOS_CONTACTOS`). */
+      contactos: Record<string, unknown>;
       resumo: ResumoLocal[];
     }
   | {
@@ -102,6 +120,11 @@ export const CAMPOS_ALTERACAO: readonly string[] = [
   "notas_i18n",
   "dias_santos",
   "foto",
+  "morada",
+  "codigo_postal",
+  "localidade",
+  "freguesia",
+  "geo",
 ];
 
 /** Campos que só um administrador muda numa `alteracao`: mostrar ou esconder um local no site. */
@@ -112,7 +135,13 @@ export const PADRAO_URL_FOTO = /^\/fotos\/[0-9a-f]{64}\.(webp|jpg)$/;
 const MAX_TEXTO_FOTO = 300;
 
 export const PADRAO_ID = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-const TIPOS: readonly TipoGravacao[] = ["confirmacao", "alteracao", "novo-local", "restauro"];
+const TIPOS: readonly TipoGravacao[] = [
+  "confirmacao",
+  "alteracao",
+  "novo-local",
+  "restauro",
+  "contactos",
+];
 const MAX_LOCAIS = 50;
 
 // ── Leitura estrita do corpo ────────────────────────────────────────────────────────────────
@@ -189,6 +218,14 @@ export function lerPedidoGravacao(valor: unknown): PedidoGravacao | string {
     if (!versaoValida(valor.versaoEntidade)) return "versaoEntidade";
     if (!objeto(valor.local)) return "local";
     return { tipo, entidade, versaoEntidade: valor.versaoEntidade, local: valor.local, resumo };
+  }
+  if (tipo === "contactos") {
+    if (!soChaves(valor, [...comuns, "versaoEntidade", "contactos"])) return "campos";
+    if (!versaoValida(valor.versaoEntidade)) return "versaoEntidade";
+    const c = valor.contactos;
+    if (!objeto(c) || !soChaves(c, CAMPOS_CONTACTOS) || Object.keys(c).length !== 4)
+      return "contactos";
+    return { tipo, entidade, versaoEntidade: valor.versaoEntidade, contactos: c, resumo };
   }
   // restauro
   if (!soChaves(valor, [...comuns, "restaura", "base"])) return "campos";
@@ -280,6 +317,8 @@ function calcular(
       if (fora.length > 0) return erro(`alteração de campos não permitidos: ${fora.join(", ")}`);
       if (!iguais(r.dados.foto ?? null, dados.foto ?? null) && !fotoDoPainel(dados.foto))
         return erro("a imagem de capa tem de ser enviada pelo painel");
+      const morada = problemaNaMorada(r.dados, dados as unknown as Local);
+      if (morada) return erro(morada);
       locais.set(id, dados as unknown as Local);
     }
     return { entidade, locais };
@@ -299,6 +338,16 @@ function calcular(
     if (!fotoDoPainel(local.foto)) return erro("a imagem de capa tem de ser enviada pelo painel");
     locais.set(id, local as unknown as Local);
     return { entidade: { ...entidade, locais: [...entidade.locais, id] }, locais };
+  }
+
+  if (pedido.tipo === "contactos") {
+    if (estado.entidade.versao !== pedido.versaoEntidade)
+      return conflito("a entidade mudou desde que foi carregada");
+    const contactos = pedido.contactos as unknown as ContactosPublicos;
+    const problema = problemaNosContactos(contactos);
+    if (problema) return erro(problema);
+    const { responsaveis, telefones_publicos, email, site } = contactos;
+    return { entidade: { ...entidade, responsaveis, telefones_publicos, email, site }, locais };
   }
 
   // restauro: o estado de uma gravação anterior, lido do próprio D1 (opcoes.alvo).
@@ -368,7 +417,14 @@ export function prepararGravacao(
     antes: estado.locais.get(id)?.dados ?? null,
     depois,
   }));
-  const resumo = resumirPedido(pares);
+  const resumo =
+    pedido.tipo === "contactos"
+      ? resumirContactos(
+          novo.entidade.id,
+          contactosDe(estado.entidade.dados),
+          contactosDe(novo.entidade),
+        )
+      : resumirPedido(pares);
   const recebido = [...pedido.resumo].sort((a, b) => a.local.localeCompare(b.local));
   if (!iguais(recebido, resumo)) return erro("o resumo não coincide com as alterações");
 

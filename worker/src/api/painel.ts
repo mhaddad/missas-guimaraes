@@ -195,7 +195,7 @@ async function gravacao(
       bd,
       {
         entidadeId: lido.entidade,
-        acao: lido.tipo,
+        acao: lido.tipo === "contactos" ? "alteracao" : lido.tipo,
         contactoId: eu.id,
         canal: "painel",
         resumo: resultado.resumo,

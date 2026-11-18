@@ -21,7 +21,10 @@ import { descreverExcecao } from "../lib/detalhe.ts";
 import { ACOES, formatarData, formatarDataHora, haQuanto } from "../lib/painel.ts";
 import { selo } from "../lib/portal.ts";
 import { classeSelo, textoSelo } from "../lib/selo.ts";
+import { contactosDe } from "@missas/dados/contactos";
 import { abrirCapa, abrirRetirarCapa } from "./painel-capa.ts";
+import { abrirContactos } from "./painel-contactos-publicos.ts";
+import { abrirMorada } from "./painel-morada.ts";
 import { linhaRelato, type RelatoPainel } from "./painel-relatos-comum.ts";
 import { api, ErroApi, h, icone, mostrarErro } from "./painel-comum.ts";
 import { abrirDiasSantos } from "./painel-dias-santos.ts";
@@ -851,6 +854,72 @@ async function mudarPublicar(
   );
 }
 
+/** Morada, localização e notas de um local (pedido `alteracao`). */
+async function editarMorada(
+  estado: EstadoEntidade,
+  id: string,
+  botao: HTMLButtonElement,
+): Promise<void> {
+  const escolhido = estado.locais.find(({ local }) => local.id === id);
+  if (!escolhido) return;
+  await gravarAlteracao(estado, await abrirMorada({ dialogo: dialogoEditor, escolhido }), botao);
+}
+
+/** Contactos da entidade no site (pedido `contactos`). */
+async function editarContactos(estado: EstadoEntidade, botao: HTMLButtonElement): Promise<void> {
+  const mudanca = await abrirContactos({
+    dialogo: dialogoEditor,
+    entidade: estado.entidade.id,
+    atuais: contactosDe(estado.entidade),
+  });
+  if (!mudanca) return;
+  await enviarEAcompanhar(
+    {
+      tipo: "contactos",
+      entidade: estado.entidade.id,
+      versaoEntidade: estado.versao,
+      contactos: mudanca.contactos,
+      resumo: mudanca.resumo,
+    },
+    botao,
+    "Nada mudou.",
+  );
+}
+
+function cartaoContactos(estado: EstadoEntidade): HTMLElement {
+  const c = contactosDe(estado.entidade);
+  const linha = (rotulo: string, valores: string[]) =>
+    h(
+      "div",
+      { class: "grid gap-0.5" },
+      h("dt", { class: "rotulo" }, rotulo),
+      ...(valores.length
+        ? valores.map((v) => h("dd", { class: "break-words" }, v))
+        : [h("dd", { class: "text-texto-secundario" }, "Não indicado")]),
+    );
+  const editar = h(
+    "button",
+    { type: "button", class: "botao-secundario botao-compacto" },
+    icone("edit", "size-4"),
+    "Editar",
+  );
+  editar.addEventListener("click", () => void editarContactos(estado, editar));
+  return cartao(
+    "Contactos no site",
+    [
+      h(
+        "dl",
+        { class: "grid gap-3 px-4 py-4 text-base md:px-5" },
+        linha("Responsáveis", c.responsaveis),
+        linha("Telefones", c.telefones_publicos),
+        linha("E-mail", c.email ? [c.email] : []),
+        linha("Site", c.site ? [c.site] : []),
+      ),
+    ],
+    { extra: editar },
+  );
+}
+
 function cartaoLocais(estado: EstadoEntidade): HTMLElement {
   return cartao(
     "Igrejas e capelas",
@@ -879,6 +948,11 @@ function cartaoLocais(estado: EstadoEntidade): HTMLElement {
                 class: `etiqueta shrink-0 text-xs ${local.publicar ? "bg-confirmado-fundo text-confirmado" : "bg-slate-100 text-texto-secundario"}`,
               },
               local.publicar ? "No site" : "Não publicado",
+            ),
+            botaoIcone(
+              "edit",
+              `Editar morada e localização: ${local.nome}`,
+              (b) => void editarMorada(estado, local.id, b),
             ),
             admin ? botaoPublicar(estado, local.id) : null,
           ),
@@ -1133,6 +1207,7 @@ async function mostrarEntidade(id: string): Promise<void> {
             cartaoCapa(estado),
             cartaoExcecoes(estado, hoje),
             cartaoDiasSantos(estado),
+            cartaoContactos(estado),
             cartaoLocais(estado),
           ),
         ),

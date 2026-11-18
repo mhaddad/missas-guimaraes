@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { resumirPedido } from "@missas/dados";
+import { resumirContactos, resumirPedido } from "@missas/dados";
 import type { Local } from "@missas/horarios";
 import { lerSessao } from "../sessao.ts";
 import { comSessao, contacto, importar, novaBase, type D1Memoria } from "../teste-util.ts";
@@ -247,6 +247,47 @@ describe("gravações", () => {
     expect((await pedir("/api/entidades/nespereira")).corpo).toMatchObject({
       locais: [{ versao: 2, local: { publicar: false } }],
     });
+  });
+
+  it("contactos: o contacto da paróquia muda os da sua; grava-se como alteração", async () => {
+    const contactos = {
+      responsaveis: ["Pe. João Silva (pároco)"],
+      telefones_publicos: ["253 123 456"],
+      email: "paroquia@exemplo.pt",
+      site: "https://paroquia.pt/",
+    };
+    const corpo = (entidade: string) => ({
+      tipo: "contactos",
+      entidade,
+      versaoEntidade: 1,
+      contactos,
+      resumo: resumirContactos(
+        entidade,
+        { responsaveis: [], telefones_publicos: [], email: null, site: null },
+        contactos,
+      ),
+    });
+    expect((await gravarCorpo(corpo("polvoreira"))).estado).toBe(403);
+    expect((await gravarCorpo(corpo("nespereira"))).corpo).toMatchObject({ estado: "GRAVADO" });
+    expect((await pedir("/api/entidades/nespereira")).corpo).toMatchObject({
+      versao: 2,
+      entidade: contactos,
+    });
+    const historico = (await pedir("/api/entidades/nespereira/historico")).corpo as unknown as {
+      acao: string;
+      resumo: { linhas: string[] }[];
+    }[];
+    expect(historico[0]).toMatchObject({ acao: "alteracao" });
+    expect(historico[0]?.resumo[0]?.linhas).toContain("🌐 Site: — → https://paroquia.pt/");
+    expect(
+      (
+        await gravarCorpo({
+          ...corpo("nespereira"),
+          versaoEntidade: 2,
+          contactos: { ...contactos, site: "javascript:alert(1)" },
+        })
+      ).estado,
+    ).toBe(422);
   });
 
   it("corpo inválido (400) e grande demais (413)", async () => {

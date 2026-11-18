@@ -108,6 +108,13 @@ const REGIMES: Record<string, string> = {
   null: "sem informação",
 };
 
+const ROTULOS_MORADA: Record<string, string> = {
+  morada: "Morada",
+  localidade: "Localidade",
+  freguesia: "Freguesia",
+};
+const texto = (v: unknown) => (typeof v === "string" && v ? v : "—");
+
 /** Uma linha por alteração: "➖ Missa: domingos às 11:15" · "➕ Missa: domingos às 10:30 (a partir de 1 dez. 2026)". */
 export function descreverAlteracao(a: Alteracao): string {
   const regra = (r: Regra) => descreverRegra(r, "pt-PT", { comTipo: true });
@@ -135,6 +142,16 @@ export function descreverAlteracao(a: Alteracao): string {
           : a.depois == null
             ? "🖼️ Imagem de capa retirada"
             : "🖼️ Imagem de capa alterada";
+      if (a.campo === "morada" || a.campo === "localidade" || a.campo === "freguesia")
+        return `📍 ${ROTULOS_MORADA[a.campo]}: ${texto(a.antes)} → ${texto(a.depois)}`;
+      if (a.campo === "codigo_postal")
+        return `📮 Código postal: ${texto(a.antes)} → ${texto(a.depois)}`;
+      if (a.campo === "geo") return "📍 Localização no mapa alterada";
+      if (a.campo === "notas") return "📝 Notas alteradas";
+      if (a.campo === "notas_i18n")
+        return a.depois == null
+          ? "📝 Traduções das notas retiradas"
+          : "📝 Traduções das notas alteradas";
       if (a.campo === "publicar")
         return a.depois === true ? "👁️ Volta a aparecer no site" : "🚫 Escondido do site";
       return `Campo ${a.campo} alterado`;

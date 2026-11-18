@@ -21,6 +21,17 @@ export interface ResumoLocal {
 const HORA_MINIMA = "06:00";
 const HORA_MAXIMA = "22:30";
 const MAX_LOCAIS_SEM_ALERTA = 5;
+/** Mudar a localização no mapa mais do que isto pede confirmação reforçada. */
+const KM_SEM_ALERTA = 1;
+
+/** Distância em km entre dois pontos (fórmula de haversine). */
+function distanciaKm(a: Local["geo"], b: Local["geo"]): number {
+  const rad = (g: number) => (g * Math.PI) / 180;
+  const h =
+    Math.sin(rad(b.lat - a.lat) / 2) ** 2 +
+    Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lon - a.lon) / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
 
 /** Uma linha só, sem quebras: os textos vêm dos dados e não podem criar *trailers* falsos. */
 export function umaLinha(texto: string): string {
@@ -77,6 +88,11 @@ export function alertasDeAnomalia(pares: readonly ParLocal[]): string[] {
       if (depois.horarios.length === 0) alertas.push(`${nome} fica sem nenhum horário.`);
       else if (retiradas * 2 > antes.horarios.length)
         alertas.push(`${nome}: retira ${retiradas} de ${antes.horarios.length} horários.`);
+    }
+    if (antes && antes.geo && depois.geo) {
+      const km = distanciaKm(antes.geo, depois.geo);
+      if (km > KM_SEM_ALERTA)
+        alertas.push(`${nome}: a localização no mapa muda ${km.toFixed(1).replace(".", ",")} km.`);
     }
     const existentes = new Set(
       [...(antes?.horarios ?? []), ...(antes?.excecoes ?? [])].map(chaveCanonica),
