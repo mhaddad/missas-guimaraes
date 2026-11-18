@@ -12,6 +12,7 @@ import {
   type CelebracaoPortal,
   type LocalPortal,
 } from "../lib/portal.ts";
+import { formatarDiaDaSemanaEData } from "../lib/formatos.ts";
 import { classeSelo, textoSelo } from "../lib/selo.ts";
 
 export function porId<T extends HTMLElement = HTMLElement>(id: string): T {
@@ -247,6 +248,35 @@ export function iniciarPartilha(idioma: Idioma): void {
 }
 
 /** Marca o botão escolhido num grupo segmentado (`aria-pressed`). */
+/**
+ * As linhas da lista do dia. Na escolha "Próx. domingo", as missas vespertinas de sábado ficam
+ * num bloco próprio, antes das de domingo, cada bloco com a data por título ("Sábado, 21 de
+ * novembro", "Domingo, 22 de novembro"); cada vespertina mantém a etiqueta.
+ */
+export function comBlocosDoDomingo(
+  idioma: Idioma,
+  celebracoes: readonly CelebracaoPortal[],
+  linha: (o: CelebracaoPortal) => HTMLElement,
+): HTMLElement[] {
+  const vesperas = celebracoes.filter((o) => o.vespera);
+  if (vesperas.length === 0) return celebracoes.map(linha);
+  const domingo = celebracoes.filter((o) => !o.vespera);
+  const titulo = (texto: string) =>
+    h(
+      "li",
+      { class: "mt-2 text-sm font-semibold text-texto-secundario first:mt-0" },
+      texto.charAt(0).toLocaleUpperCase(idioma) + texto.slice(1),
+    );
+  const sabado = vesperas[0]?.data ?? "";
+  const dataDomingo = domingo[0]?.data;
+  return [
+    titulo(formatarDiaDaSemanaEData(sabado, idioma)),
+    ...vesperas.map(linha),
+    ...(dataDomingo ? [titulo(formatarDiaDaSemanaEData(dataDomingo, idioma))] : []),
+    ...domingo.map(linha),
+  ];
+}
+
 export function marcar(seletor: string, atributo: string, valor: string): void {
   document.querySelectorAll<HTMLElement>(seletor).forEach((b) => {
     b.setAttribute("aria-pressed", String(b.getAttribute(atributo) === valor));

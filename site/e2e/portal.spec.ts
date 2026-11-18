@@ -59,15 +59,20 @@ test.describe("filtros e endereço", () => {
     await expect(page.locator("#lista-hora > li").first()).toContainText("Vizela");
   });
 
-  test("próximo domingo: as vespertinas de sábado primeiro, com a data na etiqueta", async ({
+  test("próximo domingo: as vespertinas sob a data do sábado, depois o domingo", async ({
     page,
   }) => {
     await abrir(page, "/?dia=domingo");
     const linhas = page.locator("#lista-hora > li");
-    await expect(linhas.first()).toContainText("17:00");
-    await expect(linhas.first()).toContainText("Sábado, 7 · vespertina");
+    await expect(linhas.first()).toHaveText("Sábado, 7 de novembro");
+    await expect(linhas.nth(1)).toContainText("Sábado, 7 · vespertina");
+    await expect(linhas.nth(2)).toHaveText("Domingo, 8 de novembro");
     await expect(page.getByText(/missas vespertinas/)).toHaveCount(0);
-    await expect(linhas.nth(1)).not.toContainText("vespertina");
+    expect(
+      (
+        await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+      ).violations.map((v) => v.id),
+    ).toEqual([]);
   });
 
   test("pesquisa sem acentos", async ({ page }) => {
