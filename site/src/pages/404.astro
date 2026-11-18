@@ -1,0 +1,8 @@
+---
+/** Endereço que não existe (também em /en/ e /es/): página própria, com estado 404. */
+import PaginaErro from "../components/PaginaErro.astro";
+
+Astro.response.status = 404;
+---
+
+<PaginaErro tipo={404} />

@@ -185,5 +185,13 @@
   "semMaisHojeParoquia": "Ya no hay más celebraciones hoy en esta parroquia.",
   "pesquisaParoquiasRotulo": "Buscar parroquias",
   "pesquisaParoquiasExemplo": "Nombre de la parroquia o localidad",
-  "nenhumaParoquia": "Ninguna parroquia coincide con la búsqueda."
+  "nenhumaParoquia": "Ninguna parroquia coincide con la búsqueda.",
+  "erro404Titulo": "Página no encontrada",
+  "erro404Texto": "La dirección puede estar incompleta, o la página ha cambiado de sitio. Busque la parroquia por el nombre o vuelva al inicio.",
+  "erro500Titulo": "Algo ha salido mal",
+  "erro500Texto": "No se ha podido mostrar esta página. Inténtelo de nuevo dentro de un momento.",
+  "tentarNovamente": "Intentar de nuevo",
+  "verCelebracoesHoje": "Ver las celebraciones de hoy",
+  "verTodasParoquias": "Ver todas las parroquias",
+  "pesquisar": "Buscar"
 }

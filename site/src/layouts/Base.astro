@@ -14,9 +14,19 @@ interface Props {
   caminho?: string;
   /** Atalho da página atual (cabeçalho e barra inferior). */
   atual?: "inicio" | "paroquias";
+  /** Atalhos e barra inferior sem o resto do site público (páginas de erro: sem canónico). */
+  navegacao?: boolean;
 }
 
-const { titulo, descricao, idioma = "pt-PT", publico = false, caminho = "", atual } = Astro.props;
+const {
+  titulo,
+  descricao,
+  idioma = "pt-PT",
+  publico = false,
+  caminho = "",
+  atual,
+  navegacao = publico,
+} = Astro.props;
 const t = TEXTOS[idioma];
 const absoluto = (caminho: string) => new URL(caminho, Astro.site).toString();
 const LOCALES = { "pt-PT": "pt_PT", en: "en_GB", es: "es_ES" } as const;
@@ -70,12 +80,12 @@ const LOCALES = { "pt-PT": "pt_PT", en: "en_GB", es: "es_ES" } as const;
           ? "Saltar al contenido"
           : "Saltar para o conteúdo"}
     </a>
-    <Cabecalho idioma={idioma} navegacao={publico} caminho={caminho} atual={atual} />
+    <Cabecalho idioma={idioma} navegacao={navegacao} caminho={caminho} atual={atual} />
     <main id="conteudo" class="mx-auto max-w-[56rem] px-4 py-6 md:py-8">
       <slot />
     </main>
     <slot name="fim" />
-    {publico && (
+    {navegacao && (
       <nav
         aria-label={t.navegacao}
         class="fixed inset-x-0 bottom-0 z-10 border-t border-borda bg-cartao md:hidden"

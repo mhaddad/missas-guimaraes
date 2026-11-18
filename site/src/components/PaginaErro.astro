@@ -1,0 +1,81 @@
+---
+/**
+ * Página de erro (404 e 500) com o cabeçalho e a navegação do site, no idioma do endereço
+ * (`/en/…`, `/es/…`). Não é indexada e não mostra pormenores técnicos do erro. Não lê nada
+ * do D1: tem de funcionar mesmo quando a base de dados falha.
+ */
+import Base from "../layouts/Base.astro";
+import { TEXTOS, type Idioma } from "../i18n/index.ts";
+import Icone from "./Icone.astro";
+import Icones from "./Icones.astro";
+
+interface Props {
+  tipo: 404 | 500;
+}
+
+const { tipo } = Astro.props;
+const idioma: Idioma = /^\/en(\/|$)/.test(Astro.url.pathname)
+  ? "en"
+  : /^\/es(\/|$)/.test(Astro.url.pathname)
+    ? "es"
+    : "pt-PT";
+const t = TEXTOS[idioma];
+const titulo = tipo === 404 ? t.erro404Titulo : t.erro500Titulo;
+const texto = tipo === 404 ? t.erro404Texto : t.erro500Texto;
+---
+
+<Base titulo={`${titulo} — ${t.arciprestado}`} descricao={texto} idioma={idioma} navegacao>
+  <meta slot="head" name="robots" content="noindex" />
+  <Icones />
+  <section class="mx-auto max-w-xl py-6 text-center md:py-12" aria-labelledby="titulo-erro">
+    <Icone
+      nome={tipo === 404 ? "search" : "error"}
+      class="mx-auto size-12 text-dourado-texto md:size-14"
+    />
+    <h1 id="titulo-erro" class="mt-4 text-2xl font-bold md:text-3xl">
+      {titulo}
+    </h1>
+    <p class="mt-3 text-texto-secundario">{texto}</p>
+
+    {tipo === 404 && (
+      <form
+        action={`${t.caminho}paroquias/`}
+        method="get"
+        role="search"
+        class="mt-6 flex gap-2 text-left"
+      >
+        <label for="pesquisa-erro" class="sr-only">
+          {t.pesquisaParoquiasRotulo}
+        </label>
+        <input
+          id="pesquisa-erro"
+          name="q"
+          type="search"
+          class="campo min-w-0 flex-1"
+          placeholder={t.pesquisaParoquiasExemplo}
+          autocomplete="off"
+        />
+        <button type="submit" class="botao-primario shrink-0">
+          <Icone nome="search" />
+          <span class="max-sm:sr-only">{t.pesquisar}</span>
+        </button>
+      </form>
+    )}
+
+    <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+      {tipo === 500 && (
+        <a href={Astro.url.pathname} class="botao-primario">
+          {t.tentarNovamente}
+        </a>
+      )}
+      <a href={t.caminho} class="botao-secundario">
+        <Icone nome="schedule" />
+        {t.verCelebracoesHoje}
+      </a>
+      <a href={`${t.caminho}paroquias/`} class="botao-secundario">
+        <Icone nome="church" />
+        {t.verTodasParoquias}
+      </a>
+    </div>
+  </section>
+</Base>
