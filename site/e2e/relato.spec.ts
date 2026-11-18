@@ -95,3 +95,27 @@ test("pelo rodapé, sem igreja, em inglês, e com o limite atingido", async ({ p
     },
   ]);
 });
+
+test("o formulário cabe no diálogo, mesmo com nomes de igreja muito longos", async ({ page }) => {
+  await preparar(page);
+  await page.goto("/");
+  // Um nome longo de propósito: a caixa de seleção não pode alargar o formulário.
+  await page.evaluate(`(() => {
+    const opcao = document.createElement("option");
+    opcao.textContent = "Igreja Paroquial de ".repeat(12) + "Fim";
+    document.querySelector("#relato-local").append(opcao);
+  })()`);
+  await page.getByRole("button", { name: "Reportar erro ou alteração" }).click();
+  const dialogo = page.getByRole("dialog");
+  await expect(dialogo).toContainText("verificação simulada");
+  const excesso = await dialogo.evaluate(`(() => {
+    const d = document.querySelector("#relato");
+    const limite = d.getBoundingClientRect().right;
+    const campos = [...d.querySelectorAll("select, textarea, p, button")];
+    return {
+      rolagem: d.scrollWidth - d.clientWidth,
+      fora: campos.filter((c) => c.getBoundingClientRect().right > limite + 0.5).map((c) => c.id || c.tagName),
+    };
+  })()`);
+  expect(excesso).toEqual({ rolagem: 0, fora: [] });
+});

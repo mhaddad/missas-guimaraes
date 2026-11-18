@@ -21,21 +21,17 @@ const siteKey: string | undefined = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ||
     id="relato"
     data-site-key={siteKey}
     aria-labelledby="relato-titulo"
-    class="m-auto w-[min(36rem,calc(100%-2rem))] rounded-xl border border-borda bg-cartao p-0 text-ardosia shadow-xl backdrop:bg-ardosia/50"
+    class="m-auto max-h-[calc(100dvh-2rem)] w-[min(36rem,calc(100%-2rem))] overflow-y-auto rounded-xl border border-borda bg-cartao p-0 text-ardosia shadow-xl backdrop:bg-ardosia/50"
   >
-    <form id="form-relato" class="grid gap-4 p-5 md:p-6" novalidate>
+    <form id="form-relato" class="grid grid-cols-[minmax(0,1fr)] gap-4 p-5 md:p-6" novalidate>
       <h2 id="relato-titulo" class="text-xl font-semibold">
         {t.reportarTitulo}
       </h2>
-      <div class="grid gap-1">
+      <div class="flex flex-col gap-1">
         <label for="relato-local" class="font-semibold">
           {t.reportarIgreja}
         </label>
-        <select
-          id="relato-local"
-          name="local"
-          class="min-h-12 rounded-cartao border border-borda bg-cartao px-3 text-base"
-        >
+        <select id="relato-local" name="local" class="campo truncate">
           <option value="">{t.reportarSemIgreja}</option>
           {locais.map((local) => (
             <option value={local.id}>
@@ -44,7 +40,7 @@ const siteKey: string | undefined = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ||
           ))}
         </select>
       </div>
-      <div class="grid gap-1">
+      <div class="flex flex-col gap-1">
         <label for="relato-mensagem" class="font-semibold">
           {t.reportarMensagem}
         </label>
@@ -56,7 +52,7 @@ const siteKey: string | undefined = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ||
           maxlength="1000"
           required
           aria-describedby="relato-ajuda"
-          class="rounded-cartao border border-borda bg-cartao p-3 text-base"
+          class="campo py-3"
         />
         <p id="relato-ajuda" class="text-base text-texto-secundario">
           {t.reportarAjuda}
@@ -68,11 +64,7 @@ const siteKey: string | undefined = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ||
         <button type="button" class="botao-secundario" data-fechar-relato>
           {t.reportarCancelar}
         </button>
-        <button
-          type="submit"
-          id="relato-enviar"
-          class="inline-flex min-h-12 items-center gap-2 rounded-cartao bg-ardosia px-5 text-base font-semibold text-white"
-        >
+        <button type="submit" id="relato-enviar" class="botao-primario">
           {t.reportarEnviar}
         </button>
       </div>
