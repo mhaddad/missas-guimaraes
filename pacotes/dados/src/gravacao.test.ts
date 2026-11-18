@@ -209,6 +209,53 @@ describe("alteracao", () => {
     expect(r.resumo).toEqual([{ local: "igreja-a", linhas: ["🖼️ Imagem de capa retirada"] }]);
   });
 
+  it("um administrador esconde e volta a mostrar um local no site", () => {
+    const ADMIN = { ...OPCOES, admin: true };
+    const esconder = pronto(
+      prepararGravacao(alteracao("igreja-a", (l) => ({ ...l, publicar: false })), estado(), ADMIN),
+    );
+    expect(esconder.locais.get("igreja-a")?.publicar).toBe(false);
+    expect(esconder.resumo).toEqual([{ local: "igreja-a", linhas: ["🚫 Escondido do site"] }]);
+
+    const escondido = estado([
+      ["igreja-a", { dados: local("igreja-a", "exemplo", { publicar: false }), versao: 7 }],
+    ]);
+    const antes = local("igreja-a", "exemplo", { publicar: false });
+    const depois = { ...antes, publicar: true };
+    const mostrar = pronto(
+      prepararGravacao(
+        {
+          tipo: "alteracao",
+          entidade: "exemplo",
+          locais: { "igreja-a": { versao: 7, dados: depois as unknown as Record<string, unknown> } },
+          resumo: resumirPedido([{ antes, depois }]),
+        },
+        escondido,
+        ADMIN,
+      ),
+    );
+    expect(mostrar.resumo).toEqual([{ local: "igreja-a", linhas: ["👁️ Volta a aparecer no site"] }]);
+  });
+
+  it("publicar só por um administrador; os outros campos fixos continuam fixos para ele", () => {
+    const esconder = alteracao("igreja-a", (l) => ({ ...l, publicar: false }));
+    for (const opcoes of [OPCOES, { ...OPCOES, admin: false }])
+      expect(prepararGravacao(esconder, estado(), opcoes)).toMatchObject({
+        estado: "ERRO",
+        motivo: expect.stringMatching(/campos não permitidos: publicar/),
+      });
+    const ADMIN = { ...OPCOES, admin: true };
+    for (const mudar of [
+      (l: Local) => ({ ...l, nome: "Outro" }),
+      (l: Local) => ({ ...l, entidade: "outra" }),
+      (l: Local) => ({ ...l, confirmado_em: "2026-11-01" }),
+    ])
+      expect(prepararGravacao(alteracao("igreja-a", mudar), estado(), ADMIN)).toMatchObject({
+        estado: "ERRO",
+        motivo: expect.stringMatching(/campos não permitidos/),
+      });
+  });
+
   it("a entidade do pedido tem de ser a do estado", () => {
     const p = { ...alteracao("igreja-a", (l) => l), entidade: "outra" };
     expect(prepararGravacao(p, estado(), OPCOES)).toEqual({ estado: "ERRO", motivo: "entidade" });

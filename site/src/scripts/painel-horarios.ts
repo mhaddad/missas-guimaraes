@@ -791,6 +791,66 @@ function cartaoDiasSantos(estado: EstadoEntidade): HTMLElement {
   ]);
 }
 
+/** Só administradores: esconder um local do site, ou voltar a mostrá-lo (campo `publicar`). */
+function botaoPublicar(estado: EstadoEntidade, id: string): HTMLElement | null {
+  const escolhido = estado.locais.find(({ local }) => local.id === id);
+  if (!escolhido) return null;
+  const { local } = escolhido;
+  const botao = h(
+    "button",
+    {
+      type: "button",
+      class: "botao-icone",
+      "aria-label": `${local.publicar ? "Esconder do site" : "Mostrar no site"}: ${local.nome}`,
+      title: local.publicar ? "Esconder do site" : "Mostrar no site",
+    },
+    icone(local.publicar ? "visibility_off" : "visibility"),
+  );
+  botao.addEventListener("click", () => void mudarPublicar(estado, escolhido, botao));
+  return botao;
+}
+
+async function mudarPublicar(
+  estado: EstadoEntidade,
+  escolhido: EstadoEntidade["locais"][number],
+  botao: HTMLButtonElement,
+): Promise<void> {
+  const { local } = escolhido;
+  const esconder = local.publicar;
+  const unica = esconder && estado.locais.filter(({ local: l }) => l.publicar).length === 1;
+  const conteudo = esconder
+    ? [
+        h(
+          "p",
+          {},
+          `${local.nome} deixa de aparecer no site: na lista das paróquias, na página da paróquia e nas celebrações do dia.`,
+        ),
+        ...(unica
+          ? [
+              h(
+                "p",
+                {},
+                "É a única igreja desta paróquia no site: a paróquia também deixa de aparecer.",
+              ),
+            ]
+          : []),
+        h(
+          "p",
+          { class: "text-texto-secundario" },
+          "Os horários ficam guardados no painel e pode voltar a mostrá-la quando quiser.",
+        ),
+      ]
+    : [h("p", {}, `${local.nome} volta a aparecer no site, com os horários que tem agora.`)];
+  const titulo = esconder ? "Esconder do site?" : "Mostrar no site?";
+  if (!(await perguntar(titulo, conteudo, esconder ? "Esconder do site" : "Mostrar no site")))
+    return;
+  await gravarAlteracao(
+    estado,
+    { local: escolhido, depois: { ...local, publicar: !esconder }, confirmarAlertas: false },
+    botao,
+  );
+}
+
 function cartaoLocais(estado: EstadoEntidade): HTMLElement {
   return cartao(
     "Igrejas e capelas",
@@ -820,6 +880,7 @@ function cartaoLocais(estado: EstadoEntidade): HTMLElement {
               },
               local.publicar ? "No site" : "Não publicado",
             ),
+            admin ? botaoPublicar(estado, local.id) : null,
           ),
         ),
       ),
