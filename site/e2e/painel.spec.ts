@@ -188,6 +188,35 @@ test("visão geral do administrador: indicadores, mais antigas e ligação para 
   await expect(page).toHaveURL(/\/admin\/paroquias\/\?estado=nunca$/);
 });
 
+test("visão geral: cada estado da confirmação numa só linha, sem passar do cartão", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "computador", "o próprio teste escolhe as larguras");
+  await simular(page, "admin");
+  for (const largura of [375, 640, 1024, 1280, 1920]) {
+    await page.setViewportSize({ width: largura, height: 900 });
+    await page.goto("/admin/");
+    const cartao = page.getByRole("region", { name: "Confirmação dos horários" });
+    await expect(cartao.getByRole("link")).toHaveCount(4);
+    const medidas = (await cartao.evaluate(`(() => {
+      const cartao = document.getElementById("titulo-confirmacoes").closest("section");
+      const limite = cartao.getBoundingClientRect().right + 0.5;
+      return [...cartao.querySelectorAll("ul a")]
+        .map((a) => {
+          const texto = a.querySelector(".flex-1");
+          const linha = parseFloat(getComputedStyle(texto).lineHeight);
+          return {
+            texto: texto.textContent,
+            linhas: Math.round(texto.getBoundingClientRect().height / linha),
+            passa: a.getBoundingClientRect().right > limite,
+          };
+        });
+    })()`)) as { texto: string; linhas: number; passa: boolean }[];
+    for (const m of medidas)
+      expect(m, `largura ${largura}`).toMatchObject({ linhas: 1, passa: false });
+  }
+});
+
 test("lista das paróquias: pesquisa, concelho, estado, ordem e abrir uma", async ({ page }) => {
   const pedidos = await simular(page, "admin");
   await page.goto("/admin/paroquias/");

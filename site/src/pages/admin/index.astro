@@ -160,15 +160,17 @@ const nomes = new Map(visao.paroquias.map((p) => [p.id, p.nome]));
         ) : null,
       )}
     </div>
-    <ul class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+    <!-- Cada estado ocupa a largura do seu texto e o que sobra reparte-se: "Sem confirmação recente"
+         fica numa linha (com quatro colunas iguais, quebrava). Sem espaço, passa para a linha seguinte. -->
+    <ul class="mt-3 grid gap-2 sm:flex sm:flex-wrap sm:gap-x-4">
       {porEstado.map((e) => (
-        <li>
+        <li class="sm:flex-auto">
           <a
             class="flex min-h-12 items-center gap-2 rounded-cartao px-2 hover:bg-superficie"
             href={`/admin/paroquias/?estado=${e.chave}`}
           >
             <span class:list={["size-3 shrink-0 rounded-full", e.ponto]} aria-hidden="true" />
-            <span class="flex-1">{e.texto}</span>
+            <span class="flex-1 whitespace-nowrap">{e.texto}</span>
             <span class="font-bold tabular-nums">{e.n}</span>
             <Icone nome="chevron_right" class="size-5 text-texto-secundario" />
           </a>
