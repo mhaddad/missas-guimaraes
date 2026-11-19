@@ -333,6 +333,54 @@ test("Esconder do site: só o administrador, com confirmação e gravado no hist
   ).toBeVisible();
 });
 
+test("página da paróquia: nenhum cartão passa da coluna, mesmo na coluna estreita", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "computador", "o próprio teste escolhe as larguras");
+  await simular(page, "admin");
+  // A linha da igreja com tudo o que a alarga: nome longo, "Não publicado", lápis e olho.
+  await page.route("**/api/entidades/nespereira", (rota) =>
+    rota.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        entidade: { ...entidades[0], email: "secretaria.paroquial.de.nespereira@exemplo.pt" },
+        versao: 1,
+        locais: [
+          {
+            local: {
+              ...local,
+              nome: "Igreja Paroquial de Santa Eulália (homologação)",
+              publicar: false,
+            },
+            versao: 1,
+          },
+        ],
+      }),
+    }),
+  );
+  for (const largura of [1024, 1280]) {
+    await page.setViewportSize({ width: largura, height: 900 });
+    await page.goto("/admin/paroquia/nespereira/");
+    await expect(page.getByRole("heading", { name: "Igrejas e capelas" })).toBeVisible();
+    const { excesso, rolagem } = (await page.evaluate(`(() => {
+      const igrejas = [...document.querySelectorAll("section")].find(
+        (s) => s.querySelector("h2")?.textContent === "Igrejas e capelas",
+      );
+      const grelha = igrejas?.parentElement?.parentElement;
+      if (!grelha) return { excesso: ["sem grelha"], rolagem: 0 };
+      const limite = grelha.getBoundingClientRect().right + 0.5;
+      return {
+        excesso: [...grelha.querySelectorAll("section")]
+          .filter((s) => s.getBoundingClientRect().right > limite)
+          .map((s) => s.querySelector("h2")?.textContent ?? "?"),
+        rolagem: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      };
+    })()`)) as { excesso: string[]; rolagem: number };
+    expect(excesso, `largura ${largura}`).toEqual([]);
+    expect(rolagem, `largura ${largura}`).toBe(0);
+  }
+});
+
 test("o contacto da paróquia não vê o botão de esconder do site", async ({ page }) => {
   await simular(page, "entidade");
   await page.goto("/admin/");
